@@ -5,6 +5,7 @@ import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError } from "../../errors.ts";
 import { aiTranslationCommand } from "./ai-translation.ts";
+import { experimentsAppCommand } from "./experiments.ts";
 
 function parse(args: string[]) {
   let spaceId: string | undefined;
@@ -115,6 +116,11 @@ export const appCommand: Command = {
   description: "Manage installed space apps",
   usage: "unblok app <command>",
   async run(args, context) {
-    await dispatch("unblok app", [list, install, aiTranslationCommand], args, context);
+    await dispatch(
+      "unblok app",
+      [list, install, aiTranslationCommand, experimentsAppCommand],
+      args,
+      context,
+    );
   },
 };

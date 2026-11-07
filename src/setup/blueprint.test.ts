@@ -37,7 +37,11 @@ describe("version 1 setup blueprint inventory", () => {
       support: "available",
       count: 1,
     });
-    expect(result.operations).toContainEqual({ path: "ai.inherit_org_configuration", operation: "configure AI inheritance", support: "available" });
+    expect(result.operations).toContainEqual({
+      path: "ai.inherit_org_configuration",
+      operation: "configure AI inheritance",
+      support: "available",
+    });
     expect(result.operations).toContainEqual({
       path: "components.fields[1]",
       operation: "reconcile component field",

@@ -2,6 +2,7 @@ import type { Command } from "../../cli/command.ts";
 import { dispatch } from "../../cli/dispatch.ts";
 import { storyWorkflowCommand } from "./workflow.ts";
 import { storyTagsCommand } from "./tags.ts";
+import { storyGetCommand, storyBlockUpdateCommand } from "./content.ts";
 
 export const storyCommand: Command = {
   name: "story",
@@ -10,7 +11,12 @@ export const storyCommand: Command = {
   async run(args, context) {
     await dispatch(
       "unblok story",
-      [storyWorkflowCommand, storyTagsCommand],
+      [
+        storyGetCommand,
+        storyBlockUpdateCommand,
+        storyWorkflowCommand,
+        storyTagsCommand,
+      ],
       args,
       context,
     );

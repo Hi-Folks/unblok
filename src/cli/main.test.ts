@@ -43,6 +43,16 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     createWorkflowStage: async (_spaceId, stage) => stage as never,
     findStoryBySlug: async () => undefined,
     getStory: async () => ({}) as never,
+    publishStory: async () => ({}),
+    activateExperiment: async () => ({}),
+    updateStoryContent: async () => ({}) as never,
+    listExperiments: async () => ({}),
+    getExperiment: async () => ({}),
+    createExperiment: async () => ({}),
+    linkExperimentStory: async () => ({}),
+    createExperimentMapping: async () => ({}),
+    getExperimentResults: async () => ({}),
+    pushExperimentResults: async () => ({}),
     updateStoryTags: async () => {},
     listAvailableApps: async () => [],
     listInstalledApps: async () => [],
@@ -100,6 +110,88 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("requires a disclaimer ID and confirmation before enabling Experiments", async () => {
+    let requests = 0;
+    const harness = createHarness({
+      listInstalledApps: async () => {
+        requests++;
+        return [];
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "app",
+          "experiments",
+          "enable",
+          "--disclaimer-id",
+          "173657768407244",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(requests).toBe(0);
+    expect(harness.stderr[0]).toContain("--yes");
+  });
+  test("requires confirmation before pushing experiment results", async () => {
+    let writes = 0;
+    const harness = createHarness({
+      pushExperimentResults: async () => {
+        writes++;
+        return {};
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "experiment",
+          "results",
+          "push",
+          "--id",
+          "4",
+          "--file",
+          "examples/features/experiment-demo-results.yaml",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(writes).toBe(0);
+    expect(harness.stderr[0]).toContain("--yes");
+  });
+
+  test("reports result API failures without success output", async () => {
+    const harness = createHarness({
+      pushExperimentResults: async () => {
+        throw new Error("Results unavailable");
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "experiment",
+          "results",
+          "push",
+          "--id",
+          "4",
+          "--file",
+          "examples/features/experiment-demo-results.yaml",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(1);
+    expect(harness.stdout).toEqual([]);
+    expect(harness.stderr[0]).toContain("Results unavailable");
+  });
   test("reports the package version without authentication", async () => {
     const harness = createHarness();
     harness.options.environment = {};

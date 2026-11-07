@@ -1,0 +1,14 @@
+name: hero_demo
+display_name: "Demo: hero experiment"
+description: "Demo experiment with simulated results"
+story_slugs:
+  - home # Replace if your home story has a different full slug.
+experiment_variants_attributes:
+  - name: control
+    display_name: Control
+    is_control: true
+    weight: 50
+  - name: hero_test
+    display_name: Hero test
+    is_control: false
+    weight: 50

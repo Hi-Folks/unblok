@@ -28,18 +28,18 @@ The command shows the new space and asks whether to continue. Review the [AI Tra
 
 Run a step by itself to test or reuse only that capability. Steps 02–10 accept an existing space with `--space-id YOUR_SPACE_ID --yes`; some need resources from earlier steps or the source space.
 
-| Step | Purpose and reuse |
-| --- | --- |
-| [01 Space](steps/01-space.yaml) | Duplicates the showcase space into the organization; reuse it to create a fresh starting point with a chosen name. |
-| [02 Settings](steps/02-settings.yaml) | Sets Italian, preview URLs, and demo mode; reuse it to configure a compatible space and frontend. |
-| [03 Apps](steps/03-apps.yaml) | Installs the demo's supporting apps; reuse it before steps that depend on those apps. |
-| [04 Components](steps/04-components.yaml) | Configures SEO and rich-text fields on `article-page`; reuse it when those component settings are needed. |
-| [05 Assets](steps/05-assets.yaml) | Uploads a remote banner to `Provisioned`; reuse it with another URL or choose the local alternative below. |
-| [06 Stories](steps/06-stories.yaml) | Creates a story using the banner and sets an Italian slug for `/about`; it depends on the asset, language, app, and source components. |
-| [07 Workflow](steps/07-workflow.yaml) | Assigns stages to unstaged and selected stories; reuse it with a different `review_stage`. |
-| [08 Tags](steps/08-tags.yaml) | Adds tags to selected stories; reuse it to apply the same organization to compatible content. |
-| [09 Space AI](steps/09-space-ai.yaml) | Enables space AI with space-specific configuration; reuse independently of any particular AI app. |
-| [10 AI Translations](steps/10-ai-translation.yaml) | Accepts the specified disclaimer and installs AI Translations; reuse only when that feature and disclaimer are appropriate. |
+| Step                                               | Purpose and reuse                                                                                                                      |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| [01 Space](steps/01-space.yaml)                    | Duplicates the showcase space into the organization; reuse it to create a fresh starting point with a chosen name.                     |
+| [02 Settings](steps/02-settings.yaml)              | Sets Italian, preview URLs, and demo mode; reuse it to configure a compatible space and frontend.                                      |
+| [03 Apps](steps/03-apps.yaml)                      | Installs the demo's supporting apps; reuse it before steps that depend on those apps.                                                  |
+| [04 Components](steps/04-components.yaml)          | Configures SEO and rich-text fields on `article-page`; reuse it when those component settings are needed.                              |
+| [05 Assets](steps/05-assets.yaml)                  | Uploads a remote banner to `Provisioned`; reuse it with another URL or choose the local alternative below.                             |
+| [06 Stories](steps/06-stories.yaml)                | Creates a story using the banner and sets an Italian slug for `/about`; it depends on the asset, language, app, and source components. |
+| [07 Workflow](steps/07-workflow.yaml)              | Assigns stages to unstaged and selected stories; reuse it with a different `review_stage`.                                             |
+| [08 Tags](steps/08-tags.yaml)                      | Adds tags to selected stories; reuse it to apply the same organization to compatible content.                                          |
+| [09 Space AI](steps/09-space-ai.yaml)              | Enables space AI with space-specific configuration; reuse independently of any particular AI app.                                      |
+| [10 AI Translations](steps/10-ai-translation.yaml) | Accepts the specified disclaimer and installs AI Translations; reuse only when that feature and disclaimer are appropriate.            |
 
 For local images, apply [alternatives/local-assets.yaml](alternatives/local-assets.yaml) **instead of step 05** when running steps individually. Supply `--input 'asset_dir=/absolute/path/to/images'`; the directory must contain the three filenames listed in that file. The main blueprint continues to use the remote asset step.
 

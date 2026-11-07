@@ -1,0 +1,12 @@
+charts:
+  - kind: bar
+    title: "SIMULATED: CTA conversion rate"
+    xLabel: Variant
+    yLabel: Conversion rate
+    labels: [Control, Hero test]
+    series:
+      - label: Simulated conversion rate
+        data: [0.12, 0.15]
+  - kind: text
+    title: Simulated data
+    body: "Demo data only. These values do not represent real visitors or conversions."

@@ -23,7 +23,10 @@ export async function resolveWorkflow(
       `Workflow '${reference}' was not found in space ${spaceId}.`,
     );
   }
-  if (matches.length > 1) throw new CliError(`Workflow '${reference}' is ambiguous in space ${spaceId}.`);
+  if (matches.length > 1)
+    throw new CliError(
+      `Workflow '${reference}' is ambiguous in space ${spaceId}.`,
+    );
   return matches[0]!;
 }
 
@@ -71,9 +74,18 @@ export async function resolveWorkflowStage(
     return stage;
   }
 
-  const workflow = workflowReference ? await resolveWorkflow(gateway, spaceId, workflowReference) : undefined;
-  const stages = await gateway.listWorkflowStages(spaceId, { search: stageReference, workflowId: workflow?.id });
-  const matches = stages.filter((stage) => stage.name === stageReference && (!workflow || stage.workflow_id === workflow.id));
+  const workflow = workflowReference
+    ? await resolveWorkflow(gateway, spaceId, workflowReference)
+    : undefined;
+  const stages = await gateway.listWorkflowStages(spaceId, {
+    search: stageReference,
+    workflowId: workflow?.id,
+  });
+  const matches = stages.filter(
+    (stage) =>
+      stage.name === stageReference &&
+      (!workflow || stage.workflow_id === workflow.id),
+  );
   if (matches.length === 0) {
     throw new CliError(
       `Workflow stage '${stageReference}' was not found in space ${spaceId}.`,

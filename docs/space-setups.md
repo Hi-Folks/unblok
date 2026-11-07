@@ -49,17 +49,19 @@ Include paths are relative to the file that declares them. Files merge in order:
 
 `plan` is local: it merges files, resolves inputs, checks the schema, and displays an inventory. It does **not** read Storyblok, compare current state, check every runtime dependency, or make changes. Apply performs further checks and reports each operation; some API or dependency errors can only appear after earlier operations have succeeded.
 
+For an experiment example, see [the experiment guide](experiments.md). Experiment creation is create-only: an existing technical name stops the operation, and partially created experiments require inspection rather than an automatic resume.
+
 Applying without `--space-id` duplicates a new space every time. To resume or repeat against the same space, pass its explicit `--space-id`. If duplication readiness fails or you stop at the confirmation, the created space remains available; use its ID to continue.
 
 On an existing space, behavior depends on the resource:
 
-| Resource | Repeat-run behavior |
-| --- | --- |
-| Languages and apps | Add missing languages and install missing apps; existing ones are kept. |
-| Preview and component fields | Update declared settings or field properties when different; preserve undeclared fields and other named environments. |
-| Assets | Reuse a same-named file in the target folder only if its content matches; differing content or ambiguous matches stop the step. |
-| Stories | Leave an existing story with the same full slug untouched; update declared translated slugs separately. |
-| Workflows and tags | Skip matching assignments and add missing tags while preserving existing tags. |
+| Resource                     | Repeat-run behavior                                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Languages and apps           | Add missing languages and install missing apps; existing ones are kept.                                                         |
+| Preview and component fields | Update declared settings or field properties when different; preserve undeclared fields and other named environments.           |
+| Assets                       | Reuse a same-named file in the target folder only if its content matches; differing content or ambiguous matches stop the step. |
+| Stories                      | Leave an existing story with the same full slug untouched; update declared translated slugs separately.                         |
+| Workflows and tags           | Skip matching assignments and add missing tags while preserving existing tags.                                                  |
 
 These behaviors make many operations repeatable, but do not guarantee that two spaces become identical: source content, existing stories, external files, app availability, and API state can differ. Changes already made are not rolled back on a later failure. The report explains unchanged items, identifies failures, lists later operations that did not run, and summarizes completed, skipped, failed, and not-run counts. Fix the error and rerun with the same space ID; inputs and confirmation flags must be supplied again. `--json` includes the same reasons, `summary`, and recovery guidance. A failure returns a nonzero exit code.
 

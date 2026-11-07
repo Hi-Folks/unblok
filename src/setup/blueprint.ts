@@ -76,6 +76,17 @@ export function planBlueprint(value: unknown): BlueprintPlan {
         support: "available",
       },
     },
+    experiments: {
+      disclaimer_id: {
+        operation: "accept disclaimer and install Experiments",
+        support: "available",
+      },
+      create: {
+        operation:
+          "create experiments, update variant content, and push simulated results",
+        support: "available",
+      },
+    },
     components: {
       fields: { operation: "add component fields", support: "available" },
     },
@@ -84,9 +95,16 @@ export function planBlueprint(value: unknown): BlueprintPlan {
         operation: "upload assets",
         support: "available",
       },
-      upload_url: { operation: "upload assets from URLs", support: "available" },
+      upload_url: {
+        operation: "upload assets from URLs",
+        support: "available",
+      },
     },
     stories: {
+      update_blocks: {
+        operation: "update selected story blocks",
+        support: "available",
+      },
       translated_slugs: {
         operation: "configure translated slugs",
         support: "available",
@@ -221,6 +239,6 @@ export function planBlueprint(value: unknown): BlueprintPlan {
         (item) => item.support === "not-implemented",
       ).length,
     },
-    note: "Capability inventory only: no Storyblok state was read or changed. Blueprint execution supports space settings, apps, components, assets, stories, workflows and tags.",
+    note: "Capability inventory only: no Storyblok state was read or changed. Blueprint execution supports space settings, apps, components, assets, stories, workflows, tags and experiments.",
   };
 }

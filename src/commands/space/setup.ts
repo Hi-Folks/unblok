@@ -5,6 +5,7 @@ import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError, formatError } from "../../errors.ts";
 import { planBlueprint } from "../../setup/blueprint.ts";
+import { compileExperiments } from "../../setup/blueprint-experiments.ts";
 import { resolveBlueprint } from "../../setup/blueprint-validation.ts";
 import {
   applySupportedBlueprint,
@@ -32,6 +33,7 @@ function formatProgress(progress: BlueprintProgress): string {
     stories: "Configuring stories",
     workflow: "Assigning workflow stages",
     tags: "Assigning tags",
+    experiments: "Configuring experiments",
   };
   const count =
     progress.current && progress.total
@@ -98,6 +100,8 @@ const plan: Command = {
       await loadBlueprint(options.config),
       options.inputs,
     );
+    if (blueprint.experiments !== undefined)
+      compileExperiments(blueprint.experiments);
     const result = {
       ...planBlueprint(blueprint),
       resolvedBlueprint: blueprint,

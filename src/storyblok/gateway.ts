@@ -15,9 +15,22 @@ import { getRegion } from "@storyblok/region-helper";
 
 export interface StoryblokGateway {
   listAssetFolders(spaceId: number): Promise<StoryblokAssetFolder[]>;
-  createAssetFolder(spaceId: number, name: string, parentId?: number): Promise<StoryblokAssetFolder>;
-  listAssets(spaceId: number, folderId?: number, search?: string): Promise<StoryblokAsset[]>;
-  uploadAsset(spaceId: number, folderId: number, filename: string, data: Uint8Array): Promise<void>;
+  createAssetFolder(
+    spaceId: number,
+    name: string,
+    parentId?: number,
+  ): Promise<StoryblokAssetFolder>;
+  listAssets(
+    spaceId: number,
+    folderId?: number,
+    search?: string,
+  ): Promise<StoryblokAsset[]>;
+  uploadAsset(
+    spaceId: number,
+    folderId: number,
+    filename: string,
+    data: Uint8Array,
+  ): Promise<void>;
   readAsset(asset: StoryblokAsset): Promise<Uint8Array>;
   deleteSpace(spaceId: number): Promise<void>;
   createWorkflowStage(
@@ -26,8 +39,50 @@ export interface StoryblokGateway {
   ): Promise<WorkflowStage>;
   findStoryBySlug(spaceId: number, slug: string): Promise<Story | undefined>;
   getStory(spaceId: number, storyId: number): Promise<Story>;
-  createStory(spaceId: number, story: { name: string; slug: string; content: Record<string, unknown> }): Promise<Story>;
-  updateTranslatedSlugs(spaceId: number, storyId: number, translations: Array<{ id?: number; lang?: string; slug: string; name?: string }>): Promise<void>;
+  publishStory(spaceId: number, storyId: number): Promise<unknown>;
+  activateExperiment(spaceId: number, experimentId: number): Promise<unknown>;
+  updateStoryContent(
+    spaceId: number,
+    storyId: number,
+    content: Record<string, unknown>,
+  ): Promise<Story>;
+  listExperiments(spaceId: number): Promise<unknown>;
+  getExperiment(spaceId: number, experimentId: number): Promise<unknown>;
+  createExperiment(
+    spaceId: number,
+    experiment: Record<string, unknown>,
+  ): Promise<unknown>;
+  linkExperimentStory(
+    spaceId: number,
+    experimentId: number,
+    storyId: number,
+  ): Promise<unknown>;
+  createExperimentMapping(
+    spaceId: number,
+    experimentId: number,
+    variantId: number,
+    storyId: number,
+  ): Promise<unknown>;
+  getExperimentResults(spaceId: number, experimentId: number): Promise<unknown>;
+  pushExperimentResults(
+    spaceId: number,
+    experimentId: number,
+    charts: unknown[],
+  ): Promise<unknown>;
+  createStory(
+    spaceId: number,
+    story: { name: string; slug: string; content: Record<string, unknown> },
+  ): Promise<Story>;
+  updateTranslatedSlugs(
+    spaceId: number,
+    storyId: number,
+    translations: Array<{
+      id?: number;
+      lang?: string;
+      slug: string;
+      name?: string;
+    }>,
+  ): Promise<void>;
   updateStoryTags(
     spaceId: number,
     storyId: number,
@@ -88,8 +143,17 @@ export interface StoryblokApp {
   name: string;
   slug: string;
 }
-export interface StoryblokAssetFolder { id: number; name: string; parent_id?: number | null }
-export interface StoryblokAsset { id: number; filename: string; short_filename: string; asset_folder_id?: number | null }
+export interface StoryblokAssetFolder {
+  id: number;
+  name: string;
+  parent_id?: number | null;
+}
+export interface StoryblokAsset {
+  id: number;
+  filename: string;
+  short_filename: string;
+  asset_folder_id?: number | null;
+}
 export interface StoryblokAppProvision {
   app_id: number | string;
   name: string;
@@ -206,35 +270,80 @@ export const createStoryblokGateway = (
     async listAssetFolders(spaceId) {
       const all: StoryblokAssetFolder[] = [];
       for (let page = 1; ; page++) {
-        const response = await clientForSpace(spaceId).get<{ asset_folders: StoryblokAssetFolder[] }>(`/v1/spaces/${spaceId}/asset_folders/`, { query: { page, per_page: 100 } });
-        if (!Array.isArray(response.data.asset_folders)) throw new Error("Invalid asset folder list.");
+        const response = await clientForSpace(spaceId).get<{
+          asset_folders: StoryblokAssetFolder[];
+        }>(`/v1/spaces/${spaceId}/asset_folders/`, {
+          query: { page, per_page: 100 },
+        });
+        if (!Array.isArray(response.data.asset_folders))
+          throw new Error("Invalid asset folder list.");
         all.push(...response.data.asset_folders);
         if (response.data.asset_folders.length < 100) return all;
       }
     },
     async createAssetFolder(spaceId, name, parentId) {
-      const response = await clientForSpace(spaceId).post<{ asset_folder: StoryblokAssetFolder }>(`/v1/spaces/${spaceId}/asset_folders/`, { headers: { "Content-Type": "application/json" }, body: { asset_folder: { name, ...(parentId === undefined ? {} : { parent_id: parentId }) } } });
+      const response = await clientForSpace(spaceId).post<{
+        asset_folder: StoryblokAssetFolder;
+      }>(`/v1/spaces/${spaceId}/asset_folders/`, {
+        headers: { "Content-Type": "application/json" },
+        body: {
+          asset_folder: {
+            name,
+            ...(parentId === undefined ? {} : { parent_id: parentId }),
+          },
+        },
+      });
       return response.data.asset_folder;
     },
     async listAssets(spaceId, folderId, search) {
       const all: StoryblokAsset[] = [];
       for (let page = 1; ; page++) {
-        const response = await clientForSpace(spaceId).get<{ assets: StoryblokAsset[] }>(`/v1/spaces/${spaceId}/assets/`, { query: { page, per_page: 100, ...(folderId === undefined ? {} : { in_folder: folderId }), ...(search === undefined ? {} : { search }) } });
-        if (!Array.isArray(response.data.assets)) throw new Error("Invalid asset list.");
+        const response = await clientForSpace(spaceId).get<{
+          assets: StoryblokAsset[];
+        }>(`/v1/spaces/${spaceId}/assets/`, {
+          query: {
+            page,
+            per_page: 100,
+            ...(folderId === undefined ? {} : { in_folder: folderId }),
+            ...(search === undefined ? {} : { search }),
+          },
+        });
+        if (!Array.isArray(response.data.assets))
+          throw new Error("Invalid asset list.");
         all.push(...response.data.assets);
         if (response.data.assets.length < 100) return all;
       }
     },
     async uploadAsset(spaceId, folderId, filename, data) {
       try {
-        await clientForSpace(spaceId).assets.upload({ body: { short_filename: filename, asset_folder_id: folderId, validate_upload: true }, file: new Blob([new Uint8Array(data)]) });
-      } catch { throw new Error(`Could not upload asset '${filename}'.`); }
+        await clientForSpace(spaceId).assets.upload({
+          body: {
+            short_filename: filename,
+            asset_folder_id: folderId,
+            validate_upload: true,
+          },
+          file: new Blob([new Uint8Array(data)]),
+        });
+      } catch {
+        throw new Error(`Could not upload asset '${filename}'.`);
+      }
     },
     async readAsset(asset) {
       const url = new URL(asset.filename);
-      if (url.protocol !== "https:" || !(url.hostname === "a.storyblok.com" || url.hostname.endsWith(".storyblok.com") || url.hostname === "s3.amazonaws.com")) throw new Error("Asset URL is not a trusted Storyblok asset URL.");
+      if (
+        url.protocol !== "https:" ||
+        !(
+          url.hostname === "a.storyblok.com" ||
+          url.hostname.endsWith(".storyblok.com") ||
+          url.hostname === "s3.amazonaws.com"
+        )
+      )
+        throw new Error("Asset URL is not a trusted Storyblok asset URL.");
       const response = await fetch(url, { redirect: "error" });
-      if (!response.ok) throw new Error(`Could not read existing asset (HTTP ${response.status}).`);
+      if (!response.ok)
+        throw new Error(
+          `Could not read existing asset (HTTP ${response.status}).`,
+        );
       return new Uint8Array(await response.arrayBuffer());
     },
     async deleteSpace(spaceId) {
@@ -263,12 +372,114 @@ export const createStoryblokGateway = (
         throw new Error(`Story ${storyId} was not returned by Storyblok.`);
       return response.data.story;
     },
+    async publishStory(spaceId, storyId) {
+      return (
+        await clientForSpace(spaceId).get(
+          `/v1/spaces/${spaceId}/stories/${storyId}/publish`,
+        )
+      ).data;
+    },
+    async activateExperiment(spaceId, experimentId) {
+      return (
+        await clientForSpace(spaceId).put(
+          `/v1/spaces/${spaceId}/experiments/${experimentId}/activate`,
+        )
+      ).data;
+    },
+    async updateStoryContent(spaceId, storyId, content) {
+      const response = await clientForSpace(spaceId).put<{ story: Story }>(
+        `/v1/spaces/${spaceId}/stories/${storyId}`,
+        {
+          headers: { "Content-Type": "application/json" },
+          body: { story: { content }, publish: false },
+        },
+      );
+      return response.data.story;
+    },
+    async listExperiments(spaceId) {
+      const experiments: unknown[] = [];
+      for (let page = 1; ; page++) {
+        const response = await clientForSpace(spaceId).get<{
+          experiments: unknown[];
+        }>(`/v1/spaces/${spaceId}/experiments`, {
+          query: { page, per_page: 100 },
+        });
+        if (!Array.isArray(response.data.experiments))
+          throw new Error("Storyblok returned an invalid experiment list.");
+        experiments.push(...response.data.experiments);
+        if (response.data.experiments.length < 100) return { experiments };
+      }
+    },
+    async getExperiment(spaceId, experimentId) {
+      return (
+        await clientForSpace(spaceId).get(
+          `/v1/spaces/${spaceId}/experiments/${experimentId}`,
+        )
+      ).data;
+    },
+    async createExperiment(spaceId, experiment) {
+      return (
+        await clientForSpace(spaceId).post(
+          `/v1/spaces/${spaceId}/experiments`,
+          {
+            headers: { "Content-Type": "application/json" },
+            body: { experiment },
+          },
+        )
+      ).data;
+    },
+    async linkExperimentStory(spaceId, experimentId, storyId) {
+      return (
+        await clientForSpace(spaceId).post(
+          `/v1/spaces/${spaceId}/experiments/${experimentId}/stories`,
+          {
+            headers: { "Content-Type": "application/json" },
+            body: { experiment_story: { story_id: storyId } },
+          },
+        )
+      ).data;
+    },
+    async createExperimentMapping(spaceId, experimentId, variantId, storyId) {
+      return (
+        await clientForSpace(spaceId).post(
+          `/v1/spaces/${spaceId}/experiments/${experimentId}/variants/${variantId}/story_mappings`,
+          {
+            headers: { "Content-Type": "application/json" },
+            body: { story_mapping: { original_story_id: storyId } },
+          },
+        )
+      ).data;
+    },
+    async getExperimentResults(spaceId, experimentId) {
+      return (
+        await clientForSpace(spaceId).get(
+          `/v1/spaces/${spaceId}/experiments/${experimentId}/results`,
+        )
+      ).data;
+    },
+    async pushExperimentResults(spaceId, experimentId, charts) {
+      return (
+        await clientForSpace(spaceId).post(
+          `/v1/spaces/${spaceId}/experiments/${experimentId}/results`,
+          { headers: { "Content-Type": "application/json" }, body: { charts } },
+        )
+      ).data;
+    },
     async createStory(spaceId, story) {
-      const response = await clientForSpace(spaceId).post<{ story: Story }>(`/v1/spaces/${spaceId}/stories/`, { headers: { "Content-Type": "application/json" }, body: { story } });
+      const response = await clientForSpace(spaceId).post<{ story: Story }>(
+        `/v1/spaces/${spaceId}/stories/`,
+        { headers: { "Content-Type": "application/json" }, body: { story } },
+      );
       return response.data.story;
     },
     async updateTranslatedSlugs(spaceId, storyId, translations) {
-      await clientForSpace(spaceId).put(`/v1/spaces/${spaceId}/stories/${storyId}`, { headers: { "Content-Type": "application/json" }, body: { story: { translated_slugs_attributes: translations } } });
+      await clientForSpace(spaceId).put(
+        `/v1/spaces/${spaceId}/stories/${storyId}`,
+        {
+          headers: { "Content-Type": "application/json" },
+          body: { story: { translated_slugs_attributes: translations } },
+        },
+      );
     },
     async updateStoryTags(spaceId, storyId, tags) {
       await clientForSpace(spaceId).stories.update(storyId, {
@@ -300,7 +511,14 @@ export const createStoryblokGateway = (
         app_provision: StoryblokAppProvision;
       }>(`/v1/spaces/${spaceId}/app_provisions/`, {
         headers: { "Content-Type": "application/json" },
-        body: { app_provision: { app_id: /^\d+$/.test(appId) && Number.isSafeInteger(Number(appId)) ? Number(appId) : appId } },
+        body: {
+          app_provision: {
+            app_id:
+              /^\d+$/.test(appId) && Number.isSafeInteger(Number(appId))
+                ? Number(appId)
+                : appId,
+          },
+        },
       });
       return response.data.app_provision;
     },

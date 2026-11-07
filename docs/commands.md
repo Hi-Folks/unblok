@@ -100,35 +100,36 @@ bun run start space setup plan --config path/to/demo-space.yaml --json
 
 The plan validates the supported blueprint shape and resolves declared string inputs from defaults or repeatable `--input name=value` overrides. It shows the resolved blueprint; runtime references such as `${{ space.preview_token }}` remain placeholders. Story content is application-specific and is not fully schema-validated. The plan does not read Storyblok state or make changes, and is not a remote diff. Unsupported sections are rejected by the schema. The `version: 1` format is separate from the existing `space-man/v1` format used by `space plan` and `space apply`.
 
-| Option | `plan` | `apply` |
-| --- | --- | --- |
-| `--config <path>` | Required YAML or JSON blueprint. | Required YAML or JSON blueprint. |
-| `--input <name=value>` | Override a declared input; repeatable. | Override a declared input; repeatable. |
-| `--space-id <id>` | Not supported; the plan is local. | Use an existing space instead of duplicating. |
-| `--yes` | Not needed. | Required to authorize changes. |
-| `--continue-after-duplicate` | Not applicable. | Skip the post-duplication prompt; required for noninteractive duplication. |
-| `--json` | Emit the capability inventory and resolved blueprint. | Emit a per-operation report. |
+| Option                       | `plan`                                                | `apply`                                                                    |
+| ---------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------- |
+| `--config <path>`            | Required YAML or JSON blueprint.                      | Required YAML or JSON blueprint.                                           |
+| `--input <name=value>`       | Override a declared input; repeatable.                | Override a declared input; repeatable.                                     |
+| `--space-id <id>`            | Not supported; the plan is local.                     | Use an existing space instead of duplicating.                              |
+| `--yes`                      | Not needed.                                           | Required to authorize changes.                                             |
+| `--continue-after-duplicate` | Not applicable.                                       | Skip the post-duplication prompt; required for noninteractive duplication. |
+| `--json`                     | Emit the capability inventory and resolved blueprint. | Emit a per-operation report.                                               |
 
 ### Supported YAML sections
 
 The bundled examples reference the local [JSON Schema](../space-setup.schema.json) for editor completion and validation. Add `# yaml-language-server: $schema=../space-setup.schema.json` at the top of a YAML file in `examples/`; adjust the relative path for files elsewhere. The CLI validates resolved blueprints against the same schema and performs additional runtime checks. The `ai` section supports explicit space AI and organization inheritance settings.
 
-| Section | Fields and behavior | Example |
-| --- | --- | --- |
-| `version`, `template`, `execution` | Set `version: 1`; `template` holds descriptive metadata and `execution.mode` accepts `reconcile`. | [Apps and tags](../examples/features/setup-apps-tags.yaml) |
-| `extends` | Merge a blueprint file or an ordered list of files before the current file. | [Modular customer demo](../examples/customer-demo/setup.yaml) |
-| `inputs` | String values use `default` or `--input` and are referenced as `${{ inputs.name }}`. | [Duplicate](../examples/features/setup-duplicate.yaml) |
-| `space` | `name`, `duplicate_from`, `in_org`, `demo`, `readiness`, and `languages`. | [Duplicate](../examples/features/setup-duplicate.yaml), [configuration](../examples/features/setup-configure.yaml) |
-| `preview`, `demo_mode` | Configure the default URL, named environments, and `demo_mode.remove`; preview URLs can reference `${{ space.preview_token }}`. | [Configuration](../examples/features/setup-configure.yaml) |
-| `apps` | Install slugs or `{ id: 123 }`; `continue_on_error` controls whether setup continues after an app failure. | [Configuration](../examples/features/setup-configure.yaml) |
-| `ai_translation` | Accept a specified `disclaimer_id`, then install AI Translations (app `29942`). | [AI Translations](../examples/customer-demo/steps/10-ai-translation.yaml) |
-| `ai` | Configure space AI and organization configuration inheritance using explicit booleans `enabled` and `inherit_org_configuration`. | [Space AI](../examples/customer-demo/steps/09-space-ai.yaml) |
-| `components.fields` | Reconcile declared fields, including custom `field_type`, tabs, and rich-text `customize_toolbar`. | [Component fields](../examples/features/setup-component-fields.yaml) |
-| `assets.upload_directory` | Upload selected files from a local directory. | [Local assets](../examples/features/setup-assets.yaml) |
-| `assets.upload_url` | Download and upload remote files; use `name` as a story asset reference. | [Remote asset](../examples/features/setup-remote-asset.yaml) |
-| `stories.create`, `stories.translated_slugs` | Create root-level stories and reconcile translated slugs. | [Stories](../examples/features/setup-stories.yaml) |
-| `workflow` | Assign unstaged stories and exact story slugs to stages. | [Workflow](../examples/features/setup-workflow.yaml) |
-| `tags` | Add tags to stories selected by exact full slug. | [Apps and tags](../examples/features/setup-apps-tags.yaml) |
+| Section                                                               | Fields and behavior                                                                                                              | Example                                                                                                            |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `version`, `template`, `execution`                                    | Set `version: 1`; `template` holds descriptive metadata and `execution.mode` accepts `reconcile`.                                | [Apps and tags](../examples/features/setup-apps-tags.yaml)                                                         |
+| `extends`                                                             | Merge a blueprint file or an ordered list of files before the current file.                                                      | [Modular customer demo](../examples/customer-demo/setup.yaml)                                                      |
+| `inputs`                                                              | String values use `default` or `--input` and are referenced as `${{ inputs.name }}`.                                             | [Duplicate](../examples/features/setup-duplicate.yaml)                                                             |
+| `space`                                                               | `name`, `duplicate_from`, `in_org`, `demo`, `readiness`, and `languages`.                                                        | [Duplicate](../examples/features/setup-duplicate.yaml), [configuration](../examples/features/setup-configure.yaml) |
+| `preview`, `demo_mode`                                                | Configure the default URL, named environments, and `demo_mode.remove`; preview URLs can reference `${{ space.preview_token }}`.  | [Configuration](../examples/features/setup-configure.yaml)                                                         |
+| `apps`                                                                | Install slugs or `{ id: 123 }`; `continue_on_error` controls whether setup continues after an app failure.                       | [Configuration](../examples/features/setup-configure.yaml)                                                         |
+| `ai_translation`                                                      | Accept a specified `disclaimer_id`, then install AI Translations (app `29942`).                                                  | [AI Translations](../examples/customer-demo/steps/10-ai-translation.yaml)                                          |
+| `experiments`                                                         | Install Experiments, reconcile variants and test content, and optionally publish, activate, and push simulated results.          | [Experiment](../examples/features/setup-experiment.yaml)                                                           |
+| `ai`                                                                  | Configure space AI and organization configuration inheritance using explicit booleans `enabled` and `inherit_org_configuration`. | [Space AI](../examples/customer-demo/steps/09-space-ai.yaml)                                                       |
+| `components.fields`                                                   | Reconcile declared fields, including custom `field_type`, tabs, and rich-text `customize_toolbar`.                               | [Component fields](../examples/features/setup-component-fields.yaml)                                               |
+| `assets.upload_directory`                                             | Upload selected files from a local directory.                                                                                    | [Local assets](../examples/features/setup-assets.yaml)                                                             |
+| `assets.upload_url`                                                   | Download and upload remote files; use `name` as a story asset reference.                                                         | [Remote asset](../examples/features/setup-remote-asset.yaml)                                                       |
+| `stories.create`, `stories.translated_slugs`, `stories.update_blocks` | Create stories, reconcile translated slugs, and update selected blocks by story slug.                                            | [Stories](../examples/features/setup-stories.yaml), [Experiment](../examples/features/setup-experiment.yaml)       |
+| `workflow`                                                            | Assign unstaged stories and exact story slugs to stages.                                                                         | [Workflow](../examples/features/setup-workflow.yaml)                                                               |
+| `tags`                                                                | Add tags to stories selected by exact full slug.                                                                                 | [Apps and tags](../examples/features/setup-apps-tags.yaml)                                                         |
 
 These are YAML setup operations, not all standalone commands: in particular, asset upload, story creation, and space AI configuration are currently available through the setup runner. Unsupported fields are rejected before changes.
 
@@ -142,7 +143,7 @@ bun run start space setup apply --config examples/customer-demo/steps/02-setting
 bun run start space setup apply --config examples/customer-demo/steps/05-assets.yaml --space-id 123456 --input 'asset_url=https://your-host.example/banner.png' --yes
 ```
 
-Run files 03–08 with `--space-id` in order; the story, workflow, and tag steps depend on earlier steps and the source space's content. The modular blueprint also includes [space AI settings](../examples/customer-demo/steps/09-space-ai.yaml) and step 10: it disables organization AI configuration inheritance, accepts disclaimer ID `35`, and installs AI Translations. Review the disclaimer ID and terms before applying. To run the combined setup, use `--config examples/customer-demo/setup.yaml` and provide the same input overrides. The runner always executes resource operations in dependency order, regardless of the order of sections in YAML.
+Run files 03–08 with `--space-id` in order; the story, workflow, and tag steps depend on earlier steps and the source space's content. The modular blueprint also includes [space AI settings](../examples/customer-demo/steps/09-space-ai.yaml), AI Translations, and the [experiment setup](../examples/features/setup-experiment.yaml). Review the disclaimer IDs and terms before applying. The combined setup publishes the experiment variant, starts the experiment, and pushes simulated results. To run it, use `--config examples/customer-demo/setup.yaml` and provide the same input overrides. The runner always executes resource operations in dependency order, regardless of the order of sections in YAML.
 
 `extends` accepts one path or an array of paths, relative to the file declaring it. Included files are merged in order and then the including file is merged. Objects merge recursively, later scalar values and configuration lists replace earlier ones, and operation lists (apps, component fields, assets, stories, workflow assignments, and tags) are appended. A file shared through multiple paths is included once; cycles are rejected. Inputs are merged before substitution, so `--input` overrides work across files. Include paths are literal, not input expressions. Local asset source paths are relative to the file declaring them; use relative input values when interpolating paths in included fragments.
 
@@ -351,6 +352,12 @@ bun run start story workflow assign --stage Reviewing --without-stage --space-id
 Use `--stories-from <path>` for a whitespace- or comma-separated ID file, or `--search`, `--starts-with`, and `--component` filters. Explicit IDs cannot be combined with filters. Use `--workflow <name-or-id>` to disambiguate stage names. Assignment accepts `--due-date`, `--comment`, `--notify`, repeated `--user-id` and `--role-id`, `--release-id`, and `--concurrency` (1–10). It requires `--yes`; run the matching plan first. `--json` provides a versioned per-story report, and failures produce a non-zero exit code.
 
 `--without-stage` selects stories with no workflow stage, including no per-language stages. It may be combined with selectors to narrow the result, but not with `--release-id`. If Storyblok omits stage data, the command fails instead of guessing. The assignment fetches the selection again, so review the plan immediately before applying.
+
+## Stories and experiments
+
+Use `unblok story get --ref <id-or-full-slug> --json` to inspect a story. `unblok story block-update --id <id> --uid <block-uid> --file <yaml-or-json> --yes` replaces existing fields on exactly one block and saves the story without publishing. Supply complete field values, including nested objects. See [the demo experiment guide](experiments.md) for a complete example.
+
+`unblok app experiments enable --disclaimer-id <id> --yes` accepts the specified disclaimer and installs the Experiments app; review its terms and ID first. `unblok experiment list`, `get`, and `create` inspect or create experiments. `link-story` links an existing story to a draft experiment; `mapping-create` duplicates a story for a variant. `experiment results get` reads a snapshot and `experiment results push --id <id> --file <yaml-or-json> --yes` replaces it. Use `--help` for each command. Creation and mapping are not idempotent; inspect existing experiments and mappings before retrying. These operations have not yet been verified end to end against Storyblok.
 
 ## Story tag assignment
 

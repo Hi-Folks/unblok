@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Demo hero experiment
+execution:
+  mode: reconcile
+experiments:
+  # Review this disclaimer and its current ID in Storyblok before applying.
+  disclaimer_id: 173657768407244
+  create:
+    - name: hero_demo
+      display_name: "Demo: hero experiment"
+      story_slug: home
+      # Publishes the variant and starts the experiment.
+      activate: true
+      variants:
+        - name: control
+          display_name: Control
+          is_control: true
+          weight: 50
+          result: 0.12
+        - name: hero_test
+          display_name: Hero test
+          is_control: false
+          weight: 50
+          result: 0.15
+      results:
+        title: CTA conversion rate
+        series_label: Simulated conversion rate
+stories:
+  update_blocks:
+    - story_slug: home-hero_demo-hero_test
+      # Based on the demo space's home story; adapt for other schemas.
+      component: hero-section
+      fields:
+        eyebrow: Discover what's possible
+        text: Explore fresh ideas and bring your next project to life.
+        background_color: background-1
+        text_alignment: center
+        image_decoration: true

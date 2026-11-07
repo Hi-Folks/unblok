@@ -3,6 +3,7 @@ import { languageCommand } from "../commands/language/index.ts";
 import { componentCommand } from "../commands/component/index.ts";
 import { workflowCommand } from "../commands/workflow/index.ts";
 import { storyCommand } from "../commands/story/index.ts";
+import { experimentCommand } from "../commands/experiment/index.ts";
 import { appCommand } from "../commands/app/index.ts";
 import {
   getStoryblokRequestsPerSecond,
@@ -35,6 +36,7 @@ const commands = [
   componentCommand,
   workflowCommand,
   storyCommand,
+  experimentCommand,
   appCommand,
 ];
 
