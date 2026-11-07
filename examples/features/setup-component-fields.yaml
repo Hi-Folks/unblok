@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+components:
+  fields:
+    - component: article-page
+      field: SEO
+      type: custom
+      field_type: sb-ai-seo
+      tab: SEO
+    - component: article-page
+      field: text
+      type: richtext
+      customize_toolbar: false

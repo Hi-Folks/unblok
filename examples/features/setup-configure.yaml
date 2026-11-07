@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+inputs:
+  frontend_host:
+    default: example.com
+space:
+  languages: [it]
+preview:
+  enabled: true
+  default: "https://${{ inputs.frontend_host }}/?token=${{ space.preview_token }}&path="
+  environments:
+    - name: Local Development
+      url: "https://localhost:3000/?token=${{ space.preview_token }}&path="
+demo_mode:
+  remove: true
+apps:
+  continue_on_error: true
+  install:
+    - import

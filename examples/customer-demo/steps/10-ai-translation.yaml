@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+# This accepts the specified disclaimer. Check its current ID and terms in Storyblok.
+ai_translation:
+  disclaimer_id: 35

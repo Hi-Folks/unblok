@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: oven-sh/setup-bun@v2.0.2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      - name: Check tag and release configuration
+        run: |
+          bun -e 'import p from "./package.json"; import c from "./scripts/release/config.json"; if (process.env.GITHUB_REF_NAME !== `v${p.version}`) throw Error("Tag must match package version"); if (!c.namesAndPermissionsVerified || !c.license || !c.repository || !await Bun.file("LICENSE").exists()) throw Error("Release configuration, license, and npm ownership must be verified first"); if (c.repository !== `https://github.com/${process.env.GITHUB_REPOSITORY}`) throw Error("Configured repository does not match the current repository");'
+      - run: bun run quality
+
+  build:
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            platform: darwin-arm64
+          - runner: macos-15-intel
+            platform: darwin-x64
+          - runner: ubuntu-24.04
+            platform: linux-x64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: windows-2022
+            platform: win32-x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: oven-sh/setup-bun@v2.0.2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun run release:check
+      - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: unblok-${{ matrix.platform }}
+          path: dist/release/unblok-${{ matrix.platform }}*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: oven-sh/setup-bun@v2.0.2
+        with:
+          bun-version: 1.4.4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427 # v4.1.4
+        with:
+          pattern: unblok-*
+          merge-multiple: true
+          path: dist/release
+      - name: Restore executable permissions
+        run: chmod +x dist/release/unblok-darwin-* dist/release/unblok-linux-*
+      - name: Validate and stage packages
+        run: |
+          bun run scripts/release/check.ts --all --publish
+          (cd dist/release && sha256sum -c SHA256SUMS)
+      - name: Refuse existing versions before publication
+        run: bun run scripts/release/registry-check.ts
+      - name: Publish platform packages before launcher
+        run: |
+          set -euo pipefail
+          for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
+            npm publish "dist/npm/$platform" --access public
+          done
+          npm publish dist/npm/unblok --access public
+      - name: Verify registry publication and installed CLI
+        run: |
+          set -euo pipefail
+          version=$(bun -p 'require("./package.json").version')
+          scope=$(bun -p 'require("./scripts/release/config.json").scope')
+          for package in "$scope/unblok-darwin-arm64" "$scope/unblok-darwin-x64" "$scope/unblok-linux-x64" "$scope/unblok-linux-arm64" "$scope/unblok-win32-x64" unblok; do
+            for i in {1..12}; do
+              if npm view "$package@$version" version | grep -Fx "$version"; then break; fi
+              if [ "$i" -eq 12 ]; then exit 1; fi
+              sleep 10
+            done
+          done
+          target=$(mktemp -d)
+          npm install --prefix "$target" --no-audit --no-fund "unblok@$version"
+          "$target/node_modules/.bin/unblok" --version | grep -Fx "unblok $version"
+          "$target/node_modules/.bin/unblok" --help | grep -F 'Usage: unblok'
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/release/unblok-* dist/release/SHA256SUMS --title "$GITHUB_REF_NAME" --notes-file CHANGELOG.md

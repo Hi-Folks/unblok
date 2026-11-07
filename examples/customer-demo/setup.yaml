@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+extends:
+  - steps/01-space.yaml
+  - steps/02-settings.yaml
+  - steps/03-apps.yaml
+  - steps/04-components.yaml
+  - steps/05-assets.yaml
+  - steps/06-stories.yaml
+  - steps/07-workflow.yaml
+  - steps/08-tags.yaml
+  - steps/09-space-ai.yaml
+  - steps/10-ai-translation.yaml
+template:
+  name: Customer Demo
+  description: Duplicate and configure the showcase space from reusable parts.
+execution:
+  mode: reconcile

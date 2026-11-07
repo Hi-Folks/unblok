@@ -1,0 +1,486 @@
+import {
+  type Component,
+  type ComponentCreate,
+  type ComponentUpdate,
+  createManagementApiClient,
+  createDefaultRateLimiter,
+  type Space,
+  type SpaceDetail,
+  type Story,
+  type Workflow,
+  type WorkflowStage,
+  type WorkflowStageCreate,
+} from "@storyblok/management-api-client";
+import { getRegion } from "@storyblok/region-helper";
+
+export interface StoryblokGateway {
+  listAssetFolders(spaceId: number): Promise<StoryblokAssetFolder[]>;
+  createAssetFolder(spaceId: number, name: string, parentId?: number): Promise<StoryblokAssetFolder>;
+  listAssets(spaceId: number, folderId?: number, search?: string): Promise<StoryblokAsset[]>;
+  uploadAsset(spaceId: number, folderId: number, filename: string, data: Uint8Array): Promise<void>;
+  readAsset(asset: StoryblokAsset): Promise<Uint8Array>;
+  deleteSpace(spaceId: number): Promise<void>;
+  createWorkflowStage(
+    spaceId: number,
+    stage: WorkflowStageCreate,
+  ): Promise<WorkflowStage>;
+  findStoryBySlug(spaceId: number, slug: string): Promise<Story | undefined>;
+  getStory(spaceId: number, storyId: number): Promise<Story>;
+  createStory(spaceId: number, story: { name: string; slug: string; content: Record<string, unknown> }): Promise<Story>;
+  updateTranslatedSlugs(spaceId: number, storyId: number, translations: Array<{ id?: number; lang?: string; slug: string; name?: string }>): Promise<void>;
+  updateStoryTags(
+    spaceId: number,
+    storyId: number,
+    tags: string[],
+  ): Promise<void>;
+  listAvailableApps(spaceId: number): Promise<StoryblokApp[]>;
+  listInstalledApps(spaceId: number): Promise<StoryblokAppProvision[]>;
+  installApp(spaceId: number, appId: string): Promise<StoryblokAppProvision>;
+  acceptSpaceDisclaimer(spaceId: number, disclaimerId: number): Promise<void>;
+  assignWorkflowStage(
+    spaceId: number,
+    input: WorkflowStageAssignmentInput,
+  ): Promise<WorkflowStageChange>;
+  createComponent(
+    spaceId: number,
+    component: ComponentCreate,
+  ): Promise<Component>;
+  duplicateSpace(options: DuplicateSpaceOptions): Promise<SpaceDetail>;
+  getComponent(spaceId: number, componentId: number): Promise<Component>;
+  getCurrentUserId(): Promise<number>;
+  getWorkflowStage(spaceId: number, stageId: number): Promise<WorkflowStage>;
+  listLanguages(spaceId: number): Promise<StoryblokLanguage[]>;
+  listComponents(
+    spaceId: number,
+    options?: ListComponentsOptions,
+  ): Promise<Component[]>;
+  getSpace(spaceId: number): Promise<SpaceDetail>;
+  listSpaces(options?: ListSpacesOptions): Promise<Space[]>;
+  listStories(spaceId: number, options?: ListStoriesOptions): Promise<Story[]>;
+  listWorkflows(spaceId: number): Promise<Workflow[]>;
+  listWorkflowStages(
+    spaceId: number,
+    options?: ListWorkflowStagesOptions,
+  ): Promise<WorkflowStage[]>;
+  updateSpaceSettings(
+    spaceId: number,
+    settings: {
+      domain?: string;
+      environments?: Array<{ name: string; location: string }>;
+      is_demo?: boolean;
+      ai_text_generator_disabled?: boolean;
+      inherit_org_ai_configuration?: boolean;
+    },
+  ): Promise<void>;
+  updateLanguages(
+    spaceId: number,
+    languages: StoryblokLanguage[],
+  ): Promise<StoryblokLanguage[]>;
+  updateComponent(
+    spaceId: number,
+    componentId: number,
+    component: ComponentUpdate,
+  ): Promise<Component>;
+}
+
+export interface StoryblokApp {
+  id: number | string;
+  name: string;
+  slug: string;
+}
+export interface StoryblokAssetFolder { id: number; name: string; parent_id?: number | null }
+export interface StoryblokAsset { id: number; filename: string; short_filename: string; asset_folder_id?: number | null }
+export interface StoryblokAppProvision {
+  app_id: number | string;
+  name: string;
+  slug: string;
+}
+
+export interface WorkflowStageAssignmentInput {
+  comment?: string;
+  dueDate?: string;
+  notify?: boolean;
+  releaseId?: number;
+  roleIds?: number[];
+  stageId: number;
+  storyId: number;
+  userIds?: number[];
+}
+
+export interface WorkflowStageChange {
+  created_at?: string;
+  due_date?: string | null;
+  id: number;
+  user_id?: number;
+  workflow_id?: number;
+  workflow_stage_id: number;
+}
+
+export interface StoryblokLanguage {
+  aiTranslationCode?: string | null;
+  code: string;
+  name: string;
+}
+
+export interface DuplicateSpaceOptions {
+  assignPartner?: boolean;
+  demo?: boolean;
+  inOrg?: boolean;
+  name: string;
+  sourceSpaceId: number;
+  spaceType?: string;
+}
+
+export interface ListSpacesOptions {
+  search?: string;
+}
+
+export interface ListComponentsOptions {
+  search?: string;
+}
+
+export interface ListStoriesOptions {
+  component?: string;
+  ids?: number[];
+  search?: string;
+  startsWith?: string;
+}
+
+export interface ListWorkflowStagesOptions {
+  search?: string;
+  workflowId?: number;
+}
+
+export type StoryblokGatewayFactory = (token: string) => StoryblokGateway;
+
+export const createStoryblokGateway = (
+  token: string,
+  options: { requestsPerSecond?: number } = {},
+): StoryblokGateway => {
+  const limiter = createDefaultRateLimiter();
+  const rateLimit = {
+    requestsPerSecond: options.requestsPerSecond ?? 6,
+    limiter,
+  };
+  const retry = {
+    limit: 8,
+    methods: ["get", "post", "put", "patch", "delete"] as (
+      "get" | "post" | "put" | "patch" | "delete"
+    )[],
+    statusCodes: [429],
+    backoffLimit: 20_000,
+    retryOnTimeout: false,
+    shouldRetry: ({ error }: { error: Error }) => {
+      const response = "response" in error ? error.response : undefined;
+      return response instanceof Response && response.status === 429
+        ? undefined
+        : false;
+    },
+  };
+  const client = createManagementApiClient({
+    personalAccessToken: token,
+    throwOnError: true,
+    rateLimit,
+    retry,
+  });
+  const spaceClients = new Map<
+    number,
+    ReturnType<typeof createManagementApiClient<true>>
+  >();
+  const clientForSpace = (spaceId: number) => {
+    const existing = spaceClients.get(spaceId);
+    if (existing) return existing;
+    const regionalClient = createManagementApiClient({
+      personalAccessToken: token,
+      region: getRegion(spaceId) ?? "eu",
+      spaceId,
+      throwOnError: true,
+      rateLimit,
+      retry,
+    });
+    spaceClients.set(spaceId, regionalClient);
+    return regionalClient;
+  };
+
+  return {
+    async listAssetFolders(spaceId) {
+      const all: StoryblokAssetFolder[] = [];
+      for (let page = 1; ; page++) {
+        const response = await clientForSpace(spaceId).get<{ asset_folders: StoryblokAssetFolder[] }>(`/v1/spaces/${spaceId}/asset_folders/`, { query: { page, per_page: 100 } });
+        if (!Array.isArray(response.data.asset_folders)) throw new Error("Invalid asset folder list.");
+        all.push(...response.data.asset_folders);
+        if (response.data.asset_folders.length < 100) return all;
+      }
+    },
+    async createAssetFolder(spaceId, name, parentId) {
+      const response = await clientForSpace(spaceId).post<{ asset_folder: StoryblokAssetFolder }>(`/v1/spaces/${spaceId}/asset_folders/`, { headers: { "Content-Type": "application/json" }, body: { asset_folder: { name, ...(parentId === undefined ? {} : { parent_id: parentId }) } } });
+      return response.data.asset_folder;
+    },
+    async listAssets(spaceId, folderId, search) {
+      const all: StoryblokAsset[] = [];
+      for (let page = 1; ; page++) {
+        const response = await clientForSpace(spaceId).get<{ assets: StoryblokAsset[] }>(`/v1/spaces/${spaceId}/assets/`, { query: { page, per_page: 100, ...(folderId === undefined ? {} : { in_folder: folderId }), ...(search === undefined ? {} : { search }) } });
+        if (!Array.isArray(response.data.assets)) throw new Error("Invalid asset list.");
+        all.push(...response.data.assets);
+        if (response.data.assets.length < 100) return all;
+      }
+    },
+    async uploadAsset(spaceId, folderId, filename, data) {
+      try {
+        await clientForSpace(spaceId).assets.upload({ body: { short_filename: filename, asset_folder_id: folderId, validate_upload: true }, file: new Blob([new Uint8Array(data)]) });
+      } catch { throw new Error(`Could not upload asset '${filename}'.`); }
+    },
+    async readAsset(asset) {
+      const url = new URL(asset.filename);
+      if (url.protocol !== "https:" || !(url.hostname === "a.storyblok.com" || url.hostname.endsWith(".storyblok.com") || url.hostname === "s3.amazonaws.com")) throw new Error("Asset URL is not a trusted Storyblok asset URL.");
+      const response = await fetch(url, { redirect: "error" });
+      if (!response.ok) throw new Error(`Could not read existing asset (HTTP ${response.status}).`);
+      return new Uint8Array(await response.arrayBuffer());
+    },
+    async deleteSpace(spaceId) {
+      await clientForSpace(spaceId).spaces.delete();
+    },
+    async createWorkflowStage(spaceId, stage) {
+      const response = await clientForSpace(spaceId).workflowStages.create({
+        body: { workflow_stage: stage },
+      });
+      return response.data.workflow_stage;
+    },
+    async findStoryBySlug(spaceId, slug) {
+      const response = await clientForSpace(spaceId).stories.list({
+        query: { with_slug: slug, story_only: true },
+      });
+      const matches = (response.data.stories ?? []).filter(
+        (story) => story.full_slug === slug && !story.is_folder,
+      );
+      if (matches.length > 1)
+        throw new Error(`Multiple stories match full slug '${slug}'.`);
+      return matches[0];
+    },
+    async getStory(spaceId, storyId) {
+      const response = await clientForSpace(spaceId).stories.get(storyId);
+      if (!response.data.story)
+        throw new Error(`Story ${storyId} was not returned by Storyblok.`);
+      return response.data.story;
+    },
+    async createStory(spaceId, story) {
+      const response = await clientForSpace(spaceId).post<{ story: Story }>(`/v1/spaces/${spaceId}/stories/`, { headers: { "Content-Type": "application/json" }, body: { story } });
+      return response.data.story;
+    },
+    async updateTranslatedSlugs(spaceId, storyId, translations) {
+      await clientForSpace(spaceId).put(`/v1/spaces/${spaceId}/stories/${storyId}`, { headers: { "Content-Type": "application/json" }, body: { story: { translated_slugs_attributes: translations } } });
+    },
+    async updateStoryTags(spaceId, storyId, tags) {
+      await clientForSpace(spaceId).stories.update(storyId, {
+        body: { story: { tag_list: tags } },
+      });
+    },
+    async listAvailableApps(spaceId) {
+      const apps: StoryblokApp[] = [];
+      for (let page = 1; ; page++) {
+        const response = await clientForSpace(spaceId).get<{
+          apps: StoryblokApp[];
+        }>("/v1/apps", { query: { space_id: spaceId, page, per_page: 100 } });
+        if (!Array.isArray(response.data.apps))
+          throw new Error("Storyblok returned an invalid app list.");
+        apps.push(...response.data.apps);
+        if (response.data.apps.length < 100) return apps;
+      }
+    },
+    async listInstalledApps(spaceId) {
+      const response = await clientForSpace(spaceId).get<{
+        app_provisions: StoryblokAppProvision[];
+      }>(`/v1/spaces/${spaceId}/app_provisions`);
+      if (!Array.isArray(response.data.app_provisions))
+        throw new Error("Storyblok returned an invalid installed app list.");
+      return response.data.app_provisions;
+    },
+    async installApp(spaceId, appId) {
+      const response = await clientForSpace(spaceId).post<{
+        app_provision: StoryblokAppProvision;
+      }>(`/v1/spaces/${spaceId}/app_provisions/`, {
+        headers: { "Content-Type": "application/json" },
+        body: { app_provision: { app_id: /^\d+$/.test(appId) && Number.isSafeInteger(Number(appId)) ? Number(appId) : appId } },
+      });
+      return response.data.app_provision;
+    },
+    async acceptSpaceDisclaimer(spaceId, disclaimerId) {
+      await clientForSpace(spaceId).put(`/v1/spaces/${spaceId}`, {
+        headers: { "Content-Type": "application/json" },
+        body: { space: { disclaimer_id: disclaimerId } },
+      });
+    },
+    async updateSpaceSettings(spaceId, settings) {
+      await clientForSpace(spaceId).spaces.update({
+        body: { space: settings },
+      });
+    },
+    async assignWorkflowStage(spaceId, input) {
+      const response = await clientForSpace(spaceId).post<{
+        workflow_stage_change: WorkflowStageChange;
+      }>(`/v1/spaces/${spaceId}/workflow_stage_changes`, {
+        headers: { "Content-Type": "application/json" },
+        body: {
+          ...(input.comment ? { comment: { message: input.comment } } : {}),
+          ...(input.notify ? { notify: true } : {}),
+          ...(input.releaseId ? { release_id: input.releaseId } : {}),
+          ...(input.roleIds?.length || input.userIds?.length
+            ? {
+                assign: {
+                  space_role_ids: input.roleIds ?? [],
+                  user_ids: input.userIds ?? [],
+                },
+              }
+            : {}),
+          workflow_stage_change: {
+            ...(input.dueDate ? { due_date: input.dueDate } : {}),
+            story_id: input.storyId,
+            workflow_stage_id: input.stageId,
+          },
+        },
+      });
+      return response.data.workflow_stage_change;
+    },
+    async createComponent(spaceId, component) {
+      const response = await clientForSpace(spaceId).components.create({
+        body: { component },
+      });
+      return response.data.component;
+    },
+    async duplicateSpace(options) {
+      const regionalClient = clientForSpace(options.sourceSpaceId);
+      const response = await regionalClient.post<{ space: SpaceDetail }>(
+        "/v1/spaces",
+        {
+          headers: { "Content-Type": "application/json" },
+          body: {
+            dup_id: options.sourceSpaceId,
+            ...(options.inOrg ? { in_org: true } : {}),
+            ...(options.assignPartner ? { assign_partner: true } : {}),
+            ...(options.spaceType ? { space_type: options.spaceType } : {}),
+            space: {
+              is_demo: options.demo,
+              name: options.name,
+            },
+          },
+        },
+      );
+      return response.data.space;
+    },
+    async getCurrentUserId() {
+      const response = await client.users.me();
+      return response.data.user.id;
+    },
+    async getComponent(spaceId, componentId) {
+      const response =
+        await clientForSpace(spaceId).components.get(componentId);
+      return response.data.component;
+    },
+    async getWorkflowStage(spaceId, stageId) {
+      const response =
+        await clientForSpace(spaceId).workflowStages.get(stageId);
+      return response.data.workflow_stage;
+    },
+    async listLanguages(spaceId) {
+      const response = await clientForSpace(spaceId).spaces.get();
+      return response.data.space.languages.flatMap((language) =>
+        language.code && language.name
+          ? [
+              {
+                aiTranslationCode: language.ai_translation_code,
+                code: language.code,
+                name: language.name,
+              },
+            ]
+          : [],
+      );
+    },
+    async listComponents(spaceId, options = {}) {
+      const response = await clientForSpace(spaceId).components.list({
+        query: options.search ? { search: options.search } : undefined,
+      });
+      return response.data.components;
+    },
+    async getSpace(spaceId) {
+      const response = await clientForSpace(spaceId).spaces.get();
+      return response.data.space;
+    },
+    async listSpaces(options = {}) {
+      const response = await client.spaces.list({
+        query: options.search ? { search: options.search } : undefined,
+      });
+      return response.data.spaces;
+    },
+    async listStories(spaceId, options = {}) {
+      const stories: Story[] = [];
+      const perPage = 1000;
+      for (let page = 1; ; page += 1) {
+        const response = await clientForSpace(spaceId).get<{
+          stories?: Story[];
+        }>(`/v1/spaces/${spaceId}/stories`, {
+          query: {
+            ...(options.ids?.length ? { by_ids: options.ids.join(",") } : {}),
+            ...(options.component
+              ? { contain_component: options.component }
+              : {}),
+            ...(options.search ? { search: options.search } : {}),
+            ...(options.startsWith ? { starts_with: options.startsWith } : {}),
+            show_stage: true,
+            page,
+            per_page: perPage,
+          },
+        });
+        const batch = response.data.stories ?? [];
+        stories.push(...batch);
+        if (batch.length < perPage) break;
+      }
+      return stories;
+    },
+    async listWorkflows(spaceId) {
+      const response = await clientForSpace(spaceId).workflows.list();
+      return response.data.workflows;
+    },
+    async listWorkflowStages(spaceId, options = {}) {
+      const response = await clientForSpace(spaceId).workflowStages.list({
+        query: {
+          ...(options.search ? { search: options.search } : {}),
+          ...(options.workflowId ? { in_workflow: options.workflowId } : {}),
+        },
+      });
+      return response.data.workflow_stages;
+    },
+    async updateLanguages(spaceId, languages) {
+      const response = await clientForSpace(spaceId).spaces.update({
+        body: {
+          space: {
+            languages: languages.map((language) => ({
+              ai_translation_code: language.aiTranslationCode,
+              code: language.code,
+              name: language.name,
+            })),
+          },
+        },
+      });
+      return response.data.space.languages.flatMap((language) =>
+        language.code && language.name
+          ? [
+              {
+                aiTranslationCode: language.ai_translation_code,
+                code: language.code,
+                name: language.name,
+              },
+            ]
+          : [],
+      );
+    },
+    async updateComponent(spaceId, componentId, component) {
+      const response = await clientForSpace(spaceId).components.update(
+        componentId,
+        {
+          body: { component },
+        },
+      );
+      return response.data.component;
+    },
+  };
+};

@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+ai:
+  enabled: true
+  inherit_org_configuration: false

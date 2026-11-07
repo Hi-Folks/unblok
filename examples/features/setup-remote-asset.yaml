@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+assets:
+  upload_url:
+    - name: hero-banner
+      url: https://example.com/images/banner.png
+      target_folder: Provisioned
+      # filename: banner.png # Optional when the URL has a filename.
+stories:
+  create:
+    - name: Demo page
+      slug: demo-page
+      content:
+        component: default-page
+        body:
+          - component: hero-section
+            image:
+              asset:
+                _ref: hero-banner
+                alt: Demo banner

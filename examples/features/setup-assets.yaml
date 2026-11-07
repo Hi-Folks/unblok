@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+assets:
+  upload_directory:
+    - source: ./demo-assets
+      target_folder: Provisioned
+      include:
+        - joyful-banner.png

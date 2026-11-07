@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+inputs:
+  asset_url:
+    description: Public HTTP(S) URL for the banner; replace the placeholder.
+    default: https://a.storyblok.com/f/329757/3568x2344/5d76c4a3d4/joyful-banner.png
+assets:
+  upload_url:
+    - name: demo-banner
+      url: "${{ inputs.asset_url }}"
+      target_folder: Provisioned
+      filename: joyful-banner.png

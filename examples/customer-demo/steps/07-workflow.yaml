@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+inputs:
+  review_stage:
+    default: Reviewing
+workflow:
+  assign_unstaged: true
+  stage_id: null
+  assign:
+    - stories:
+        slugs: [home, about, auto-created]
+      workflow: Default
+      stage: "${{ inputs.review_stage }}"

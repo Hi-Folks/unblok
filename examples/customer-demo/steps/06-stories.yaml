@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+stories:
+  translated_slugs:
+    - story_slug: /about
+      translations:
+        it:
+          slug: /chi-siamo
+          name: Chi siamo
+  create:
+    - name: Auto Created
+      slug: auto-created
+      content:
+        component: default-page
+        body:
+          - component: hero-section
+            eyebrow: Provisioned by unblok
+            layout: split
+            text: This story was automatically created by the provisioning system.
+            image:
+              asset:
+                _find:
+                  search: joyful-banner.png
+                  in_folder: Provisioned
+                  require_unique: true
+                alt: Automatically provisioned demo hero image
+            headline:
+              - component: headline-segment
+                text: Automatically created by the provisioning system

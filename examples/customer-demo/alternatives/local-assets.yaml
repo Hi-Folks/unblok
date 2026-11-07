@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+inputs:
+  asset_dir:
+    description: Directory containing the three customer demo images.
+assets:
+  upload_directory:
+    - source: "${{ inputs.asset_dir }}"
+      target_folder: Provisioned
+      include:
+        - joyful-banner.png
+        - collaborative-brainstorming-session.jpeg
+        - creative-workspace-with-abstract-art.jpeg

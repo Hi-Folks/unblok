@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Apps and story tags
+execution:
+  mode: reconcile
+apps:
+  install:
+    - import
+tags:
+  - stories:
+      slugs:
+        - home
+    tags:
+      - demo

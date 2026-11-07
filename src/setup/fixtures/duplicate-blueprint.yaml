@@ -1,0 +1,12 @@
+version: 1
+inputs:
+  space_name:
+    default: Demo
+space:
+  name: "${{ inputs.space_name }}"
+  duplicate_from: "42"
+  in_org: true
+  demo: false
+  readiness:
+    timeout_seconds: 2
+    poll_interval_seconds: 1

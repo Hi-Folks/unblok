@@ -1,0 +1,11 @@
+name: page
+displayName: Page
+description: Root component for standard pages
+isRoot: true
+isNestable: false
+schema:
+  title:
+    type: text
+    required: true
+  body:
+    type: bloks

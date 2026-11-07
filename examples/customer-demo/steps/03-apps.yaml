@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+apps:
+  continue_on_error: true
+  install:
+    - releases_only
+    - storyblok-gmbh@ai-seo
+    - replace_asset
+    - export
+    - import
+    - backups
+    - translatable-slugs

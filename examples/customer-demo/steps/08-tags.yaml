@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+tags:
+  - stories:
+      slugs: [error-404, site-config]
+    tags: [Configuration]
+  - stories:
+      slugs: [home, contact]
+    tags: [Landing, Marketing]

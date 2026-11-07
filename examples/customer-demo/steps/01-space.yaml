@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+inputs:
+  space_name:
+    default: Storyblok Customer Demo
+space:
+  name: "${{ inputs.space_name }}"
+  duplicate_from: "286863409930127"
+  in_org: true
+  demo: false
+  readiness:
+    timeout_seconds: 120
+    poll_interval_seconds: 2

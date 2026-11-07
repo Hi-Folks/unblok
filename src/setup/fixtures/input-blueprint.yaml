@@ -1,0 +1,8 @@
+version: 1
+inputs:
+  space_name:
+    default: Demo
+space:
+  name: "${{ inputs.space_name }}"
+preview:
+  default: "https://example.com/?token=${{ space.preview_token }}"
