@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { mkdtemp } from "node:fs/promises";
 import { version } from "../../package.json";
 import config from "./config.json";
+import { windowsBatchCommand } from "./windows-command";
 
 const platforms = [
   "darwin-arm64",
@@ -275,13 +276,13 @@ try {
   }
   const output =
     process.platform === "win32"
-      ? await run(["cmd", "/d", "/s", "/c", `"${launcher}" --version`], temp)
+      ? await run(windowsBatchCommand(launcher, "--version"), temp)
       : await run([launcher, "--version"], temp, executionEnv);
   if (output !== `unblok ${version}`)
     throw new Error("Installed npm launcher version mismatch");
   const help =
     process.platform === "win32"
-      ? await run(["cmd", "/d", "/s", "/c", `"${launcher}" --help`], temp)
+      ? await run(windowsBatchCommand(launcher, "--help"), temp)
       : await run([launcher, "--help"], temp, executionEnv);
   if (!help.includes("Usage: unblok"))
     throw new Error("Installed npm launcher help failed");

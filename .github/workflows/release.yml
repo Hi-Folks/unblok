@@ -54,6 +54,9 @@ jobs:
         with:
           node-version: 24
       - run: bun install --frozen-lockfile
+      - name: Test Windows batch invocation
+        if: runner.os == 'Windows'
+        run: bun test scripts/release/windows-command.test.ts
       - run: bun run build
       - run: bun run release:check
       - uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
