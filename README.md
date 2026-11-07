@@ -69,7 +69,7 @@ Unblok is an independent open-source project, licensed under the [MIT License](L
 
 ## Quick start
 
-Set a Storyblok personal access token in your environment, then explore the CLI:
+Set a [Storyblok Management API personal access token](https://www.storyblok.com/docs/concepts/access-tokens#management-api-access-tokens) in your environment, then explore the CLI:
 
 ```bash
 export STORYBLOK_TOKEN="your-personal-access-token"
@@ -79,6 +79,8 @@ unblok space list
 
 The [getting started guide](docs/getting-started.md) covers authentication, a first read-only request, and running from source.
 
+Ready to automate a setup? Follow [your first blueprint](docs/first-blueprint.md) to try Unblok with `npx`, then plan and apply a simple change.
+
 ## Documentation
 
 For an automated demo space setup with a confirmation after duplication, see [the demo setup guide](docs/demo-setup.md).
@@ -86,6 +88,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 | Guide                                          | Use it for                                                          |
 | ---------------------------------------------- | ------------------------------------------------------------------- |
 | [Getting started](docs/getting-started.md)     | Requirements, authentication, installation, and the first request.  |
+| [Your first blueprint](docs/first-blueprint.md) | Plan and apply a simple YAML setup to an existing space. |
 | [Repeatable space setups](docs/space-setups.md) | Provisioning workflow, composition, and repeat-run behavior. |
 | [Command reference](docs/commands.md)          | Command syntax, every parameter, examples, and output behavior.     |
 | [Setup blueprints](docs/commands.md#version-1-setup-blueprints) | YAML sections, examples, and repeatable setup behavior. |

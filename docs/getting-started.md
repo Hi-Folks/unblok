@@ -47,7 +47,7 @@ The version and help commands work without Storyblok credentials. Run subsequent
 
 ## 3. Configure Storyblok access
 
-Create a [Storyblok personal access token](https://app.storyblok.com/#/me/account?tab=token) with the permissions needed for your operations. Prefer a non-production space when evaluating the CLI.
+Create a Management API personal access token in [Storyblok account settings](https://app.storyblok.com/#/me/account?tab=token) with the spaces and permissions needed for your operations. A Content Delivery API public or preview token will not work. See [Storyblok's Management API access token guide](https://www.storyblok.com/docs/concepts/access-tokens#management-api-access-tokens) for creation steps and permission options. Prefer a non-production space when evaluating the CLI.
 
 ```bash
 cp .env.example .env
