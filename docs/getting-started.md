@@ -1,8 +1,8 @@
 # Getting Started
 
-## Planned public installation
+## Installation
 
-These channels are being prepared and are **not published yet**. Once released, users with Node.js can install or run Unblok through npm:
+Users with Node.js can install or run Unblok through npm:
 
 ```bash
 npm install -g unblok
@@ -12,7 +12,7 @@ unblok --version
 npx unblok --help
 ```
 
-Bun users will also be able to run `bun install -g unblok`. The npm launcher requires Node.js, but it does not require Bun. Standalone executables for macOS, Linux (glibc), and Windows will be available from the project's GitHub Releases after publication; download the matching platform and verify it against `SHA256SUMS`. Standalone executables require neither Bun nor Node.js. On Unix, make a downloaded binary executable with `chmod +x` before running it.
+Bun users can also run `bun install -g unblok`. The npm launcher requires Node.js, but it does not require Bun. Platform packages support macOS, Linux (glibc), and Windows.
 
 ## Run from source today
 
@@ -33,7 +33,7 @@ git clone https://github.com/Hi-Folks/unblok.git unblok
 cd unblok
 ```
 
-If you already downloaded the source, open a terminal in that directory instead. Repository access may be restricted until the public release.
+If you already downloaded the source, open a terminal in that directory instead.
 
 ## 2. Install and check Unblok
 
@@ -43,7 +43,7 @@ bun run start --version
 bun run start --help
 ```
 
-The version and help commands work without Storyblok credentials. Run subsequent commands from the same directory; `bun run start` invokes the local CLI. The alpha is currently a private package, not a published package installation.
+The version and help commands work without Storyblok credentials. Run subsequent commands from the same directory; `bun run start` invokes the local CLI.
 
 ## 3. Configure Storyblok access
 

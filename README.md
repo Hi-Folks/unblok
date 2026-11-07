@@ -6,20 +6,49 @@
 
 ## Unblock your Storyblok operations.
 
-A Bun and TypeScript CLI for practical Storyblok Management API operations.
+Set up and manage Storyblok spaces from the command line, or describe a setup in YAML and run it whenever you need it. `unblok_` turns recurring operations into reusable building blocks for developers, CI pipelines, and AI assistants.
 
 > Early development: commands and interfaces may change while the initial workflow is shaped.
 
 ## Why `unblok_`?
 
-Storyblok's Management API is powerful, but recurring operations often become one-off scripts. `unblok_` turns those operations into discoverable, tested commands that work equally well for people and automation.
+Creating preconfigured spaces for a content editor team, launching a new brand, or starting a new project often means repeating the same steps in the Storyblok UI or maintaining one-off API scripts. With `unblok_`, you can run individual commands for everyday tasks or combine them in a YAML blueprint for a repeatable space setup.
 
-The project aims to provide:
+This is **configuration as code** applied to Storyblok: keep a setup in Git, review changes with your team, and reuse it across spaces. For example, a blueprint can install an app and add a tag to a story:
 
-- readable terminal output with progress and actionable errors;
-- stable JSON output for scripts and CI;
-- local blueprint validation before setup changes;
-- small, composable commands built on Storyblok's typed Management API client.
+```yaml
+version: 1
+template:
+  name: Apps and story tags
+execution:
+  mode: reconcile
+apps:
+  install:
+    - import
+tags:
+  - stories:
+      slugs:
+        - home
+    tags:
+      - demo
+```
+
+Save this as `setup.yaml`, then review and apply it to an existing space:
+
+```bash
+unblok space setup plan --config setup.yaml
+unblok space setup apply --config setup.yaml --space-id YOUR_SPACE_ID --yes
+```
+
+The plan validates the blueprint locally and shows its operations; it does not inspect the space or predict changes. Applying requires a token and performs the operations against Storyblok. Repeat behavior depends on the resource and existing state; see [repeatable space setups](docs/space-setups.md) for details.
+
+## Built for people and AI assistants
+
+An AI assistant can understand your intent and choose when to run a command or prepare a blueprint. `unblok_` carries out the operation using shared, tested logic instead of asking the assistant to generate a new sequence of API calls each time.
+
+That gives people and agents the same predictable commands, validation, and structured results. It can reduce prompt and token usage, and save time on recurring work. Add `--json` for machine-readable output that an assistant or CI pipeline can inspect.
+
+AI still needs the right instructions and permissions, and Storyblok state or API errors can affect results. Review plans and reports, especially before applying changes; a failed setup can leave earlier changes in place.
 
 ## Scope
 
@@ -27,28 +56,28 @@ The project aims to provide:
 
 ## Installation
 
-The first public release is being prepared; the following npm and standalone channels are not published yet. Once available, npm users will be able to install with `npm install -g unblok` or try `npx unblok --help`; Bun users can use `bun install -g unblok`. Standalone binaries are planned for GitHub Releases on macOS, Linux (glibc), and Windows. Distributed executables will not require Bun; npm installations require Node.js for the launcher.
+Install the published CLI with npm (requires Node.js):
+
+```bash
+npm install -g unblok
+unblok --help
+```
+
+You can also try `npx unblok --help` or install with `bun install -g unblok`. The npm launcher requires Node.js; the platform executable does not require Bun.
 
 Unblok is an independent open-source project, licensed under the [MIT License](LICENSE), and is not an official Storyblok product. Contributors use Bun for development.
 
 ## Quick start
 
-With Bun 1.4 or newer, open a terminal in a source checkout and run:
+Set a Storyblok personal access token in your environment, then explore the CLI:
 
 ```bash
-bun install --frozen-lockfile
-bun run start --version
-cp .env.example .env
+export STORYBLOK_TOKEN="your-personal-access-token"
+unblok --version
+unblok space list
 ```
 
-Add a Storyblok personal access token to `.env`, then explore the CLI:
-
-```bash
-bun run start --help
-bun run start space list
-```
-
-The [getting started guide](docs/getting-started.md) walks through obtaining the source, configuring a token, and making a first read-only request.
+The [getting started guide](docs/getting-started.md) covers authentication, a first read-only request, and running from source.
 
 ## Documentation
 
@@ -84,14 +113,14 @@ For an automated demo space setup with a confirmation after duplication, see [th
 Run any command with `--help` for an inline summary:
 
 ```bash
-bun run start space plan --help
+unblok space plan --help
 ```
 
 ## Repeatable setups
 
 Define a space setup once in YAML, review it, and repeat it for another customer or environment. The `version: 1` blueprint format composes the same actions used by the CLI: duplicate a space, configure it, install apps, provision content, and assign workflows and tags.
 
-Start with the [customer demo guide](examples/customer-demo/README.md) to understand the process and reusable steps, or use the [modular blueprint](examples/customer-demo/setup.yaml) to combine them. Planning is local and does not require a token:
+Start with the [customer demo guide](examples/customer-demo/README.md) to understand the process and reusable steps, or use the [modular blueprint](examples/customer-demo/setup.yaml) to combine them. The following command runs from a source checkout; planning is local and does not require a token.
 
 For smaller, independent examples of individual capabilities, see [feature examples](examples/features/). The demo's [alternatives](examples/customer-demo/alternatives/) include local asset uploads.
 
