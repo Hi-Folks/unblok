@@ -1,0 +1,8 @@
+{
+  "name": "Welcome",
+  "slug": "welcome",
+  "content": {
+    "component": "page",
+    "body": []
+  }
+}

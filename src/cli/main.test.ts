@@ -114,6 +114,147 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("creates a draft story and preserves it on repeat runs", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-story-"));
+    try {
+      const file = join(dir, "story.json");
+      await writeFile(
+        file,
+        JSON.stringify({
+          name: "Welcome",
+          slug: "welcome",
+          content: { component: "page", body: [{ component: "hero" }] },
+        }),
+      );
+      let exists = false;
+      let writes = 0;
+      const harness = createHarness({
+        findStoryBySlug: async (_space, slug) =>
+          exists ? ({ id: 7, full_slug: slug } as never) : undefined,
+        createStory: async (space, story) => {
+          expect(space).toBe(42);
+          expect(story.content.component).toBe("page");
+          expect(story.content._uid).toBeTruthy();
+          writes++;
+          exists = true;
+          return { id: 7 } as never;
+        },
+      });
+      const args = [
+        "story",
+        "create",
+        "--file",
+        file,
+        "--space-id",
+        "42",
+        "--yes",
+        "--json",
+      ];
+      expect(await runCli(args, harness.options)).toBe(0);
+      expect(await runCli(args, harness.options)).toBe(0);
+      expect(harness.stdout).toEqual([
+        { status: "created" },
+        { status: "unchanged" },
+      ]);
+      expect(harness.stderr).toEqual([]);
+      expect(writes).toBe(1);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("rejects story creation without confirmation or with invalid definitions before requests", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-story-"));
+    try {
+      const file = join(dir, "story.json");
+      let requests = 0;
+      const harness = createHarness({
+        findStoryBySlug: async () => {
+          requests++;
+          return undefined;
+        },
+      });
+      const args = [
+        "story",
+        "create",
+        "--file",
+        file,
+        "--space-id",
+        "42",
+        "--json",
+      ];
+      expect(await runCli(args, harness.options)).toBe(2);
+      await writeFile(file, "{invalid");
+      expect(await runCli([...args, "--yes"], harness.options)).toBe(2);
+      await writeFile(
+        file,
+        JSON.stringify({
+          name: "Page",
+          slug: "page",
+          content: { component: "page" },
+          publish: true,
+        }),
+      );
+      expect(await runCli([...args, "--yes"], harness.options)).toBe(2);
+      await writeFile(
+        file,
+        JSON.stringify({
+          name: "Page",
+          slug: "folder/page",
+          content: { component: "page" },
+        }),
+      );
+      expect(await runCli([...args, "--yes"], harness.options)).toBe(1);
+      expect(requests).toBe(0);
+      expect(harness.stdout).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("reports API failures during story creation", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-story-"));
+    try {
+      const file = join(dir, "story.json");
+      await writeFile(
+        file,
+        JSON.stringify({
+          name: "Page",
+          slug: "page",
+          content: { component: "page" },
+        }),
+      );
+      const harness = createHarness({
+        createStory: async () => {
+          throw new ClientError("Forbidden", {
+            status: 403,
+            statusText: "Forbidden",
+            data: {},
+          });
+        },
+      });
+      expect(
+        await runCli(
+          [
+            "story",
+            "create",
+            "--file",
+            file,
+            "--space-id",
+            "42",
+            "--yes",
+            "--json",
+          ],
+          harness.options,
+        ),
+      ).toBe(1);
+      expect(harness.stdout).toEqual([]);
+      expect(harness.stderr[0]).toContain("403");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   test("publishes a story's draft and skips a repeat run in JSON mode", async () => {
     let pending = true;
     let writes = 0;

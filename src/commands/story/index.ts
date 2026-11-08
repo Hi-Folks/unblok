@@ -4,6 +4,7 @@ import { storyWorkflowCommand } from "./workflow.ts";
 import { storyTagsCommand } from "./tags.ts";
 import { storyGetCommand, storyBlockUpdateCommand } from "./content.ts";
 import { storyPublishCommand } from "./publish.ts";
+import { storyCreateCommand } from "./create.ts";
 
 export const storyCommand: Command = {
   name: "story",
@@ -14,6 +15,7 @@ export const storyCommand: Command = {
       "unblok story",
       [
         storyGetCommand,
+        storyCreateCommand,
         storyBlockUpdateCommand,
         storyPublishCommand,
         storyWorkflowCommand,

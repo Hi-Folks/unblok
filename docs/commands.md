@@ -13,6 +13,22 @@ The file path is relative to the current directory. Omit `--folder` to use the a
 
 Use `/` to separate nested folder names. For example, `--folder "Demo/Images"` creates `Demo` and its child `Images` if needed. Existing folders are reused on later runs; if a folder name is ambiguous within the same parent, the upload stops.
 
+## `story create`
+
+```bash
+bun run start story create --file examples/features/story-create.json --space-id 123456 --yes
+```
+
+The JSON file contains `name`, a root-level `slug`, and a `content` object with a `component`; see the [example definition](../examples/features/story-create.json). Adjust component names and fields to match the target space. Missing component `_uid` values are generated. The command creates a draft and requires `--yes`; use `story publish` separately to publish it. An existing story with the same slug is preserved without comparing its contents. `STORYBLOK_SPACE_ID` supplies the space when `--space-id` is omitted. With `--json`, the result has status `created` or `unchanged`. YAML asset directives are specific to YAML setup; use resolved asset objects in JSON content.
+
+For example, after reviewing the draft in Storyblok, publish the example story with:
+
+```bash
+bun run start story publish --slug welcome --space-id 123456 --yes
+```
+
+If creation reported `unchanged`, review the existing story before publishing: the publish command publishes its current draft, including any pending edits.
+
 ## `story publish`
 
 ```bash
@@ -153,7 +169,7 @@ The bundled examples reference the local [JSON Schema](../space-setup.schema.jso
 | `workflow`                                                            | Assign unstaged stories and exact story slugs to stages.                                                                         | [Workflow](../examples/features/setup-workflow.yaml)                                                               |
 | `tags`                                                                | Add tags to stories selected by exact full slug.                                                                                 | [Apps and tags](../examples/features/setup-apps-tags.yaml)                                                         |
 
-These are YAML setup operations, not all standalone commands: in particular, story creation and space AI configuration are currently available through the setup runner. Unsupported fields are rejected before changes.
+These are YAML setup operations, not all standalone commands: in particular, space AI configuration is currently available through the setup runner. Unsupported fields are rejected before changes.
 
 ### Reusing smaller blueprints
 
