@@ -7,6 +7,31 @@ import {
 } from "./list-spaces.ts";
 
 describe("listSpaces", () => {
+  test("returns the newest matching solo spaces after inspection, regardless of completion order", async () => {
+    const gateway = {
+      getCurrentUserId: async () => 7,
+      listSpaces: async () =>
+        [
+          { id: 1, owner_id: 7, created_at: "2024-01-01T00:00:00Z" },
+          { id: 2, owner_id: 7, created_at: "2026-01-01T00:00:00Z" },
+          { id: 3, owner_id: 7, created_at: "2025-01-01T00:00:00Z" },
+          { id: 4, owner_id: 8, created_at: "2027-01-01T00:00:00Z" },
+        ] as never,
+      getSpace: async (id: number) =>
+        ({ collaborators: id === 2 ? [{}] : [] }) as never,
+    };
+    expect(
+      (await listSpaces(gateway, { soloOnly: true, limit: 1 })).map(
+        (s) => s.id,
+      ),
+    ).toEqual([3]);
+    expect((await listSpaces(gateway, { limit: 2 })).map((s) => s.id)).toEqual([
+      4, 2,
+    ]);
+    await expect(listSpaces(gateway, { limit: 0 })).rejects.toThrow(
+      "positive integer",
+    );
+  });
   test("applies cheap filters before collaborator inspection", async () => {
     const inspectedIds: number[] = [];
     const gateway = {

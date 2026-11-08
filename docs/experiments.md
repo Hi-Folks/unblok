@@ -1,10 +1,10 @@
 # Create a demo experiment
 
-Use this workflow in a disposable space to create a draft experiment and simulate results. Storyblok Experiments is a premium Labs feature; availability depends on your plan. These commands have automated tests but have not yet been verified end to end against a live experiment.
+Use this workflow in a disposable space to create an experiment and simulate results. Storyblok Experiments is a premium Labs feature; availability depends on your plan. The experiment recipe was successfully applied and activated in a live test space; the complete new-space customer demo still needs end-to-end verification.
 
 ## One blueprint
 
-[The experiment setup blueprint](../examples/features/setup-experiment.yaml) installs Experiments, creates a draft experiment, links `home`, creates missing variant mappings, and updates the variant story through a separate `stories.update_blocks` entry. The example uses `home-hero_demo-hero_test` as the expected full slug and updates the `eyebrow` and `text` fields of a `hero-section` block, based on the demo home story. Inspect the home story and adapt these fields for your space. The selected story must have exactly one block of its declared component type.
+[The experiment setup blueprint](../examples/features/setup-experiment.yaml) installs Experiments, creates a draft experiment, links `home`, creates missing variant mappings, and updates the variant story through a separate `stories.update_blocks` entry. The example uses `home-hero_demo-hero_test` as the expected full slug and updates the `eyebrow`, `text`, `background_color`, `text_alignment`, and `image_decoration` fields of a `hero-section` block, based on the demo home story. Inspect the home story and adapt these fields for your space. The selected story must have exactly one block of its declared component type.
 
 ```bash
 bun run start space setup plan --config examples/features/setup-experiment.yaml

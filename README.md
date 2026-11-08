@@ -95,7 +95,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 | --------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | [Getting started](docs/getting-started.md)                      | Requirements, authentication, installation, and the first request.        |
 | [Your first blueprint](docs/first-blueprint.md)                 | Plan and apply a simple YAML setup to an existing space.                  |
-| [Demo experiment](docs/experiments.md)                          | Create a draft experiment and push simulated results.                     |
+| [Demo experiment](docs/experiments.md)                          | Create and optionally activate an experiment with simulated results.      |
 | [Library API](docs/library.md)                                  | Use content, component, workflow and tag actions from Bun and TypeScript. |
 | [Repeatable space setups](docs/space-setups.md)                 | Provisioning workflow, composition, and repeat-run behavior.              |
 | [Command reference](docs/commands.md)                           | Command syntax, every parameter, examples, and output behavior.           |
@@ -135,7 +135,7 @@ Start with the [customer demo guide](examples/customer-demo/README.md) to unders
 
 For smaller, independent examples of individual capabilities, see [feature examples](examples/features/). The demo's [alternatives](examples/customer-demo/alternatives/) include local asset uploads.
 
-The modular blueprint enables space AI using space-specific settings and accepts the AI Translations disclaimer. Review the disclaimer ID and terms before applying.
+The modular blueprint enables space AI, accepts the AI Translations and Experiments disclaimers, and starts a demo experiment with simulated results. Review both disclaimer IDs and terms, the experiment configuration, and its publishing behavior before applying.
 
 ```bash
 bun run start space setup plan --config examples/customer-demo/setup.yaml \

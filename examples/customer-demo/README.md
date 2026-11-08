@@ -6,7 +6,7 @@ The demo duplicates the source space specified in [step 01](steps/01-space.yaml)
 
 ## The main blueprint
 
-[setup.yaml](setup.yaml) uses `extends` to combine the numbered files in `steps/`. Each file has one responsibility; inputs declared in a step can be overridden when running the main blueprint. The runner orders operations by dependency, which may differ from the order of the files.
+[setup.yaml](setup.yaml) uses `extends` to combine the numbered files in `steps/` and the [experiment recipe](../features/setup-experiment.yaml). Inputs declared in a step can be overridden when running the main blueprint. The runner orders operations by dependency, which may differ from the order of the files.
 
 Check the combined recipe locally:
 
@@ -22,7 +22,7 @@ bun run start space setup apply --config examples/customer-demo/setup.yaml \
   --input 'space_name=Customer Demo' --yes
 ```
 
-The command shows the new space and asks whether to continue. Review the [AI Translations disclaimer](steps/10-ai-translation.yaml) and its terms before applying: the complete setup accepts disclaimer ID `35`. It also enables space AI and disables inheritance of organization AI configuration. Override `asset_url`, `frontend_host`, or `review_stage` with additional `--input 'name=value'` options when needed.
+The command shows the new space and asks whether to continue. Review the AI Translations and Experiments disclaimers and their IDs before applying. The complete setup enables space AI, disables inheritance of organization AI configuration, publishes the experiment variant, starts the experiment, and pushes simulated results. See the [experiment guide](../../docs/experiments.md) for prerequisites and partial-failure behavior. Override `asset_url`, `frontend_host`, or `review_stage` with additional `--input 'name=value'` options when needed.
 
 ## Reusable steps
 
@@ -40,6 +40,7 @@ Run a step by itself to test or reuse only that capability. Steps 02–10 accept
 | [08 Tags](steps/08-tags.yaml)                      | Adds tags to selected stories; reuse it to apply the same organization to compatible content.                                          |
 | [09 Space AI](steps/09-space-ai.yaml)              | Enables space AI with space-specific configuration; reuse independently of any particular AI app.                                      |
 | [10 AI Translations](steps/10-ai-translation.yaml) | Accepts the specified disclaimer and installs AI Translations; reuse only when that feature and disclaimer are appropriate.            |
+| [Experiment](../features/setup-experiment.yaml)    | Creates and activates a demo experiment with a modified hero variant and simulated results.                                            |
 
 For local images, apply [alternatives/local-assets.yaml](alternatives/local-assets.yaml) **instead of step 05** when running steps individually. Supply `--input 'asset_dir=/absolute/path/to/images'`; the directory must contain the three filenames listed in that file. The main blueprint continues to use the remote asset step.
 

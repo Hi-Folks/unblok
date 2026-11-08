@@ -95,6 +95,8 @@ Both assignment APIs perform validation and planning before updates. Invalid inp
 During assignment, an individual Storyblok update failure is recorded with `status: "failed"` and an `error` message in `report.operations`; the action continues with other stories and resolves with a report. Successful changes are not rolled back. Inspect `report.summary.failed` even when the promise resolves:
 
 ```ts
+import { UnblokError } from "unblok";
+
 try {
   const report = await assignStoryTags(gateway, selection);
   if (report.summary.failed > 0) {

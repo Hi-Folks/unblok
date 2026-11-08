@@ -1,6 +1,7 @@
 import { CliError } from "../../errors.ts";
 
 export interface SpaceListOptions {
+  limit?: number;
   ownedOnly: boolean;
   search?: string;
   soloOnly: boolean;
@@ -8,7 +9,7 @@ export interface SpaceListOptions {
 }
 
 const BOOLEAN_OPTIONS = new Set(["owned-only", "solo-only"]);
-const VALUE_OPTIONS = new Set(["search", "updated-before"]);
+const VALUE_OPTIONS = new Set(["search", "updated-before", "limit"]);
 
 export function parseSpaceListOptions(args: string[]): SpaceListOptions {
   const values = new Map<string, string | true>();
@@ -47,6 +48,17 @@ export function parseSpaceListOptions(args: string[]): SpaceListOptions {
 
   const search = values.get("search");
   const updatedBeforeValue = values.get("updated-before");
+  const limitValue = values.get("limit");
+  let limit: number | undefined;
+  if (typeof limitValue === "string") {
+    if (
+      !/^\d+$/.test(limitValue) ||
+      !Number.isSafeInteger(Number(limitValue)) ||
+      Number(limitValue) < 1
+    )
+      throw new CliError("Option '--limit' must be a positive integer.", 2);
+    limit = Number(limitValue);
+  }
   let updatedBefore: number | undefined;
 
   if (typeof updatedBeforeValue === "string") {
@@ -60,6 +72,7 @@ export function parseSpaceListOptions(args: string[]): SpaceListOptions {
   }
 
   return {
+    ...(limit === undefined ? {} : { limit }),
     ownedOnly: values.has("owned-only") || values.has("solo-only"),
     search: typeof search === "string" ? search : undefined,
     soloOnly: values.has("solo-only"),

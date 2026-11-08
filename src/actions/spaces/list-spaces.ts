@@ -1,5 +1,6 @@
 import type { Space, SpaceDetail } from "@storyblok/management-api-client";
 import type { StoryblokGateway } from "../../storyblok/gateway.ts";
+import { CliError } from "../../errors.ts";
 
 type SpaceListGateway = Pick<
   StoryblokGateway,
@@ -7,6 +8,7 @@ type SpaceListGateway = Pick<
 >;
 
 export interface ListSpacesInput {
+  limit?: number;
   onInspection?: (inspection: SoloSpaceInspection) => void;
   ownedOnly?: boolean;
   search?: string;
@@ -97,6 +99,11 @@ export async function listSpaces(
   gateway: SpaceListGateway,
   input: ListSpacesInput,
 ): Promise<Space[]> {
+  if (
+    input.limit !== undefined &&
+    (!Number.isSafeInteger(input.limit) || input.limit < 1)
+  )
+    throw new CliError("Limit must be a positive integer.", 2);
   let spaces = await gateway.listSpaces({ search: input.search });
 
   if (input.ownedOnly || input.soloOnly) {
@@ -106,19 +113,25 @@ export async function listSpaces(
 
   spaces = filterSpacesUpdatedBefore(spaces, input.updatedBefore);
 
-  if (!input.soloOnly || spaces.length === 0) {
-    return spaces;
-  }
-
-  const soloSpaces: Space[] = [];
-  for await (const inspection of inspectSoloSpaces(spaces, (spaceId) =>
-    gateway.getSpace(spaceId),
-  )) {
-    input.onInspection?.(inspection);
-    if (inspection.isSolo) {
-      soloSpaces.push(inspection.space);
+  if (input.soloOnly && spaces.length > 0) {
+    const soloSpaces: Space[] = [];
+    for await (const inspection of inspectSoloSpaces(spaces, (spaceId) =>
+      gateway.getSpace(spaceId),
+    )) {
+      input.onInspection?.(inspection);
+      if (inspection.isSolo) soloSpaces.push(inspection.space);
     }
+    spaces = soloSpaces;
   }
-
-  return soloSpaces;
+  if (input.limit === undefined) return spaces;
+  return spaces
+    .sort((a, b) => {
+      const aTime = Date.parse(a.created_at);
+      const bTime = Date.parse(b.created_at);
+      const aValid = Number.isFinite(aTime),
+        bValid = Number.isFinite(bTime);
+      if (aValid !== bValid) return aValid ? -1 : 1;
+      return (aValid ? bTime - aTime : 0) || b.id - a.id;
+    })
+    .slice(0, input.limit);
 }

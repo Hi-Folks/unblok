@@ -10,17 +10,19 @@ List the spaces accessible to the authenticated user.
 bun run start space list [options]
 ```
 
-| Option                    | Description                                                       |
-| ------------------------- | ----------------------------------------------------------------- |
-| `--search <text>`         | Filter spaces by name.                                            |
-| `--owned-only`            | Show only spaces owned by the authenticated user.                 |
-| `--updated-before <days>` | Show spaces not updated within the given positive number of days. |
-| `--solo-only`             | Show owned spaces without collaborators. Implies `--owned-only`.  |
+| Option                    | Description                                                               |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `--search <text>`         | Filter spaces by name.                                                    |
+| `--owned-only`            | Show only spaces owned by the authenticated user.                         |
+| `--updated-before <days>` | Show spaces not updated within the given positive number of days.         |
+| `--limit <n>`             | Show the N most recently created spaces after applying the other filters. |
+| `--solo-only`             | Show owned spaces without collaborators. Implies `--owned-only`.          |
 
 ```bash
 bun run start space list --search demo
 bun run start space list --owned-only --updated-before 90
 bun run start space list --solo-only
+bun run start space list --limit 5
 ```
 
 `--solo-only` requires one additional detail request per candidate space. Interactive terminals show progressive inspection results with bounded concurrency.

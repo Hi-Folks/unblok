@@ -28,6 +28,16 @@ describe("parseSpaceListOptions", () => {
     );
   });
 
+  test("parses a newest-space limit and rejects invalid values", () => {
+    expect(parseSpaceListOptions(["--limit", "5"]).limit).toBe(5);
+    expect(parseSpaceListOptions(["--limit=12"]).limit).toBe(12);
+    for (const value of ["0", "-1", "1.5", "9007199254740992"]) {
+      expect(() => parseSpaceListOptions([`--limit=${value}`])).toThrow(
+        "positive integer",
+      );
+    }
+  });
+
   test("rejects unknown options", () => {
     expect(() => parseSpaceListOptions(["--unknown"])).toThrow(
       "Unknown option '--unknown'",

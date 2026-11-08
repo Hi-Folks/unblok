@@ -8,6 +8,7 @@
 - Add an experiment recipe to the combined customer demo setup.
 - Add an initial Bun/TypeScript library API for workflow and tag assignment, story block updates, and component field reconciliation, with structured errors and partial-failure reports. Include the library in the npm release package alongside the CLI.
 - Add CI checks for formatting, type checking, and tests.
+- Add `space list --limit <n>` to show the most recently created matching spaces.
 
 ### Changed
 

@@ -31,7 +31,7 @@ This is an alternative to file 05 when running the steps individually. The modul
 
 ## Combine the steps
 
-The [modular blueprint](../examples/customer-demo/setup.yaml) uses `extends` to combine steps 01–10. It enables space AI, disables inheritance of organization AI configuration, accepts disclaimer ID `35`, and installs AI Translations. Review the disclaimer ID and terms before applying. Inputs declared in fragments are available to the main blueprint:
+The [modular blueprint](../examples/customer-demo/setup.yaml) uses `extends` to combine steps 01–10 and the experiment recipe. It enables space AI, disables inheritance of organization AI configuration, accepts AI Translations and Experiments disclaimers, publishes a variant, starts an experiment, and pushes simulated results. Review both disclaimer IDs and terms and the [experiment configuration](../examples/features/setup-experiment.yaml) before applying. Inputs declared in fragments are available to the main blueprint:
 
 ```bash
 bun run start space setup plan --config examples/customer-demo/setup.yaml \

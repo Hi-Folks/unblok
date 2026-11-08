@@ -10,6 +10,7 @@ List spaces available to the current user.
 
 Options:
   --search <text>           Filter spaces by name
+  --limit <n>               Show the n most recently created matching spaces
   --owned-only             Show only spaces owned by the current user
   --updated-before <days>  Show spaces not updated within the given number of days
   --solo-only              Show owned spaces with no collaborators
