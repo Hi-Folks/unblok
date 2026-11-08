@@ -1,4 +1,5 @@
 import { CliError } from "../../errors.ts";
+import { isDeepStrictEqual } from "node:util";
 import type { StoryblokGateway } from "../../storyblok/gateway.ts";
 import { updateStoryBlock } from "./content.ts";
 
@@ -68,7 +69,7 @@ export async function reconcileStoryBlock(
     );
   if (
     Object.entries(update.fields).every(([key, value]) =>
-      Bun.deepEquals(matches[0]![key], value),
+      isDeepStrictEqual(matches[0]![key], value),
     )
   )
     return false;

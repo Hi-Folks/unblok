@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 - 2026-11-20
+
+### Changed
+
+- Prepare a single JavaScript npm package with the CLI and library for Node.js 26 and Bun, replacing platform-specific executable packages. Bun remains the development and build runtime.
+
 ## 0.1.6 - 2026-11-08
 
 ### Added

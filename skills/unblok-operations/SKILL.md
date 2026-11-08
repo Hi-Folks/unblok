@@ -11,6 +11,8 @@ Apply this guidance across resources, including workflow stage assignment, story
 
 Keep reusable, terminal-independent business logic in `src/actions/<resource>/` and Storyblok API calls behind the gateway. Commands parse arguments and present output; YAML code validates configuration and orchestrates actions; the library exposes documented functions and types without reading credentials, prompting, or writing terminal output. Prefer having entry points call the same actions rather than duplicating API sequences or validation.
 
+Bun is required for development, tests, quality checks, and builds. Published CLI and shared runtime logic must support Node.js and Bun without Bun-only APIs. Release one npm package containing the CLI and library; test the packed artifact under Node.js and Bun rather than creating platform-specific binaries.
+
 Make differences in intent explicit. For example, an imperative command may replace a resource while YAML reconciliation preserves existing state. Document such differences and keep public library contracts clear about selections, side effects, idempotency, errors, and partial failures.
 
 When behavior is shared, test the action's meaningful outcomes and add entry-point coverage appropriate to the change. Verify that equivalent CLI, YAML, and library requests reach compatible behavior, including invalid input, relevant API failures, partial results, and repeat runs where applicable. Test deliberate differences as well; do not require identical output formatting or add redundant tests merely to mirror implementation.

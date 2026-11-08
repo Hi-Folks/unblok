@@ -12,7 +12,7 @@
 - **YAML provisioning:** describe a space setup as configuration and apply it repeatably.
 - **JavaScript and TypeScript library:** call common content operations from your own code, such as assigning a workflow stage to multiple stories.
 
-The library API is in early development. A release containing the library packaging can be installed in a Bun project; until then, use this checkout or a Bun workspace dependency. See the [library guide](docs/library.md).
+The library API is in early development. The next release packages it alongside the CLI for Node.js and Bun projects. See the [library guide](docs/library.md).
 
 > Early development: commands and interfaces may change while the initial workflow is shaped.
 
@@ -62,14 +62,14 @@ AI still needs the right instructions and permissions, and Storyblok state or AP
 
 ## Installation
 
-Install the published CLI with npm (requires Node.js):
+After a release containing the JavaScript CLI is published, install it with npm (requires Node.js 26 or newer):
 
 ```bash
 npm install -g unblok
 unblok --help
 ```
 
-You can also try `npx unblok --help` or install with `bun install -g unblok`. The npm launcher requires Node.js; the platform executable does not require Bun.
+You can also try `npx unblok --help`. Bun users can run `bunx --bun unblok --help`. The current published version may have different runtime requirements; these instructions describe the upcoming single-package release.
 
 Unblok is an independent open-source project, licensed under the [MIT License](LICENSE), and is not an official Storyblok product. Contributors use Bun for development.
 

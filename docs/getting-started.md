@@ -12,7 +12,7 @@ unblok --version
 npx unblok --help
 ```
 
-Bun users can also run `bun install -g unblok`. The npm launcher requires Node.js, but it does not require Bun. Platform packages support macOS, Linux (glibc), and Windows.
+For the upcoming single-package release, the CLI requires Node.js 26 or newer. Bun users without Node.js can use `bunx --bun unblok --help`. The currently published version may have different runtime requirements.
 
 ## Run from source today
 

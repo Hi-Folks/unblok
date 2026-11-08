@@ -14,7 +14,7 @@ This is a Bun and TypeScript project with CLI, YAML provisioning, and library en
 - `bun fmt` formats supported source files.
 - `bun run build` bundles the CLI into `dist/`.
 
-Use Bun-native commands and APIs in preference to Node-oriented wrappers: `bun` instead of `node`, `bunx` instead of `npx`, and `Bun.file` for straightforward file access.
+Use Bun for development, testing, quality checks, and builds. Published CLI and shared library runtime code must work with Node.js as well as Bun; use runtime-compatible APIs instead of Bun-only globals in those paths. Validate the packed CLI under Node.js and Bun. The CLI may load `.env`, but library actions must not read environment variables or prompt.
 
 ## Coding Style & Naming Conventions
 

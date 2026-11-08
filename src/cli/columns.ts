@@ -1,3 +1,6 @@
+import stringWidth from "fast-string-width";
+import { wrapAnsi } from "fast-wrap-ansi";
+
 /** Render aligned columns, wrapping the selected column when space is limited. */
 export function formatColumns(
   headers: string[],
@@ -12,8 +15,8 @@ export function formatColumns(
   );
   const widths = headings.map((header, index) =>
     Math.max(
-      Bun.stringWidth(header),
-      ...values.map((row) => Bun.stringWidth(row[index] ?? "")),
+      stringWidth(header),
+      ...values.map((row) => stringWidth(row[index] ?? "")),
     ),
   );
   const separators = Math.max(0, headings.length - 1) * 2;
@@ -37,7 +40,7 @@ export function formatColumns(
       separators,
     );
     const available = width - otherWidth;
-    if (available >= Bun.stringWidth(headings[wrapIndex] ?? ""))
+    if (available >= stringWidth(headings[wrapIndex] ?? ""))
       widths[wrapIndex] = available;
   }
   const line = (row: string[]) =>
@@ -45,9 +48,7 @@ export function formatColumns(
       .map(
         (value, index) =>
           value +
-          " ".repeat(
-            Math.max(0, (widths[index] ?? 0) - Bun.stringWidth(value)),
-          ),
+          " ".repeat(Math.max(0, (widths[index] ?? 0) - stringWidth(value))),
       )
       .join("  ")
       .trimEnd();
@@ -60,7 +61,7 @@ export function formatColumns(
       .map((row) =>
         headings
           .map((header, index) =>
-            Bun.wrapAnsi(`${header}: ${row[index] ?? ""}`, safeWidth, {
+            wrapAnsi(`${header}: ${row[index] ?? ""}`, safeWidth, {
               hard: true,
               trim: false,
             }),
@@ -72,10 +73,10 @@ export function formatColumns(
   const renderedRows = values.flatMap((row) => {
     if (
       wrapIndex === undefined ||
-      Bun.stringWidth(row[wrapIndex] ?? "") <= (widths[wrapIndex] ?? 0)
+      stringWidth(row[wrapIndex] ?? "") <= (widths[wrapIndex] ?? 0)
     )
       return [line(row)];
-    return Bun.wrapAnsi(row[wrapIndex] ?? "", widths[wrapIndex] ?? 1, {
+    return wrapAnsi(row[wrapIndex] ?? "", widths[wrapIndex] ?? 1, {
       hard: true,
       trim: false,
     })

@@ -1,348 +1,111 @@
-import {
-  chmod,
-  copyFile,
-  cp,
-  mkdir,
-  rm,
-  stat,
-  symlink,
-} from "node:fs/promises";
-import { createHash } from "node:crypto";
-import { dirname, join, resolve } from "node:path";
+import { cp, mkdtemp, mkdir, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { mkdtemp } from "node:fs/promises";
-import { version, dependencies } from "../../package.json";
-import config from "./config.json";
-import { windowsBatchCommand } from "./windows-command";
+import manifest from "../../package.json";
 
-const platforms = [
-  "darwin-arm64",
-  "darwin-x64",
-  "linux-x64",
-  "linux-arm64",
-  "win32-x64",
-];
-const all = Bun.argv.includes("--all");
-const publish = Bun.argv.includes("--publish");
-const host = `${process.platform}-${process.arch}`;
-if (!platforms.includes(host)) throw new Error(`Unsupported host: ${host}`);
-if (
-  config.packageName !== "unblok" ||
-  !/^@[a-z0-9][a-z0-9._-]*$/.test(config.scope)
-)
-  throw new Error("Invalid release package name or npm scope.");
-if (
-  publish &&
-  (!config.namesAndPermissionsVerified ||
-    !/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/.test(config.repository) ||
-    !config.license ||
-    !(await Bun.file("LICENSE").exists()))
-) {
-  throw new Error(
-    "Publishing blocked: configure repository URL, license, LICENSE file, and verified npm package/scope ownership in scripts/release/config.json.",
-  );
-}
-if (
-  process.env.GITHUB_REF_TYPE === "tag" &&
-  process.env.GITHUB_REF_NAME !== `v${version}`
-)
-  throw new Error("Git tag does not match package version");
-const release = resolve("dist/release");
-const stage = resolve("dist/npm");
+const stage = resolve("dist/npm/unblok");
 await rm(stage, { recursive: true, force: true });
 await mkdir(stage, { recursive: true });
-const optionalDependencies = Object.fromEntries(
-  platforms.map((platform) => [
-    `${config.scope}/${config.packageName}-${platform}`,
-    version,
-  ]),
-);
-const metadata = {
-  version,
-  description: "Unblock your Storyblok operations.",
-  license: config.license || "UNLICENSED",
-  ...(config.repository
-    ? {
-        repository: { type: "git", url: `${config.repository}.git` },
-        homepage: config.repository,
-        bugs: { url: `${config.repository}/issues` },
-      }
-    : {}),
-};
-const main = join(stage, "unblok");
-const libraryBuild = Bun.spawn(["bun", "run", "build:library"], {
-  stdout: "inherit",
-  stderr: "inherit",
-});
-if ((await libraryBuild.exited) !== 0) throw new Error("Library build failed.");
-await mkdir(join(main, "bin"), { recursive: true });
-await mkdir(join(main, "lib"), { recursive: true });
-await copyFile("dist/library/library.js", join(main, "lib/library.js"));
-await cp("dist/library-types", join(main, "lib/types"), { recursive: true });
+await cp("dist/package", join(stage, "dist"), { recursive: true });
+await cp("dist/library-types", join(stage, "types"), { recursive: true });
+await cp("README.md", join(stage, "README.md"));
+await cp("LICENSE", join(stage, "LICENSE"));
 await Bun.write(
-  join(main, "bin/unblok.cjs"),
-  (await Bun.file("scripts/release/launcher.cjs").text()).replace(
-    "@hi-folks/unblok-${platform}",
-    `${config.scope}/${config.packageName}-\${platform}`,
-  ),
-);
-const hasLicense = await Bun.file("LICENSE").exists();
-if (hasLicense) await copyFile("LICENSE", join(main, "LICENSE"));
-await Bun.write(
-  join(main, "README.md"),
-  "# Unblok\n\nUnofficial Storyblok CLI and Bun library. Run `unblok --help` or import actions from `unblok` in a Bun project. See https://github.com/Hi-Folks/unblok for documentation.\n",
-);
-await Bun.write(
-  join(main, "package.json"),
+  join(stage, "package.json"),
   JSON.stringify(
     {
-      name: config.packageName,
-      ...metadata,
-      private: !publish,
-      bin: { unblok: "bin/unblok.cjs" },
+      name: manifest.name,
+      version: manifest.version,
+      description: manifest.description,
+      license: manifest.license,
+      repository: manifest.repository,
+      homepage: manifest.homepage,
+      bugs: manifest.bugs,
       type: "module",
+      bin: { unblok: "./dist/index.js" },
       exports: {
-        ".": { types: "./lib/types/library.d.ts", default: "./lib/library.js" },
+        ".": {
+          types: "./types/library.d.ts",
+          default: "./dist/src/library.js",
+        },
       },
-      types: "./lib/types/library.d.ts",
-      dependencies: {
-        "@storyblok/management-api-client":
-          dependencies["@storyblok/management-api-client"],
-        "@storyblok/region-helper": dependencies["@storyblok/region-helper"],
-      },
-      files: ["bin/unblok.cjs", "lib", "README.md"],
-      engines: { node: ">=18" },
-      keywords: ["storyblok", "cli", "automation"],
-      optionalDependencies,
+      types: "./types/library.d.ts",
+      engines: { node: ">=26" },
+      dependencies: manifest.dependencies,
+      files: ["dist", "types", "README.md", "LICENSE"],
     },
     null,
     2,
   ),
 );
-for (const platform of all ? platforms : [host]) {
-  const exe = platform.startsWith("win32") ? "unblok.exe" : "unblok";
-  const artifact = join(
-    release,
-    `unblok-${platform}${exe.endsWith(".exe") ? ".exe" : ""}`,
-  );
-  if (
-    !(await Bun.file(artifact).exists()) ||
-    (await Bun.file(artifact).size) === 0
-  )
-    throw new Error(`Missing release artifact: ${artifact}`);
-  if (!platform.startsWith("win32")) {
-    const mode = (await stat(artifact)).mode;
-    if (!(mode & 0o111))
-      throw new Error(`Release artifact is not executable: ${artifact}`);
-  }
-  const directory = join(stage, platform);
-  await mkdir(join(directory, "bin"), { recursive: true });
-  await copyFile(artifact, join(directory, "bin", exe));
-  if (hasLicense) await copyFile("LICENSE", join(directory, "LICENSE"));
-  if (!platform.startsWith("win32"))
-    await chmod(join(directory, "bin", exe), 0o755);
-  const [os, cpu] = platform.split("-");
-  await Bun.write(
-    join(directory, "package.json"),
-    JSON.stringify(
-      {
-        name: `${config.scope}/${config.packageName}-${platform}`,
-        ...metadata,
-        private: !publish,
-        os: [os],
-        cpu: [cpu],
-        ...(os === "linux" ? { libc: ["glibc"] } : {}),
-        files: [`bin/${exe}`],
-      },
-      null,
-      2,
-    ),
-  );
-}
-const run = async (
-  cmd: string[],
-  cwd?: string,
-  extraEnv: Record<string, string> = {},
-) => {
-  if (process.platform === "win32" && cmd[0] === "npm") {
-    const npm = Bun.which("npm");
-    if (!npm) throw new Error("npm was not found");
-    cmd = [
-      "node",
-      join(dirname(npm), "node_modules/npm/bin/npm-cli.js"),
-      ...cmd.slice(1),
-    ];
-  }
-  const p = Bun.spawn(cmd, {
+
+async function run(args: string[], cwd: string): Promise<string> {
+  const child = Bun.spawn(args, {
     cwd,
     stdout: "pipe",
     stderr: "pipe",
     env: {
       ...process.env,
       npm_config_cache: join(tmpdir(), "unblok-npm-cache"),
-      npm_config_audit: "false",
-      npm_config_fund: "false",
-      npm_config_update_notifier: "false",
-      ...extraEnv,
     },
   });
-  const [stdout, stderr, code] = await Promise.all([
-    new Response(p.stdout).text(),
-    new Response(p.stderr).text(),
-    p.exited,
+  const [out, err, code] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
   ]);
-  if (code) throw new Error(`${cmd.join(" ")} failed: ${stderr || stdout}`);
-  return stdout.trim();
-};
-const hostBinary = join(
-  release,
-  `unblok-${host}${process.platform === "win32" ? ".exe" : ""}`,
-);
-if ((await run([hostBinary, "--version"])) !== `unblok ${version}`)
-  throw new Error("Compiled binary version mismatch");
-if (!(await run([hostBinary, "--help"])).includes("Usage: unblok"))
-  throw new Error("Compiled binary help failed");
-const versionJson = JSON.parse(
-  await run([hostBinary, "--version", "--json"]),
-) as { version?: string };
-if (versionJson.version !== version)
-  throw new Error("Compiled JSON version mismatch");
-const badCommand = Bun.spawn([hostBinary, "__unblok_unknown_command__"], {
-  stdout: "pipe",
-  stderr: "pipe",
-});
-const [badOut, badErr, badExit] = await Promise.all([
-  new Response(badCommand.stdout).text(),
-  new Response(badCommand.stderr).text(),
-  badCommand.exited,
-]);
-if (badExit !== 2 || badOut || !badErr.includes("Unknown command"))
-  throw new Error("Compiled CLI error handling failed");
-const tarballs = resolve("dist/tarballs");
-await rm(tarballs, { recursive: true, force: true });
-await mkdir(tarballs, { recursive: true });
-const packed: Record<string, string> = {};
-for (const name of ["unblok", ...(all ? platforms : [host])]) {
-  const result = JSON.parse(
-    await run(
-      [
-        "npm",
-        "pack",
-        "--json",
-        "--ignore-scripts",
-        "--pack-destination",
-        tarballs,
-      ],
-      join(stage, name),
-    ),
-  ) as Array<{ filename: string; files: Array<{ path: string }> }>;
-  const info = result[0];
-  if (!info) throw new Error(`npm pack failed: ${name}`);
-  const allowed =
-    name === "unblok"
-      ? [
-          "README.md",
-          "bin/unblok.cjs",
-          "package.json",
-          "lib/library.js",
-          ...Array.from(
-            new Bun.Glob("**/*.d.ts").scanSync({
-              cwd: join(main, "lib/types"),
-              onlyFiles: true,
-            }),
-          ).map((file) => `lib/types/${file.replaceAll("\\", "/")}`),
-        ]
-      : [
-          `bin/${name.startsWith("win32") ? "unblok.exe" : "unblok"}`,
-          "package.json",
-        ];
-  if (hasLicense) allowed.push("LICENSE");
-  const actual = info.files.map((entry) => entry.path).sort();
-  if (JSON.stringify(actual) !== JSON.stringify(allowed.sort()))
-    throw new Error(`Unexpected contents in ${name}: ${actual}`);
-  packed[name] = join(tarballs, info.filename);
+  if (code) throw new Error(`${args.join(" ")} failed: ${err || out}`);
+  return out.trim();
 }
 const temp = await mkdtemp(join(tmpdir(), "unblok-package-"));
 try {
-  const plan = JSON.parse(
+  const packed = JSON.parse(
     await run(
-      [
-        hostBinary,
-        "space",
-        "setup",
-        "plan",
-        "--config",
-        resolve("src/setup/fixtures/input-blueprint.yaml"),
-        "--json",
-      ],
-      temp,
+      ["npm", "pack", "--json", "--ignore-scripts", "--pack-destination", temp],
+      stage,
     ),
-  ) as { apiVersion?: string };
-  if (plan.apiVersion !== "unblok/setup-blueprint-plan-v1")
-    throw new Error(
-      "Compiled CLI could not load its embedded schema outside the source tree",
-    );
-  await Bun.write(join(temp, "package.json"), '{"private":true}');
-  // Seed npm's offline resolution with the exact dependency versions already
-  // installed from the lockfile, rather than requiring a pre-populated cache.
-  const dependencyTarballs: string[] = [];
-  for (const dependency of [
-    "@storyblok/management-api-client",
-    "@storyblok/region-helper",
-    "ky",
-  ]) {
-    const result = JSON.parse(
-      await run(
-        [
-          "npm",
-          "pack",
-          "--json",
-          "--ignore-scripts",
-          "--pack-destination",
-          tarballs,
-        ],
-        resolve("node_modules", dependency),
-      ),
-    ) as Array<{ filename: string }>;
-    if (!result[0])
-      throw new Error(`Could not pack local dependency ${dependency}.`);
-    dependencyTarballs.push(join(tarballs, result[0].filename));
-  }
+  ) as Array<{ filename: string; files: Array<{ path: string }> }>;
+  const item = packed[0];
+  if (
+    !item ||
+    !item.files.some((entry) => entry.path === "dist/index.js") ||
+    !item.files.some((entry) => entry.path === "types/library.d.ts")
+  )
+    throw new Error("CLI or types missing from package.");
+  if (
+    item.files.some(
+      ({ path }) =>
+        !["README.md", "LICENSE", "package.json"].includes(path) &&
+        !path.startsWith("dist/") &&
+        !path.startsWith("types/"),
+    )
+  )
+    throw new Error("Package contains unexpected files.");
+  await Bun.write(
+    join(temp, "package.json"),
+    '{"private":true,"type":"module"}',
+  );
   await run(
     [
       "npm",
       "install",
-      "--offline",
       "--ignore-scripts",
-      "--omit=optional",
-      "--no-save",
-      packed.unblok!,
-      packed[host]!,
-      ...dependencyTarballs,
+      "--no-audit",
+      "--no-fund",
+      join(temp, item.filename),
     ],
     temp,
   );
-  const consumer = join(temp, "library-consumer.ts");
+  const consumer = join(temp, "consumer.ts");
   await Bun.write(
     consumer,
-    `import { assignStoryTags, type StoryTagGateway } from "unblok";
-const tags: string[] = [];
-const gateway = {
-  findStoryBySlug: async (_space: number, slug: string) => ({ id: 1, full_slug: slug, tag_list: [...tags] }),
-  getStory: async () => ({ id: 1, full_slug: "home", tag_list: [...tags] }),
-  updateStoryTags: async (_space: number, _id: number, values: string[]) => { tags.splice(0, tags.length, ...values); },
-} as unknown as StoryTagGateway;
-const report = await assignStoryTags(gateway, { spaceId: 1, stories: ["home"], tags: ["Demo"] });
-if (report.summary.updated !== 1 || tags[0] !== "Demo") throw new Error("Installed library action failed");
-`,
+    'import { assignStoryTags, type StoryTagsInput } from "unblok"; const input: StoryTagsInput = { spaceId: 1, stories: ["home"], tags: ["demo"] }; void assignStoryTags; void input;',
   );
-  await run(["bun", consumer], temp);
   await run(
     [
       "bun",
       resolve("node_modules/typescript/bin/tsc"),
       "--noEmit",
-      "--skipLibCheck",
       "--target",
       "esnext",
       "--module",
@@ -353,65 +116,73 @@ if (report.summary.updated !== 1 || tags[0] !== "Demo") throw new Error("Install
     ],
     temp,
   );
-  const launcher = join(
+  await run(
+    [
+      "bun",
+      resolve("node_modules/typescript/bin/tsc"),
+      "--noEmit",
+      "--target",
+      "esnext",
+      "--module",
+      "nodenext",
+      "--moduleResolution",
+      "nodenext",
+      consumer,
+    ],
     temp,
-    "node_modules",
-    ".bin",
-    process.platform === "win32" ? "unblok.cmd" : "unblok",
   );
-  let executionEnv: Record<string, string> = {};
-  if (process.platform !== "win32") {
-    const node = Bun.which("node");
-    if (!node) throw new Error("Node.js is required to test the npm launcher");
-    const nodeOnly = join(temp, "node-only");
-    await mkdir(nodeOnly);
-    await symlink(node, join(nodeOnly, "node"));
-    executionEnv = { PATH: nodeOnly };
+  const cli = join(temp, "node_modules/unblok/dist/index.js");
+  if (!(await Bun.file(cli).text()).startsWith("#!/usr/bin/env node"))
+    throw new Error("CLI shebang is missing.");
+  if (
+    process.platform !== "win32" &&
+    (await run([join(temp, "node_modules/.bin/unblok"), "--version"], temp)) !==
+      `unblok ${manifest.version}`
+  )
+    throw new Error("Installed CLI command failed.");
+  if (
+    (await run(["bun", "x", "--bun", "unblok", "--version"], temp)) !==
+    `unblok ${manifest.version}`
+  )
+    throw new Error("Installed bunx command failed.");
+  for (const runtime of ["node", "bun"]) {
+    if (!(await run([runtime, cli, "--help"], temp)).includes("Usage: unblok"))
+      throw new Error(`${runtime} CLI help failed.`);
+    if (
+      (await run([runtime, cli, "--version"], temp)) !==
+      `unblok ${manifest.version}`
+    )
+      throw new Error(`${runtime} CLI version failed.`);
+    const plan = JSON.parse(
+      await run(
+        [
+          runtime,
+          cli,
+          "space",
+          "setup",
+          "plan",
+          "--config",
+          resolve("src/setup/fixtures/input-blueprint.yaml"),
+          "--json",
+        ],
+        temp,
+      ),
+    ) as { apiVersion?: string };
+    if (plan.apiVersion !== "unblok/setup-blueprint-plan-v1")
+      throw new Error(`${runtime} YAML plan failed.`);
+    await run(
+      [
+        runtime,
+        "--input-type=module",
+        "-e",
+        'import { assignStoryTags } from "unblok"; const g={findStoryBySlug:async()=>({id:1,full_slug:"home",tag_list:[]}),getStory:async()=>({id:1,full_slug:"home",tag_list:[]}),updateStoryTags:async()=>{}}; const result=await assignStoryTags(g,{spaceId:1,stories:["home"],tags:["demo"]}); if(result.summary.updated!==1) throw new Error("Library action failed");',
+      ],
+      temp,
+    );
   }
-  const output =
-    process.platform === "win32"
-      ? await run(windowsBatchCommand(launcher, "--version"), temp)
-      : await run([launcher, "--version"], temp, executionEnv);
-  if (output !== `unblok ${version}`)
-    throw new Error("Installed npm launcher version mismatch");
-  const help =
-    process.platform === "win32"
-      ? await run(windowsBatchCommand(launcher, "--help"), temp)
-      : await run([launcher, "--help"], temp, executionEnv);
-  if (!help.includes("Usage: unblok"))
-    throw new Error("Installed npm launcher help failed");
-  const planArgs = [
-    "space",
-    "setup",
-    "plan",
-    "--config",
-    resolve("src/setup/fixtures/input-blueprint.yaml"),
-    "--json",
-  ];
-  const installedPlan = JSON.parse(
-    process.platform === "win32"
-      ? await run(windowsBatchCommand(launcher, ...planArgs), temp)
-      : await run([launcher, ...planArgs], temp, executionEnv),
-  ) as { apiVersion?: string };
-  if (installedPlan.apiVersion !== "unblok/setup-blueprint-plan-v1")
-    throw new Error("Installed CLI could not plan the YAML blueprint.");
+  console.log(
+    "Validated packed CLI, YAML plan, and library under Node and Bun.",
+  );
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
-if (all) {
-  const checksums: string[] = [];
-  for (const platform of platforms) {
-    const filename = `unblok-${platform}${platform.startsWith("win32") ? ".exe" : ""}`;
-    checksums.push(
-      `${createHash("sha256")
-        .update(
-          Buffer.from(await Bun.file(join(release, filename)).arrayBuffer()),
-        )
-        .digest("hex")}  ${filename}`,
-    );
-  }
-  await Bun.write(join(release, "SHA256SUMS"), `${checksums.join("\n")}\n`);
-}
-console.log(
-  `Validated ${all ? "all platform packages and" : ""} ${host} executable, npm packages, and offline installation.`,
-);

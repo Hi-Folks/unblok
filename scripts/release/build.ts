@@ -1,32 +1,39 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { version } from "../../package.json";
 
-const targets: Record<string, string> = {
-  "darwin-arm64": "bun-darwin-arm64",
-  "darwin-x64": "bun-darwin-x64",
-  "linux-x64": "bun-linux-x64",
-  "linux-arm64": "bun-linux-arm64",
-  "win32-x64": "bun-windows-x64",
-};
-const host = `${process.platform}-${process.arch}`;
-const selected = Bun.argv.includes("--all") ? Object.keys(targets) : [host];
-await mkdir("dist/release", { recursive: true });
-for (const platform of selected) {
-  const target = targets[platform];
-  if (!target) throw new Error(`Unsupported build host ${platform}`);
-  const outfile = `dist/release/unblok-${platform}${platform.startsWith("win32") ? ".exe" : ""}`;
-  const child = Bun.spawn(
-    [
-      "bun",
-      "build",
-      "./index.ts",
-      "--compile",
-      `--target=${target}`,
-      `--define=UNBLOK_BUILD_VERSION=${JSON.stringify(version)}`,
-      "--outfile",
-      outfile,
-    ],
-    { stdout: "inherit", stderr: "inherit" },
-  );
-  if ((await child.exited) !== 0) throw new Error(`Build failed: ${platform}`);
+await rm("dist/package", { recursive: true, force: true });
+await mkdir("dist/package", { recursive: true });
+const result = await Bun.build({
+  entrypoints: ["./index.ts", "./src/library.ts"],
+  outdir: "dist/package",
+  target: "node",
+  format: "esm",
+  packages: "external",
+  define: { UNBLOK_BUILD_VERSION: JSON.stringify(version) },
+});
+if (!result.success) throw new Error("JavaScript build failed.");
+const declarations = Bun.spawn(
+  ["bunx", "--no-install", "tsc", "-p", "tsconfig.library.json"],
+  { stdout: "inherit", stderr: "inherit" },
+);
+if ((await declarations.exited) !== 0)
+  throw new Error("Type declaration build failed.");
+
+// Published declarations reference declaration files through JavaScript-style
+// specifiers, so consumers do not need allowImportingTsExtensions.
+async function rewriteDeclarations(directory: string): Promise<void> {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) await rewriteDeclarations(path);
+    else if (entry.name.endsWith(".d.ts")) {
+      const source = await readFile(path, "utf8");
+      const updated = source.replace(
+        /(["'])(\.{1,2}\/[^"']+)\.ts\1/g,
+        "$1$2.js$1",
+      );
+      if (updated !== source) await writeFile(path, updated);
+    }
+  }
 }
+await rewriteDeclarations("dist/library-types");

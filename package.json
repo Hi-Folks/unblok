@@ -24,11 +24,8 @@
     "dev": "bun --hot index.ts",
     "test": "bun test",
     "build": "bun run scripts/release/build.ts",
-    "build:library": "bun run scripts/release/build-library.ts",
-    "buildexe": "bun build ./index.ts --compile --outfile ./dist/unblok",
     "typecheck": "bun check",
-    "build:all": "bun run scripts/release/build.ts --all",
-    "quality": "bun fmt --check scripts/release/*.ts scripts/release/*.cjs && bun run typecheck && bun test",
+    "quality": "bun fmt --check scripts/release/*.ts && bun run typecheck && bun test",
     "release": "bun run scripts/release/prepare.ts",
     "release:check": "bun run scripts/release/check.ts"
   },
@@ -43,7 +40,10 @@
     "@storyblok/management-api-client": "^0.12.0",
     "@storyblok/region-helper": "^1.7.0",
     "ajv": "^8.20.0",
-    "cmd-table": "^1.6.0"
+    "cmd-table": "^1.6.0",
+    "fast-string-width": "^3.0.2",
+    "fast-wrap-ansi": "^0.2.2",
+    "yaml": "^2.9.1"
   },
   "license": "MIT"
 }

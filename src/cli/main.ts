@@ -60,10 +60,10 @@ export async function runCli(
         ((token) =>
           createStoryblokGateway(token, {
             requestsPerSecond: getStoryblokRequestsPerSecond(
-              options.environment ?? Bun.env,
+              options.environment ?? process.env,
             ),
           })),
-      environment: options.environment ?? Bun.env,
+      environment: options.environment ?? process.env,
       output,
     });
     return 0;

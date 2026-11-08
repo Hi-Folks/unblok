@@ -1,5 +1,5 @@
 import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, resolve } from "node:path";
+import { basename, resolve, matchesGlob } from "node:path";
 import { createHash } from "node:crypto";
 import { CliError } from "../errors.ts";
 import type {
@@ -58,15 +58,14 @@ export async function prepareAssets(
     }
     const patterns = directory.include ?? ["*"];
     for (const pattern of patterns) {
-      const glob = new Bun.Glob(pattern);
-      if (!entries.some((entry) => glob.match(entry)))
+      if (!entries.some((entry) => matchesGlob(entry, pattern)))
         throw new CliError(
           `Asset include '${pattern}' matched no files in ${directory.source}.`,
           2,
         );
     }
     for (const name of entries.filter((entry) =>
-      patterns.some((pattern) => new Bun.Glob(pattern).match(entry)),
+      patterns.some((pattern) => matchesGlob(entry, pattern)),
     )) {
       const folder = directory.target_folder;
       if (prepared.some((item) => item.folder === folder && item.name === name))

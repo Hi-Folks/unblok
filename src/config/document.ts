@@ -1,17 +1,23 @@
 import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { parse } from "yaml";
 import { CliError } from "../errors.ts";
 
 export async function loadDocument(
   path: string,
   label: string,
 ): Promise<unknown> {
-  const file = Bun.file(resolve(path));
-  if (!(await file.exists())) {
-    throw new CliError(`${label} file not found: ${path}`, 2);
+  let text: string;
+  try {
+    text = await readFile(resolve(path), "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT")
+      throw new CliError(`${label} file not found: ${path}`, 2);
+    throw error;
   }
 
   try {
-    return Bun.YAML.parse(await file.text());
+    return parse(text);
   } catch (error) {
     const detail =
       error instanceof Error ? error.message : "unknown YAML error";

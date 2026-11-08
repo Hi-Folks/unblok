@@ -20,7 +20,7 @@ The goal is an initial release that other people can install, try, and report is
 - [x] Add a CLI version display (`bun run start --version`).
 - [x] Add the MIT license.
 - [ ] Prepare release notes.
-- [ ] Run tests, type checking, and a build in CI; add binary smoke tests if distributing executables.
+- [ ] Run tests, type checking, and a build in CI; smoke-test the packed JavaScript CLI and library under Node.js and Bun.
 - [ ] Review the supported scope, limitations, command help, and documentation links. Remove unused release dependencies if appropriate.
 
 ## Live setup verification

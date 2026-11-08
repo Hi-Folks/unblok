@@ -74,7 +74,7 @@ export async function waitForBlueprintTarget(
   target: Pick<BlueprintTarget, "timeoutMs" | "intervalMs">,
   clock: { now(): number; sleep(ms: number): Promise<void> } = {
     now: Date.now,
-    sleep: (ms) => Bun.sleep(ms),
+    sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   },
 ): Promise<SpaceDetail> {
   const deadline = clock.now() + target.timeoutMs;

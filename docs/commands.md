@@ -1,6 +1,6 @@
 # Command Reference
 
-All examples use `bun run start`. The compiled executable is `./dist/unblok` after `bun run buildexe`. Add `--json` to data commands that support it for machine-readable output.
+All examples use `bun run start` from a checkout. The published CLI is `unblok`. Add `--json` to data commands that support it for machine-readable output.
 
 ## `space list`
 

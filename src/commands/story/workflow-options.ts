@@ -1,4 +1,5 @@
 import { CliError } from "../../errors.ts";
+import { readFile } from "node:fs/promises";
 
 export interface StoryWorkflowOptions {
   comment?: string;
@@ -172,11 +173,15 @@ export async function loadStoryIds(
   path?: string,
 ): Promise<number[]> {
   if (!path) return ids;
-  const file = Bun.file(path);
-  if (!(await file.exists())) {
-    throw new CliError(`Story ID file not found: ${path}`, 2);
+  let text: string;
+  try {
+    text = await readFile(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT")
+      throw new CliError(`Story ID file not found: ${path}`, 2);
+    throw error;
   }
-  const tokens = (await file.text()).split(/[\s,]+/).filter(Boolean);
+  const tokens = text.split(/[\s,]+/).filter(Boolean);
   const fileIds = tokens.map((token) =>
     positiveInteger(token, "--stories-from"),
   );
