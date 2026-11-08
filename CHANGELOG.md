@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 - WIP
+## 0.3.0 - 2026-11-08
 
 ### Changed
 
@@ -12,7 +12,7 @@
 - Load `.env` from the working directory when the CLI is run through `bunx --bun`.
 - Clarify experiment command availability and the verification status of the demo workflows.
 
-## 0.2.0 - 2026-11-20
+## 0.2.0 - 2026-11-08
 
 ### Changed
 
