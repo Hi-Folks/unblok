@@ -4,6 +4,19 @@ This roadmap turns the operations needed by a representative demo-space setup in
 
 For the ordered implementation checklist for the full demo YAML, see [Demo space setup implementation checklist](space-setup-todo.md).
 
+## Suggested next implementations
+
+This is a prioritized backlog, not a promise that every operation will be exposed through all three interfaces. Confirm the use case and API behavior before implementation. A shared action should serve the CLI, YAML runner, and library wherever the operation is exposed.
+
+1. **[ ] Create a story from the CLI.** Add `story create` using the existing story creation action, accepting a JSON definition and an explicit `--yes`. The library and YAML already create root-level drafts and preserve an existing story with the same slug. Document the input and test validation, existing stories, errors, and JSON output.
+2. **[ ] Create a Storyblok release.** Add a shared operation, CLI command, and library API for creating a release; consider YAML provisioning for repeatable demo setups. Inspect installed-app requirements and available release fields before implementation. Review matching and conflict rules before claiming repeat-run safety; do not implicitly schedule or publish a release. This is a Storyblok content release, separate from an Unblok npm or GitHub release. [Storyblok create-release API](https://www.storyblok.com/docs/api/management/releases/create-a-release).
+3. **[ ] Create a Pipeline branch.** Add a shared operation, CLI command, and library API; evaluate YAML support for repeatable environment setups. Verify Pipeline availability, source branch selection, branch URL, position, required fields, and behavior across regions. Define how to resolve existing branches and conflicts before enabling reconciliation. A Pipeline branch is a Storyblok resource, not a Git branch. [Storyblok create-branch API](https://www.storyblok.com/docs/api/management/pipelines/create-a-branch).
+4. **[ ] Inspect releases and Pipeline branches.** Add list/get capabilities as needed to choose existing resources, support the creation workflows, and make failures easier to diagnose. Determine whether these are prerequisites for safe reconciliation in items 2 and 3.
+5. **[ ] Create stories in folders.** Extend story creation beyond the current root-level limitation when needed. Define parent-folder selection and full-slug matching, and preserve existing stories on repeat runs. Evaluate CLI, YAML, and library support together.
+6. **[ ] Manage assets from the CLI and library.** Evaluate read-only asset listing and explicit folder operations to complement uploads. Keep exact matching and content-based upload reconciliation consistent with YAML.
+
+For each item, keep the action independent of terminal I/O, validate inputs before writes, document side effects and repeat-run behavior, and cover relevant entry points with mocked tests. Verify live Storyblok behavior only when authorized.
+
 ## Command pattern
 
 Resources should use predictable verbs:
