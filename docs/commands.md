@@ -13,6 +13,15 @@ The file path is relative to the current directory. Omit `--folder` to use the a
 
 Use `/` to separate nested folder names. For example, `--folder "Demo/Images"` creates `Demo` and its child `Images` if needed. Existing folders are reused on later runs; if a folder name is ambiguous within the same parent, the upload stops.
 
+## `story publish`
+
+```bash
+bun run start story publish --slug pages/welcome --space-id 123456 --yes
+bun run start story publish --slug pages/welcome --space-id 123456 --yes --json
+```
+
+Publishes the current draft, including pending changes to an already published story. A story confirmed published with no pending changes is left unchanged. Provide one exact full slug without a leading or trailing slash; `STORYBLOK_SPACE_ID` supplies the space if `--space-id` is omitted. `--yes` is required. JSON output contains `status` (`published` or `unchanged`) and `storyId`. The command fails if the story cannot be found or its identity and publication state cannot be verified. It does not select individual languages or releases. Another editor may change the draft between the state check and publication.
+
 ## `space list`
 
 List the spaces accessible to the authenticated user.

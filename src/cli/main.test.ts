@@ -114,6 +114,80 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("publishes a story's draft and skips a repeat run in JSON mode", async () => {
+    let pending = true;
+    let writes = 0;
+    const harness = createHarness({
+      findStoryBySlug: async (_space, slug) =>
+        ({ id: 7, full_slug: slug }) as never,
+      getStory: async () =>
+        ({
+          id: 7,
+          full_slug: "pages/home",
+          is_folder: false,
+          published: true,
+          unpublished_changes: pending,
+        }) as never,
+      publishStory: async (space, id) => {
+        expect([space, id]).toEqual([42, 7]);
+        writes++;
+        pending = false;
+      },
+    });
+    const args = [
+      "story",
+      "publish",
+      "--slug",
+      "pages/home",
+      "--space-id",
+      "42",
+      "--yes",
+      "--json",
+    ];
+    expect(await runCli(args, harness.options)).toBe(0);
+    expect(await runCli(args, harness.options)).toBe(0);
+    expect(harness.stdout).toEqual([
+      { status: "published", storyId: 7 },
+      { status: "unchanged", storyId: 7 },
+    ]);
+    expect(harness.stderr).toEqual([]);
+    expect(writes).toBe(1);
+  });
+
+  test("requires confirmation and reports publication failures", async () => {
+    let lookups = 0;
+    const harness = createHarness({
+      findStoryBySlug: async () => {
+        lookups++;
+        return undefined;
+      },
+    });
+    expect(
+      await runCli(
+        ["story", "publish", "--slug", "home", "--space-id", "42", "--json"],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(lookups).toBe(0);
+    expect(
+      await runCli(
+        [
+          "story",
+          "publish",
+          "--slug",
+          "home",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(1);
+    expect(harness.stderr.at(-1)).toContain("was not found");
+    expect(harness.stdout).toEqual([]);
+  });
+
   test("uploads an asset through the CLI and emits a JSON result", async () => {
     const dir = await mkdtemp(join(tmpdir(), "unblok-upload-"));
     try {

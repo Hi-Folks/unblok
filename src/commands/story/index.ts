@@ -3,6 +3,7 @@ import { dispatch } from "../../cli/dispatch.ts";
 import { storyWorkflowCommand } from "./workflow.ts";
 import { storyTagsCommand } from "./tags.ts";
 import { storyGetCommand, storyBlockUpdateCommand } from "./content.ts";
+import { storyPublishCommand } from "./publish.ts";
 
 export const storyCommand: Command = {
   name: "story",
@@ -14,6 +15,7 @@ export const storyCommand: Command = {
       [
         storyGetCommand,
         storyBlockUpdateCommand,
+        storyPublishCommand,
         storyWorkflowCommand,
         storyTagsCommand,
       ],

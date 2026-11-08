@@ -6,6 +6,7 @@
 
 - Add a library action to create root-level draft stories using the same creation behavior as YAML provisioning.
 - Add a library action to publish a story's current draft by exact full slug, skipping stories already published without pending changes.
+- Add `story publish` to publish a story by full slug from the CLI using the same action as the library.
 
 ## 0.3.1 - 2026-11-08
 

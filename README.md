@@ -120,6 +120,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `component list`, `get`, `create`, and `update` manage component schemas.
 - `component field-add` adds a field to a component tab.
 - `story tags plan` and `story tags assign` add tags to stories by full slug.
+- `story publish` publishes the current draft of a story by full slug.
 - `workflow list`, `workflow stage`, and `story workflow` inspect stages and assign stories.
 
 Run any command with `--help` for an inline summary:
