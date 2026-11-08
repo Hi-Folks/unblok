@@ -31,6 +31,8 @@ export async function ensureComponentField(
   if (existing && existing.type !== input.type)
     throw new CliError(
       `Field '${input.field}' in '${input.component}' has type '${existing.type}', not '${input.type}'.`,
+      1,
+      "CONFLICT",
     );
   const next = { ...schema };
   const properties: Record<string, unknown> = { type: input.type };
@@ -61,6 +63,8 @@ export async function ensureComponentField(
     if (tabs.length > 1)
       throw new CliError(
         `Multiple tabs named '${input.tab}' exist; cannot choose safely.`,
+        1,
+        "AMBIGUOUS",
       );
     for (const [key, entry] of Object.entries(schema)) {
       if (entry.type !== "tab") continue;

@@ -24,10 +24,12 @@
     "dev": "bun --hot index.ts",
     "test": "bun test",
     "build": "bun run scripts/release/build.ts",
+    "build:library": "bun run scripts/release/build-library.ts",
     "buildexe": "bun build ./index.ts --compile --outfile ./dist/unblok",
     "typecheck": "bun check",
     "build:all": "bun run scripts/release/build.ts --all",
     "quality": "bun fmt --check scripts/release/*.ts scripts/release/*.cjs && bun run typecheck && bun test",
+    "release": "bun run scripts/release/prepare.ts",
     "release:check": "bun run scripts/release/check.ts"
   },
   "devDependencies": {

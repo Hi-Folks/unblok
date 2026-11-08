@@ -12,7 +12,7 @@
 - **YAML provisioning:** describe a space setup as configuration and apply it repeatably.
 - **JavaScript and TypeScript library:** call common content operations from your own code, such as assigning a workflow stage to multiple stories.
 
-The library API is in early development and currently available from this checkout or as a Bun workspace dependency; it is not yet included in the published CLI packages. See the [library guide](docs/library.md).
+The library API is in early development. A release containing the library packaging can be installed in a Bun project; until then, use this checkout or a Bun workspace dependency. See the [library guide](docs/library.md).
 
 > Early development: commands and interfaces may change while the initial workflow is shaped.
 
@@ -91,17 +91,17 @@ Ready to automate a setup? Follow [your first blueprint](docs/first-blueprint.md
 
 For an automated demo space setup with a confirmation after duplication, see [the demo setup guide](docs/demo-setup.md).
 
-| Guide                                                           | Use it for                                                          |
-| --------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [Getting started](docs/getting-started.md)                      | Requirements, authentication, installation, and the first request.  |
-| [Your first blueprint](docs/first-blueprint.md)                 | Plan and apply a simple YAML setup to an existing space.            |
-| [Demo experiment](docs/experiments.md)                          | Create a draft experiment and push simulated results.               |
-| [Library API](docs/library.md)                                  | Assign workflow stages and story tags from Bun and TypeScript.      |
-| [Repeatable space setups](docs/space-setups.md)                 | Provisioning workflow, composition, and repeat-run behavior.        |
-| [Command reference](docs/commands.md)                           | Command syntax, every parameter, examples, and output behavior.     |
-| [Setup blueprints](docs/commands.md#version-1-setup-blueprints) | YAML sections, examples, and repeatable setup behavior.             |
-| [Project direction](docs/project-direction.md)                  | Configuration-as-Code goals, design principles, and staged roadmap. |
-| [Command roadmap](docs/command-roadmap.md)                      | Resource operations planned as building blocks for space setups.    |
+| Guide                                                           | Use it for                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [Getting started](docs/getting-started.md)                      | Requirements, authentication, installation, and the first request.        |
+| [Your first blueprint](docs/first-blueprint.md)                 | Plan and apply a simple YAML setup to an existing space.                  |
+| [Demo experiment](docs/experiments.md)                          | Create a draft experiment and push simulated results.                     |
+| [Library API](docs/library.md)                                  | Use content, component, workflow and tag actions from Bun and TypeScript. |
+| [Repeatable space setups](docs/space-setups.md)                 | Provisioning workflow, composition, and repeat-run behavior.              |
+| [Command reference](docs/commands.md)                           | Command syntax, every parameter, examples, and output behavior.           |
+| [Setup blueprints](docs/commands.md#version-1-setup-blueprints) | YAML sections, examples, and repeatable setup behavior.                   |
+| [Project direction](docs/project-direction.md)                  | Configuration-as-Code goals, design principles, and staged roadmap.       |
+| [Command roadmap](docs/command-roadmap.md)                      | Resource operations planned as building blocks for space setups.          |
 
 ## Available commands
 

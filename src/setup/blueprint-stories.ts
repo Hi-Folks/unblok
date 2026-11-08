@@ -5,7 +5,8 @@ import {
   type RemoteAsset,
 } from "./blueprint-assets.ts";
 import { BlueprintOperationError } from "./blueprint-report.ts";
-import { updateStoryBlock } from "../actions/stories/content.ts";
+import { reconcileStoryBlock } from "../actions/stories/reconcile-block.ts";
+export type { StoryBlockUpdate } from "../actions/stories/reconcile-block.ts";
 
 export interface StoryCreate {
   name: string;
@@ -16,80 +17,7 @@ export interface StoryTranslations {
   slug: string;
   translations: Array<{ lang: string; slug: string; name?: string }>;
 }
-export interface StoryBlockUpdate {
-  story_slug: string;
-  component: string;
-  fields: Record<string, unknown>;
-}
-
-export async function updateBlueprintStoryBlock(
-  gateway: StoryblokGateway,
-  spaceId: number,
-  update: StoryBlockUpdate,
-  expectedId?: number,
-  allowChanges = true,
-): Promise<boolean> {
-  const found =
-    expectedId === undefined
-      ? await gateway.findStoryBySlug(spaceId, update.story_slug)
-      : undefined;
-  const storyId = expectedId ?? found?.id;
-  if (
-    typeof storyId !== "number" ||
-    !Number.isSafeInteger(storyId) ||
-    storyId <= 0
-  )
-    throw new CliError(
-      `Story '${update.story_slug}' was not found or does not match its experiment mapping.`,
-    );
-  const story = await gateway.getStory(spaceId, storyId);
-  if (
-    story.id !== storyId ||
-    story.full_slug !== update.story_slug ||
-    story.is_folder
-  )
-    throw new CliError(`Story '${update.story_slug}' no longer matches.`);
-  const matches: Record<string, unknown>[] = [];
-  function visit(value: unknown): void {
-    if (Array.isArray(value)) {
-      value.forEach(visit);
-      return;
-    }
-    if (!value || typeof value !== "object") return;
-    const node = value as Record<string, unknown>;
-    if (node.component === update.component) matches.push(node);
-    Object.values(node).forEach(visit);
-  }
-  visit(story.content);
-  if (matches.length !== 1 || typeof matches[0]?._uid !== "string")
-    throw new CliError(
-      `Expected exactly one '${update.component}' block with a UID; found ${matches.length}.`,
-    );
-  if (
-    Object.keys(update.fields).some((key) => !Object.hasOwn(matches[0]!, key))
-  )
-    throw new CliError(
-      "A requested field does not exist on the selected block.",
-    );
-  if (
-    Object.entries(update.fields).every(([key, value]) =>
-      Bun.deepEquals(matches[0]![key], value),
-    )
-  )
-    return false;
-  if (!allowChanges)
-    throw new CliError(
-      "Variant content differs while the experiment is running; inspect it before changing it.",
-    );
-  await updateStoryBlock(
-    gateway,
-    spaceId,
-    storyId,
-    matches[0]._uid,
-    update.fields,
-  );
-  return true;
-}
+export const updateBlueprintStoryBlock = reconcileStoryBlock;
 
 function addComponentIds(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(addComponentIds);

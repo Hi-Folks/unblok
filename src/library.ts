@@ -6,6 +6,16 @@ export type {
   UnblokErrorInfo,
 } from "./actions/action-error.ts";
 export type { StoryblokGateway } from "./storyblok/gateway.ts";
+export { updateStoryBlock } from "./actions/stories/library-content.ts";
+export type {
+  StoryBlockGateway,
+  UpdateStoryBlockInput,
+} from "./actions/stories/library-content.ts";
+export { ensureComponentField } from "./actions/components/library-field.ts";
+export type {
+  ComponentFieldGateway,
+  EnsureComponentFieldInput,
+} from "./actions/components/library-field.ts";
 export {
   assignStoryTags,
   planStoryTags,

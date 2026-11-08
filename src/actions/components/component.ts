@@ -205,6 +205,8 @@ export async function getComponent(
   if (!component) {
     throw new CliError(
       `Component '${reference}' was not found in space ${spaceId}.`,
+      1,
+      "NOT_FOUND",
     );
   }
   return component;

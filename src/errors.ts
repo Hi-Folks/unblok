@@ -4,7 +4,7 @@ export class CliError extends Error {
   constructor(
     message: string,
     readonly exitCode = 1,
-    readonly code?: "INVALID_INPUT" | "NOT_FOUND" | "AMBIGUOUS",
+    readonly code?: "INVALID_INPUT" | "NOT_FOUND" | "AMBIGUOUS" | "CONFLICT",
   ) {
     super(message);
     this.name = "CliError";

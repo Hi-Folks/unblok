@@ -1,5 +1,13 @@
 # Alpha release checklist
 
+To prepare a local release after committing the changes and adding a changelog section, run:
+
+```bash
+bun run release 0.1.4
+```
+
+Pass the intended stable version explicitly. The command requires a clean working tree and a new local tag, runs formatting and quality checks, updates the package version, commits that version change, and creates an annotated tag. It prints a step-by-step report and, on success, the commands to review and push the commit and tag. If formatting changes files, it stops so you can review and commit them before retrying. It does not push or publish. Inspect the commit and tag before pushing: pushing a `v*` tag starts the GitHub release workflow. The command checks local tags, not the remote registry or remote tags. If a step fails after the version is written, inspect the working tree and Git history before retrying; it does not roll back automatically.
+
 The goal is an initial release that other people can install, try, and report issues against. Keep the scope focused on the documented commands and the version 1 space setup workflow.
 
 ## Current verification

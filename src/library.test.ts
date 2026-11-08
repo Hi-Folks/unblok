@@ -2,12 +2,97 @@ import { expect, test } from "bun:test";
 import { ClientError } from "@storyblok/management-api-client";
 import {
   UnblokError,
+  updateStoryBlock,
+  ensureComponentField,
   assignStoryTags,
   planStoryTags,
   assignStoryWorkflow,
   planStoryWorkflow,
 } from "./library.ts";
-import type { StoryTagGateway, WorkflowStoryGateway } from "./library.ts";
+import type {
+  StoryTagGateway,
+  WorkflowStoryGateway,
+  StoryBlockGateway,
+  ComponentFieldGateway,
+} from "./library.ts";
+
+test("library story block update saves a draft and skips unchanged content", async () => {
+  let content = {
+    component: "page",
+    body: [{ _uid: "hero", component: "hero", text: "Old" }],
+  };
+  let writes = 0;
+  const gateway = {
+    findStoryBySlug: async () => ({ id: 1 }),
+    getStory: async () => ({ id: 1, full_slug: "home", content }),
+    updateStoryContent: async (
+      _space: number,
+      _id: number,
+      next: typeof content,
+    ) => {
+      writes++;
+      content = next;
+      return {};
+    },
+  } as unknown as StoryBlockGateway;
+  const input = {
+    spaceId: 42,
+    story: "home",
+    component: "hero",
+    fields: { text: "New" },
+  };
+  expect((await updateStoryBlock(gateway, input)).status).toBe("updated");
+  expect(content.body[0]?.text).toBe("New");
+  expect((await updateStoryBlock(gateway, input)).status).toBe("unchanged");
+  expect(writes).toBe(1);
+  await expect(
+    updateStoryBlock(gateway, { ...input, fields: { unknown: "x" } }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  content.body.push({ _uid: "other", component: "hero", text: "Old" });
+  await expect(updateStoryBlock(gateway, input)).rejects.toMatchObject({
+    code: "AMBIGUOUS",
+  });
+  expect(writes).toBe(1);
+});
+
+test("library component field reconciliation creates and then skips a matching field", async () => {
+  let schema: Record<string, Record<string, unknown>> = {};
+  const component = () => ({ id: 1, name: "article", schema });
+  const gateway = {
+    listComponents: async () => [component()],
+    getComponent: async () => component(),
+    updateComponent: async (
+      _space: number,
+      _id: number,
+      update: { schema: typeof schema },
+    ) => {
+      schema = update.schema;
+      return component();
+    },
+  } as unknown as ComponentFieldGateway;
+  const input = {
+    spaceId: 42,
+    component: "article",
+    field: "seo",
+    type: "custom",
+    field_type: "sb-ai-seo",
+    tab: "SEO",
+  };
+  expect((await ensureComponentField(gateway, input)).status).toBe("created");
+  expect(schema.seo?.field_type).toBe("sb-ai-seo");
+  expect((await ensureComponentField(gateway, input)).status).toBe("unchanged");
+  await expect(
+    ensureComponentField(gateway, { ...input, field_type: "" }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    ensureComponentField(gateway, {
+      spaceId: 42,
+      component: "article",
+      field: "seo",
+      type: "text",
+    }),
+  ).rejects.toMatchObject({ code: "CONFLICT" });
+});
 
 test("public tag API previews, merges tags, and reports failures and repeat runs", async () => {
   const tags = new Map([

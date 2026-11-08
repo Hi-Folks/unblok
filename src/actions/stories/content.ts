@@ -1,11 +1,12 @@
 import { CliError } from "../../errors.ts";
 import type { StoryblokGateway } from "../../storyblok/gateway.ts";
+import type { Story } from "@storyblok/management-api-client";
 
 export async function getStory(
   gateway: Pick<StoryblokGateway, "getStory" | "findStoryBySlug">,
   spaceId: number,
   reference: string,
-) {
+): Promise<Story> {
   if (/^\d+$/.test(reference))
     return gateway.getStory(spaceId, Number(reference));
   const story = await gateway.findStoryBySlug(spaceId, reference);
@@ -19,7 +20,7 @@ export async function updateStoryBlock(
   storyId: number,
   uid: string,
   fields: Record<string, unknown>,
-) {
+): Promise<Story> {
   if (
     !uid ||
     !Object.keys(fields).length ||

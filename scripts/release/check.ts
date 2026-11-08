@@ -1,9 +1,17 @@
-import { chmod, copyFile, mkdir, rm, stat, symlink } from "node:fs/promises";
+import {
+  chmod,
+  copyFile,
+  cp,
+  mkdir,
+  rm,
+  stat,
+  symlink,
+} from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdtemp } from "node:fs/promises";
-import { version } from "../../package.json";
+import { version, dependencies } from "../../package.json";
 import config from "./config.json";
 import { windowsBatchCommand } from "./windows-command";
 
@@ -62,7 +70,15 @@ const metadata = {
     : {}),
 };
 const main = join(stage, "unblok");
+const libraryBuild = Bun.spawn(["bun", "run", "build:library"], {
+  stdout: "inherit",
+  stderr: "inherit",
+});
+if ((await libraryBuild.exited) !== 0) throw new Error("Library build failed.");
 await mkdir(join(main, "bin"), { recursive: true });
+await mkdir(join(main, "lib"), { recursive: true });
+await copyFile("dist/library/library.js", join(main, "lib/library.js"));
+await cp("dist/library-types", join(main, "lib/types"), { recursive: true });
 await Bun.write(
   join(main, "bin/unblok.cjs"),
   (await Bun.file("scripts/release/launcher.cjs").text()).replace(
@@ -74,7 +90,7 @@ const hasLicense = await Bun.file("LICENSE").exists();
 if (hasLicense) await copyFile("LICENSE", join(main, "LICENSE"));
 await Bun.write(
   join(main, "README.md"),
-  "# Unblok\n\nUnofficial Storyblok management CLI. Run `unblok --help`.\n",
+  "# Unblok\n\nUnofficial Storyblok CLI and Bun library. Run `unblok --help` or import actions from `unblok` in a Bun project. See https://github.com/Hi-Folks/unblok for documentation.\n",
 );
 await Bun.write(
   join(main, "package.json"),
@@ -84,7 +100,17 @@ await Bun.write(
       ...metadata,
       private: !publish,
       bin: { unblok: "bin/unblok.cjs" },
-      files: ["bin/unblok.cjs", "README.md"],
+      type: "module",
+      exports: {
+        ".": { types: "./lib/types/library.d.ts", default: "./lib/library.js" },
+      },
+      types: "./lib/types/library.d.ts",
+      dependencies: {
+        "@storyblok/management-api-client":
+          dependencies["@storyblok/management-api-client"],
+        "@storyblok/region-helper": dependencies["@storyblok/region-helper"],
+      },
+      files: ["bin/unblok.cjs", "lib", "README.md"],
       engines: { node: ">=18" },
       keywords: ["storyblok", "cli", "automation"],
       optionalDependencies,
@@ -214,7 +240,18 @@ for (const name of ["unblok", ...(all ? platforms : [host])]) {
   if (!info) throw new Error(`npm pack failed: ${name}`);
   const allowed =
     name === "unblok"
-      ? ["README.md", "bin/unblok.cjs", "package.json"]
+      ? [
+          "README.md",
+          "bin/unblok.cjs",
+          "package.json",
+          "lib/library.js",
+          ...Array.from(
+            new Bun.Glob("**/*.d.ts").scanSync({
+              cwd: join(main, "lib/types"),
+              onlyFiles: true,
+            }),
+          ).map((file) => `lib/types/${file.replaceAll("\\", "/")}`),
+        ]
       : [
           `bin/${name.startsWith("win32") ? "unblok.exe" : "unblok"}`,
           "package.json",
@@ -246,6 +283,31 @@ try {
       "Compiled CLI could not load its embedded schema outside the source tree",
     );
   await Bun.write(join(temp, "package.json"), '{"private":true}');
+  // Seed npm's offline resolution with the exact dependency versions already
+  // installed from the lockfile, rather than requiring a pre-populated cache.
+  const dependencyTarballs: string[] = [];
+  for (const dependency of [
+    "@storyblok/management-api-client",
+    "@storyblok/region-helper",
+    "ky",
+  ]) {
+    const result = JSON.parse(
+      await run(
+        [
+          "npm",
+          "pack",
+          "--json",
+          "--ignore-scripts",
+          "--pack-destination",
+          tarballs,
+        ],
+        resolve("node_modules", dependency),
+      ),
+    ) as Array<{ filename: string }>;
+    if (!result[0])
+      throw new Error(`Could not pack local dependency ${dependency}.`);
+    dependencyTarballs.push(join(tarballs, result[0].filename));
+  }
   await run(
     [
       "npm",
@@ -256,6 +318,38 @@ try {
       "--no-save",
       packed.unblok!,
       packed[host]!,
+      ...dependencyTarballs,
+    ],
+    temp,
+  );
+  const consumer = join(temp, "library-consumer.ts");
+  await Bun.write(
+    consumer,
+    `import { assignStoryTags, type StoryTagGateway } from "unblok";
+const tags: string[] = [];
+const gateway = {
+  findStoryBySlug: async (_space: number, slug: string) => ({ id: 1, full_slug: slug, tag_list: [...tags] }),
+  getStory: async () => ({ id: 1, full_slug: "home", tag_list: [...tags] }),
+  updateStoryTags: async (_space: number, _id: number, values: string[]) => { tags.splice(0, tags.length, ...values); },
+} as unknown as StoryTagGateway;
+const report = await assignStoryTags(gateway, { spaceId: 1, stories: ["home"], tags: ["Demo"] });
+if (report.summary.updated !== 1 || tags[0] !== "Demo") throw new Error("Installed library action failed");
+`,
+  );
+  await run(["bun", consumer], temp);
+  await run(
+    [
+      "bun",
+      resolve("node_modules/typescript/bin/tsc"),
+      "--noEmit",
+      "--skipLibCheck",
+      "--target",
+      "esnext",
+      "--module",
+      "preserve",
+      "--moduleResolution",
+      "bundler",
+      consumer,
     ],
     temp,
   );
@@ -286,6 +380,21 @@ try {
       : await run([launcher, "--help"], temp, executionEnv);
   if (!help.includes("Usage: unblok"))
     throw new Error("Installed npm launcher help failed");
+  const planArgs = [
+    "space",
+    "setup",
+    "plan",
+    "--config",
+    resolve("src/setup/fixtures/input-blueprint.yaml"),
+    "--json",
+  ];
+  const installedPlan = JSON.parse(
+    process.platform === "win32"
+      ? await run(windowsBatchCommand(launcher, ...planArgs), temp)
+      : await run([launcher, ...planArgs], temp, executionEnv),
+  ) as { apiVersion?: string };
+  if (installedPlan.apiVersion !== "unblok/setup-blueprint-plan-v1")
+    throw new Error("Installed CLI could not plan the YAML blueprint.");
 } finally {
   await rm(temp, { recursive: true, force: true });
 }

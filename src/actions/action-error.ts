@@ -5,6 +5,7 @@ export type UnblokErrorCode =
   | "INVALID_INPUT"
   | "NOT_FOUND"
   | "AMBIGUOUS"
+  | "CONFLICT"
   | "UNAUTHORIZED"
   | "PERMISSION_DENIED"
   | "RATE_LIMITED"

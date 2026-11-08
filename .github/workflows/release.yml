@@ -118,6 +118,7 @@ jobs:
           npm install --prefix "$target" --no-audit --no-fund "unblok@$version"
           "$target/node_modules/.bin/unblok" --version | grep -Fx "unblok $version"
           "$target/node_modules/.bin/unblok" --help | grep -F 'Usage: unblok'
+          (cd "$target" && bun -e 'import { assignStoryTags, createStoryblokGateway } from "unblok"; if (typeof assignStoryTags !== "function" || typeof createStoryblokGateway !== "function") throw new Error("Published library exports are missing");')
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
