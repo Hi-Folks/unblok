@@ -148,6 +148,7 @@ export async function assignWorkflowStage(
   options: {
     concurrency?: number;
     onOperation?: (operation: WorkflowAssignmentResult) => void;
+    onFailure?: (storyId: number, error: unknown) => void;
   } = {},
 ): Promise<WorkflowAssignmentReport> {
   const plan = await planWorkflowAssignment(gateway, spaceId, input);
@@ -184,6 +185,7 @@ export async function assignWorkflowStage(
         await gateway.assignWorkflowStage(spaceId, assignment);
         result = { ...operation, status: "assigned" };
       } catch (error) {
+        options.onFailure?.(operation.storyId, error);
         result = {
           ...operation,
           error:

@@ -6,13 +6,19 @@
 
 ## Unblock your Storyblok operations.
 
-Set up and manage Storyblok spaces from the command line, or describe a setup in YAML and run it whenever you need it. `unblok_` turns recurring operations into reusable building blocks for developers, CI pipelines, and AI assistants.
+`unblok_` provides reusable building blocks for managing Storyblok spaces and content. Use it in three ways:
+
+- **Command-line CLI:** run individual operations from a shell, script, or CI pipeline.
+- **YAML provisioning:** describe a space setup as configuration and apply it repeatably.
+- **JavaScript and TypeScript library:** call common content operations from your own code, such as assigning a workflow stage to multiple stories.
+
+The library API is in early development and currently available from this checkout or as a Bun workspace dependency; it is not yet included in the published CLI packages. See the [library guide](docs/library.md).
 
 > Early development: commands and interfaces may change while the initial workflow is shaped.
 
 ## Why `unblok_`?
 
-Creating preconfigured spaces for a content editor team, launching a new brand, or starting a new project often means repeating the same steps in the Storyblok UI or maintaining one-off API scripts. With `unblok_`, you can run individual commands for everyday tasks or combine them in a YAML blueprint for a repeatable space setup.
+Creating preconfigured spaces for a content editor team, launching a new brand, or starting a new project often means repeating the same steps in the Storyblok UI or maintaining one-off API scripts. With `unblok_`, you can run individual commands, compose a repeatable YAML blueprint, or use shared operations in your application.
 
 This is **configuration as code** applied to Storyblok: keep a setup in Git, review changes with your team, and reuse it across spaces. For example, a blueprint can install an app and add a tag to a story:
 
@@ -52,7 +58,7 @@ AI still needs the right instructions and permissions, and Storyblok state or AP
 
 ## Scope
 
-`unblok_` complements existing Storyblok tooling. It focuses on operational space management and repeatable administration rather than project scaffolding or application development. Its YAML blueprints compose reusable operations into version-controlled space setups.
+`unblok_` complements existing Storyblok tooling. It focuses on operational space and content management rather than project scaffolding. Its YAML blueprints compose reusable operations into version-controlled space setups, and its emerging library API makes common multi-step operations available to application code.
 
 ## Installation
 
@@ -90,6 +96,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 | [Getting started](docs/getting-started.md)                      | Requirements, authentication, installation, and the first request.  |
 | [Your first blueprint](docs/first-blueprint.md)                 | Plan and apply a simple YAML setup to an existing space.            |
 | [Demo experiment](docs/experiments.md)                          | Create a draft experiment and push simulated results.               |
+| [Library API](docs/library.md)                                  | Assign workflow stages and story tags from Bun and TypeScript.      |
 | [Repeatable space setups](docs/space-setups.md)                 | Provisioning workflow, composition, and repeat-run behavior.        |
 | [Command reference](docs/commands.md)                           | Command syntax, every parameter, examples, and output behavior.     |
 | [Setup blueprints](docs/commands.md#version-1-setup-blueprints) | YAML sections, examples, and repeatable setup behavior.             |

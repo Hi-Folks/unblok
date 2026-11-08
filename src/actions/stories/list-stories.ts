@@ -19,7 +19,11 @@ export async function listStories(
     const found = new Set(unique.map((story) => story.id));
     const missing = options.ids.filter((id) => !found.has(id));
     if (missing.length > 0) {
-      throw new CliError(`Story IDs not found: ${missing.join(", ")}.`);
+      throw new CliError(
+        `Story IDs not found: ${missing.join(", ")}.`,
+        1,
+        "NOT_FOUND",
+      );
     }
   }
   return unique;

@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This is a Bun and TypeScript CLI. `index.ts` is the thin executable entry point. Put command groups in `src/commands/<resource>/`, reusable operations in `src/actions/<resource>/`, dispatch code in `src/cli/`, configuration readers in `src/config/`, API adapters in `src/storyblok/`, and guides in `docs/`. Commands should parse and present; actions must remain independent of terminal I/O so a future Configuration-as-Code runner can call them. Keep tests beside their subjects as `*.test.ts`. Do not edit `node_modules/` or commit `dist/`.
+This is a Bun and TypeScript project with CLI, YAML provisioning, and library entry points. `index.ts` is the thin executable entry point. Put command groups in `src/commands/<resource>/`, reusable operations in `src/actions/<resource>/`, dispatch code in `src/cli/`, configuration readers in `src/config/`, API adapters in `src/storyblok/`, and guides in `docs/`. Commands should parse and present; actions must remain independent of terminal I/O so the YAML runner and library can call them. For operation design and cross-entry-point tests, follow [the Unblok operations skill](skills/unblok-operations/SKILL.md). Keep tests beside their subjects as `*.test.ts`. Do not edit `node_modules/` or commit `dist/`.
 
 ## Build, Test, and Development Commands
 

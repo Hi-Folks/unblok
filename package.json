@@ -10,7 +10,10 @@
   "bugs": {
     "url": "https://github.com/Hi-Folks/unblok/issues"
   },
-  "module": "index.ts",
+  "module": "src/library.ts",
+  "exports": {
+    ".": "./src/library.ts"
+  },
   "type": "module",
   "private": true,
   "bin": {

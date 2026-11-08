@@ -21,11 +21,15 @@ export async function resolveWorkflow(
   if (!matches.length) {
     throw new CliError(
       `Workflow '${reference}' was not found in space ${spaceId}.`,
+      1,
+      "NOT_FOUND",
     );
   }
   if (matches.length > 1)
     throw new CliError(
       `Workflow '${reference}' is ambiguous in space ${spaceId}.`,
+      1,
+      "AMBIGUOUS",
     );
   return matches[0]!;
 }
@@ -89,12 +93,15 @@ export async function resolveWorkflowStage(
   if (matches.length === 0) {
     throw new CliError(
       `Workflow stage '${stageReference}' was not found in space ${spaceId}.`,
+      1,
+      "NOT_FOUND",
     );
   }
   if (matches.length > 1) {
     throw new CliError(
       `Workflow stage '${stageReference}' is ambiguous. Pass '--workflow <name-or-id>'.`,
       2,
+      "AMBIGUOUS",
     );
   }
   return matches[0] as WorkflowStage;

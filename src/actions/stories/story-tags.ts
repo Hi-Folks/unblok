@@ -46,7 +46,11 @@ export async function planStoryTags(
     });
   }
   if (missing.length)
-    throw new CliError(`Stories not found: ${missing.join(", ")}.`);
+    throw new CliError(
+      `Stories not found: ${missing.join(", ")}.`,
+      1,
+      "NOT_FOUND",
+    );
   return {
     apiVersion: "unblok/story-tags-plan-v1" as const,
     target: { spaceId },
@@ -60,6 +64,7 @@ export async function assignStoryTags(
   spaceId: number,
   slugs: string[],
   tags: string[],
+  options: { onFailure?: (storyId: number, error: unknown) => void } = {},
 ) {
   const plan = await planStoryTags(gateway, spaceId, slugs, tags);
   const operations: StoryTagOperation[] = [];
@@ -83,6 +88,7 @@ export async function assignStoryTags(
         status: addTags.length ? "updated" : "unchanged",
       });
     } catch (error) {
+      options.onFailure?.(operation.storyId, error);
       operations.push({
         ...operation,
         status: "failed",
