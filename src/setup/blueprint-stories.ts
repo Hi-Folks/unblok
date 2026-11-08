@@ -5,6 +5,7 @@ import {
 } from "./blueprint-assets.ts";
 import { BlueprintOperationError } from "./blueprint-report.ts";
 import { reconcileStoryBlock } from "../actions/stories/reconcile-block.ts";
+import { createStoryIfMissing } from "../actions/stories/create-story.ts";
 import {
   checkTranslatedSlugPrerequisites,
   reconcileTranslatedSlugs,
@@ -20,18 +21,6 @@ export interface StoryCreate {
 }
 export const updateBlueprintStoryBlock = reconcileStoryBlock;
 
-function addComponentIds(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(addComponentIds);
-  if (typeof value !== "object" || value === null) return value;
-  const item = value as Record<string, unknown>;
-  const result = Object.fromEntries(
-    Object.entries(item).map(([key, child]) => [key, addComponentIds(child)]),
-  );
-  if (typeof item.component === "string" && !item._uid)
-    result._uid = crypto.randomUUID();
-  return result;
-}
-
 export async function applyStories(
   gateway: StoryblokGateway,
   spaceId: number,
@@ -42,30 +31,21 @@ export async function applyStories(
 ): Promise<void> {
   for (const desired of creates) {
     try {
-      const existing = await gateway.findStoryBySlug(spaceId, desired.slug);
-      if (existing) {
-        operations.push({
-          operation: "create-story",
-          key: desired.slug,
-          status: "unchanged",
-        });
-        continue;
-      }
-      const content = await resolveStoryAssetReferences(
+      const result = await createStoryIfMissing(
         gateway,
-        spaceId,
-        desired.content,
-        references,
+        { spaceId, ...desired },
+        async (content) =>
+          (await resolveStoryAssetReferences(
+            gateway,
+            spaceId,
+            content,
+            references,
+          )) as Record<string, unknown>,
       );
-      await gateway.createStory(spaceId, {
-        name: desired.name,
-        slug: desired.slug,
-        content: addComponentIds(content) as Record<string, unknown>,
-      });
       operations.push({
         operation: "create-story",
         key: desired.slug,
-        status: "created",
+        status: result.status,
       });
     } catch (error) {
       throw new BlueprintOperationError("create-story", desired.slug, error);

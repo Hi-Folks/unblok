@@ -3,6 +3,7 @@ import { ClientError } from "@storyblok/management-api-client";
 import {
   UnblokError,
   ensureTranslatedSlugs,
+  ensureStoryCreated,
   ensureAppInstalled,
   updateStoryBlock,
   ensureComponentField,
@@ -18,7 +19,84 @@ import type {
   ComponentFieldGateway,
   TranslatedSlugsGateway,
   AppInstallGateway,
+  StoryCreateGateway,
 } from "./library.ts";
+
+test("library creates a root draft story once and preserves existing content", async () => {
+  let existing = false;
+  let payload: unknown;
+  let writes = 0;
+  const gateway = {
+    findStoryBySlug: async () => (existing ? { id: 12 } : undefined),
+    createStory: async (_space: number, story: unknown) => {
+      payload = story;
+      writes++;
+      existing = true;
+      return { id: 12 } as never;
+    },
+  } as StoryCreateGateway;
+  const input = {
+    spaceId: 1,
+    name: "Welcome",
+    slug: "welcome",
+    content: {
+      component: "page",
+      body: [
+        { component: "hero", _uid: "existing-uid" },
+        { component: "text" },
+      ],
+    },
+  };
+  expect(await ensureStoryCreated(gateway, input)).toEqual({
+    status: "created",
+  });
+  const content = (payload as typeof input).content;
+  expect(content).toMatchObject({
+    component: "page",
+    body: [{ _uid: "existing-uid" }, { component: "text" }],
+  });
+  expect((content as { _uid?: string })._uid).toBeTruthy();
+  expect(content.body[1]?._uid).toBeTruthy();
+  expect(input.content.body[1]?._uid).toBeUndefined();
+  expect(await ensureStoryCreated(gateway, input)).toEqual({
+    status: "unchanged",
+  });
+  expect(writes).toBe(1);
+});
+
+test("library validates story inputs and classifies API failures", async () => {
+  let requests = 0;
+  const gateway = {
+    findStoryBySlug: async () => {
+      requests++;
+      throw new ClientError("Forbidden", {
+        status: 403,
+        statusText: "Forbidden",
+        data: {},
+      });
+    },
+    createStory: async () => {
+      throw new Error("unexpected");
+    },
+  } as StoryCreateGateway;
+  const input = {
+    spaceId: 1,
+    name: "Page",
+    slug: "page",
+    content: { component: "page" },
+  };
+  await expect(
+    ensureStoryCreated(gateway, { ...input, slug: "folder/page" }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    ensureStoryCreated(gateway, { ...input, content: {} }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  expect(requests).toBe(0);
+  await expect(ensureStoryCreated(gateway, input)).rejects.toMatchObject({
+    code: "PERMISSION_DENIED",
+    status: 403,
+  });
+});
 
 test("library installs an app by regional slug and skips an existing installation", async () => {
   let installed = false;

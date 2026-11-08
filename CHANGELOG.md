@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 - WIP
+
+### Added
+
+- Add a library action to create root-level draft stories using the same creation behavior as YAML provisioning.
+
 ## 0.3.1 - 2026-11-08
 
 ### Added

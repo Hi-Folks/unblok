@@ -35,6 +35,27 @@ The story list must contain exact, nonempty full slugs. Every slug is resolved b
 
 The gateway is supplied explicitly, so the same operations work with a custom implementation of the exported `WorkflowStoryGateway` type. No action reads credentials, prompts, or writes terminal output. The client factory accepts the token explicitly; do not hard-code or log it.
 
+## Create a story
+
+```ts
+import { ensureStoryCreated } from "unblok";
+
+const result = await ensureStoryCreated(gateway, {
+  spaceId: 123456,
+  name: "Welcome",
+  slug: "welcome",
+  content: {
+    component: "page",
+    body: [{ component: "hero", headline: "Hello" }],
+  },
+});
+console.log(result.status); // "created" or "unchanged"
+```
+
+This creates an unpublished story at the space root. The slug must be root-level; creating stories inside folders is not supported. The content's component names and fields must match components in the space. Missing `_uid` values are generated for component blocks, including nested blocks; supplied IDs are preserved and the input is not modified.
+
+If a story already exists at that slug, the action reports `unchanged` and preserves its content without comparing or updating it. Errors use `UnblokError`. YAML `stories.create` shares this behavior and additionally resolves its YAML-specific asset directives; library callers should provide resolved asset objects in their content. Concurrent creation by another process can still cause an API conflict.
+
 ## Upload an asset
 
 ```ts
