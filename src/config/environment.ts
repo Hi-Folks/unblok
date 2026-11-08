@@ -1,4 +1,4 @@
-import { CliError } from "../errors.ts";
+import { CliError, tokenGuidance } from "../errors.ts";
 import type { StoryblokRegion } from "../storyblok/gateway.ts";
 
 export type Environment = Record<string, string | undefined>;
@@ -23,9 +23,7 @@ export function getStoryblokToken(environment: Environment): string {
   const token = environment.STORYBLOK_TOKEN?.trim();
 
   if (!token) {
-    throw new CliError(
-      "STORYBLOK_TOKEN is required. Add it to .env or export it in your shell.",
-    );
+    throw new CliError(`STORYBLOK_TOKEN is required.\n\n${tokenGuidance}`);
   }
 
   return token;

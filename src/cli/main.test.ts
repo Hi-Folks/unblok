@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { ClientError } from "@storyblok/management-api-client";
 import type { Environment } from "../config/environment.ts";
 import type { Output } from "../output.ts";
 import type { StoryblokGateway } from "../storyblok/gateway.ts";
@@ -110,6 +111,31 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("explains token setup on stderr without making a request", async () => {
+    const harness = createHarness();
+    harness.options.environment = {};
+    expect(await runCli(["space", "list", "--json"], harness.options)).toBe(1);
+    expect(harness.stdout).toEqual([]);
+    expect(harness.stderr[0]).toContain("STORYBLOK_TOKEN is required");
+    expect(harness.stderr[0]).toContain("current working directory");
+    expect(harness.stderr[0]).toContain("Personal access tokens");
+  });
+
+  test("explains rejected tokens on stderr without exposing the token", async () => {
+    const harness = createHarness({
+      listSpaces: async () => {
+        throw new ClientError("test-token", {
+          status: 401,
+          statusText: "Unauthorized",
+          data: { message: "test-token" },
+        });
+      },
+    });
+    expect(await runCli(["space", "list", "--json"], harness.options)).toBe(1);
+    expect(harness.stdout).toEqual([]);
+    expect(harness.stderr[0]).toContain("invalid or expired");
+    expect(harness.stderr[0]).not.toContain("test-token");
+  });
   test("requires a disclaimer ID and confirmation before enabling Experiments", async () => {
     let requests = 0;
     const harness = createHarness({

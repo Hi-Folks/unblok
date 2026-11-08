@@ -59,7 +59,9 @@ Open `.env` in an editor and replace the placeholder with your token:
 STORYBLOK_TOKEN=your-personal-access-token
 ```
 
-The CLI loads `.env` from the working directory. Keep the file private: never commit it or share its contents. Optionally set `STORYBLOK_SPACE_ID` in `.env` to select a default space; an explicit `--space-id` takes precedence.
+The CLI loads `.env` from the working directory. You can instead export `STORYBLOK_TOKEN` in your shell; an existing environment variable takes precedence over the `.env` value. Keep the token and file private: never commit `.env` or share its contents. Optionally set `STORYBLOK_SPACE_ID` in `.env` to select a default space; an explicit `--space-id` takes precedence.
+
+If Storyblok returns HTTP 401, check whether the token is invalid or expired. Generate a new personal access token if needed, update `.env` or your exported environment variable, and retry. For permission errors, check that the token has access to the required spaces and scopes.
 
 ## 4. Make a read-only request
 
