@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 - WIP
+
+### Added
+
+- Add a library action to reconcile translated story slugs using the same logic as YAML provisioning.
+
 ## 0.3.0 - 2026-11-08
 
 ### Changed

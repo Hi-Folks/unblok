@@ -99,7 +99,7 @@ try {
   const consumer = join(temp, "consumer.ts");
   await Bun.write(
     consumer,
-    'import { assignStoryTags, type StoryTagsInput } from "unblok"; const input: StoryTagsInput = { spaceId: 1, stories: ["home"], tags: ["demo"] }; void assignStoryTags; void input;',
+    'import { assignStoryTags, ensureTranslatedSlugs, type StoryTagsInput, type EnsureTranslatedSlugsInput } from "unblok"; const input: StoryTagsInput = { spaceId: 1, stories: ["home"], tags: ["demo"] }; const translation: EnsureTranslatedSlugsInput = { spaceId: 1, story: "about", translations: [{ language: "it", slug: "chi-siamo" }] }; void assignStoryTags; void ensureTranslatedSlugs; void input; void translation;',
   );
   await run(
     [
@@ -198,7 +198,7 @@ try {
         runtime,
         "--input-type=module",
         "-e",
-        'import { assignStoryTags } from "unblok"; const g={findStoryBySlug:async()=>({id:1,full_slug:"home",tag_list:[]}),getStory:async()=>({id:1,full_slug:"home",tag_list:[]}),updateStoryTags:async()=>{}}; const result=await assignStoryTags(g,{spaceId:1,stories:["home"],tags:["demo"]}); if(result.summary.updated!==1) throw new Error("Library action failed");',
+        'import { assignStoryTags, ensureTranslatedSlugs } from "unblok"; const g={findStoryBySlug:async()=>({id:1,full_slug:"home",tag_list:[]}),getStory:async()=>({id:1,full_slug:"home",tag_list:[],translated_slugs:[]}),updateStoryTags:async()=>{},listInstalledApps:async()=>[{slug:"translatable-slugs"}],listLanguages:async()=>[{code:"it"}],updateTranslatedSlugs:async()=>{}}; const result=await assignStoryTags(g,{spaceId:1,stories:["home"],tags:["demo"]}); if(result.summary.updated!==1) throw new Error("Library action failed"); const translation=await ensureTranslatedSlugs(g,{spaceId:1,story:"home",translations:[{language:"it",slug:"casa"}]}); if(translation.status!=="updated") throw new Error("Translation action failed");',
       ],
       temp,
     );

@@ -54,6 +54,24 @@ console.log(report.summary); // Inspect failed as well as updated and unchanged.
 
 Planning makes no changes. Assignment adds the requested tags and preserves existing tags; repeated inputs are deduplicated, and a repeat run skips stories that already have the tags. Missing stories stop the operation before any update. Individual update failures are returned in `report.operations` and counted in `report.summary.failed`, while other stories continue. The library uses the same action as CLI and YAML tag assignment. Custom gateways can implement the exported `StoryTagGateway` type.
 
+## Ensure translated story slugs
+
+```ts
+import { ensureTranslatedSlugs } from "unblok";
+
+const result = await ensureTranslatedSlugs(gateway, {
+  spaceId: 123456,
+  story: "about",
+  translations: [
+    { language: "it", slug: "chi-siamo", name: "Chi siamo" },
+    { language: "fr", slug: "a-propos" },
+  ],
+});
+console.log(result.status); // "updated" or "unchanged"
+```
+
+The Translatable Slugs app must be installed and each requested language enabled in the space. The action creates or updates only the requested translations; other languages are preserved. When `name` is omitted, an existing translated name is left unchanged. A repeat call skips matching values. Missing prerequisites, invalid inputs, ambiguous translations, and API errors reject with `UnblokError`; see the error section below. YAML `stories.translated_slugs` uses the same reconciliation logic. This operation does not publish the story.
+
 ## Update a story block
 
 ```ts

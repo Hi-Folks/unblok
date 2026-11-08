@@ -91,17 +91,17 @@ Ready to automate a setup? Follow [your first blueprint](docs/first-blueprint.md
 
 For an automated demo space setup with a confirmation after duplication, see [the demo setup guide](docs/demo-setup.md).
 
-| Guide                                                           | Use it for                                                                |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| [Getting started](docs/getting-started.md)                      | Requirements, authentication, installation, and the first request.        |
-| [Your first blueprint](docs/first-blueprint.md)                 | Plan and apply a simple YAML setup to an existing space.                  |
-| [Demo experiment](docs/experiments.md)                          | Create and optionally activate an experiment with simulated results.      |
-| [Library API](docs/library.md)                                  | Use content, component, workflow and tag actions from Bun and TypeScript. |
-| [Repeatable space setups](docs/space-setups.md)                 | Provisioning workflow, composition, and repeat-run behavior.              |
-| [Command reference](docs/commands.md)                           | Command syntax, every parameter, examples, and output behavior.           |
-| [Setup blueprints](docs/commands.md#version-1-setup-blueprints) | YAML sections, examples, and repeatable setup behavior.                   |
-| [Project direction](docs/project-direction.md)                  | Configuration-as-Code goals, design principles, and staged roadmap.       |
-| [Command roadmap](docs/command-roadmap.md)                      | Resource operations planned as building blocks for space setups.          |
+| Guide                                                           | Use it for                                                                   |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [Getting started](docs/getting-started.md)                      | Requirements, authentication, installation, and the first request.           |
+| [Your first blueprint](docs/first-blueprint.md)                 | Plan and apply a simple YAML setup to an existing space.                     |
+| [Demo experiment](docs/experiments.md)                          | Create and optionally activate an experiment with simulated results.         |
+| [Library API](docs/library.md)                                  | Use story, translation, component, workflow and tag actions from JavaScript. |
+| [Repeatable space setups](docs/space-setups.md)                 | Provisioning workflow, composition, and repeat-run behavior.                 |
+| [Command reference](docs/commands.md)                           | Command syntax, every parameter, examples, and output behavior.              |
+| [Setup blueprints](docs/commands.md#version-1-setup-blueprints) | YAML sections, examples, and repeatable setup behavior.                      |
+| [Project direction](docs/project-direction.md)                  | Configuration-as-Code goals, design principles, and staged roadmap.          |
+| [Command roadmap](docs/command-roadmap.md)                      | Resource operations planned as building blocks for space setups.             |
 
 ## Available commands
 

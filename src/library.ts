@@ -6,6 +6,12 @@ export type {
   UnblokErrorInfo,
 } from "./actions/action-error.ts";
 export type { StoryblokGateway } from "./storyblok/gateway.ts";
+export { ensureTranslatedSlugs } from "./actions/stories/library-translated-slugs.ts";
+export type {
+  TranslatedSlugsGateway,
+  TranslatedSlugInput,
+  EnsureTranslatedSlugsInput,
+} from "./actions/stories/library-translated-slugs.ts";
 export { updateStoryBlock } from "./actions/stories/library-content.ts";
 export type {
   StoryBlockGateway,

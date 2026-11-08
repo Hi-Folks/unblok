@@ -1,4 +1,3 @@
-import { CliError } from "../errors.ts";
 import type { StoryblokGateway } from "../storyblok/gateway.ts";
 import {
   resolveStoryAssetReferences,
@@ -6,16 +5,18 @@ import {
 } from "./blueprint-assets.ts";
 import { BlueprintOperationError } from "./blueprint-report.ts";
 import { reconcileStoryBlock } from "../actions/stories/reconcile-block.ts";
+import {
+  checkTranslatedSlugPrerequisites,
+  reconcileTranslatedSlugs,
+  type StoryTranslations,
+} from "../actions/stories/translated-slugs.ts";
 export type { StoryBlockUpdate } from "../actions/stories/reconcile-block.ts";
+export type { StoryTranslations } from "../actions/stories/translated-slugs.ts";
 
 export interface StoryCreate {
   name: string;
   slug: string;
   content: Record<string, unknown>;
-}
-export interface StoryTranslations {
-  slug: string;
-  translations: Array<{ lang: string; slug: string; name?: string }>;
 }
 export const updateBlueprintStoryBlock = reconcileStoryBlock;
 
@@ -70,69 +71,14 @@ export async function applyStories(
       throw new BlueprintOperationError("create-story", desired.slug, error);
     }
   }
-  if (translations.length) {
-    const apps = await gateway.listInstalledApps(spaceId);
-    if (!apps.some((app) => app.slug === "translatable-slugs"))
-      throw new CliError(
-        "The translatable-slugs app must be installed before setting translated slugs.",
-      );
-    const languages = await gateway.listLanguages(spaceId);
-    for (const group of translations)
-      for (const item of group.translations)
-        if (!languages.some((language) => language.code === item.lang))
-          throw new CliError(
-            `Language '${item.lang}' is not enabled in the space.`,
-          );
-  }
+  await checkTranslatedSlugPrerequisites(gateway, spaceId, translations);
   for (const group of translations) {
     try {
-      const match = await gateway.findStoryBySlug(spaceId, group.slug);
-      if (!match) throw new CliError(`Story '${group.slug}' was not found.`);
-      const story = await gateway.getStory(spaceId, match.id);
-      if (story.full_slug !== group.slug || story.is_folder)
-        throw new CliError(`Story '${group.slug}' no longer matches.`);
-      if (!Array.isArray(story.translated_slugs))
-        throw new CliError(
-          `Story '${group.slug}' did not include translated slugs.`,
-        );
-      const updates: Array<{
-        id?: number;
-        lang?: string;
-        slug: string;
-        name?: string;
-      }> = [];
-      for (const item of group.translations) {
-        const matches = story.translated_slugs.filter(
-          (entry) => entry.lang === item.lang,
-        );
-        if (matches.length > 1)
-          throw new CliError(
-            `Story '${group.slug}' has multiple translations for '${item.lang}'.`,
-          );
-        const existing = matches[0];
-        if (
-          existing &&
-          existing.slug === item.slug &&
-          (item.name === undefined || existing.name === item.name)
-        )
-          continue;
-        if (
-          existing &&
-          (!Number.isSafeInteger(existing.id) || existing.id <= 0)
-        )
-          throw new CliError(`Translation '${item.lang}' has no valid ID.`);
-        updates.push({
-          ...(existing ? { id: existing.id } : { lang: item.lang }),
-          slug: item.slug,
-          ...(item.name === undefined ? {} : { name: item.name }),
-        });
-      }
-      if (updates.length)
-        await gateway.updateTranslatedSlugs(spaceId, story.id, updates);
+      const result = await reconcileTranslatedSlugs(gateway, spaceId, group);
       operations.push({
         operation: "translate-story-slugs",
         key: group.slug,
-        status: updates.length ? "updated" : "unchanged",
+        status: result.status,
       });
     } catch (error) {
       throw new BlueprintOperationError(

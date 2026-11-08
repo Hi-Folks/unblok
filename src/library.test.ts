@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { ClientError } from "@storyblok/management-api-client";
 import {
   UnblokError,
+  ensureTranslatedSlugs,
   updateStoryBlock,
   ensureComponentField,
   assignStoryTags,
@@ -14,7 +15,33 @@ import type {
   WorkflowStoryGateway,
   StoryBlockGateway,
   ComponentFieldGateway,
+  TranslatedSlugsGateway,
 } from "./library.ts";
+
+test("library exposes translated slug reconciliation", async () => {
+  let saved: unknown;
+  const gateway = {
+    listInstalledApps: async () => [{ slug: "translatable-slugs" }],
+    listLanguages: async () => [{ code: "it" }],
+    findStoryBySlug: async () => ({ id: 1 }),
+    getStory: async () => ({ id: 1, full_slug: "about", translated_slugs: [] }),
+    updateTranslatedSlugs: async (
+      _space: number,
+      _story: number,
+      updates: unknown,
+    ) => {
+      saved = updates;
+    },
+  } as unknown as TranslatedSlugsGateway;
+  expect(
+    await ensureTranslatedSlugs(gateway, {
+      spaceId: 1,
+      story: "about",
+      translations: [{ language: "it", slug: "chi-siamo" }],
+    }),
+  ).toEqual({ status: "updated" });
+  expect(saved).toEqual([{ lang: "it", slug: "chi-siamo" }]);
+});
 
 test("library story block update saves a draft and skips unchanged content", async () => {
   let content = {

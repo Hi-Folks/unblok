@@ -131,4 +131,28 @@ describe("story setup", () => {
       ),
     ).rejects.toThrow("did not include translated slugs");
   });
+
+  test("checks all requested languages before updating any story", async () => {
+    let writes = 0;
+    const gateway = {
+      listInstalledApps: async () => [{ slug: "translatable-slugs" }],
+      listLanguages: async () => [{ code: "it" }],
+      updateTranslatedSlugs: async () => {
+        writes++;
+      },
+    };
+    await expect(
+      applyStories(
+        gateway as never,
+        1,
+        [],
+        [
+          { slug: "one", translations: [{ lang: "it", slug: "uno" }] },
+          { slug: "two", translations: [{ lang: "fr", slug: "deux" }] },
+        ],
+        [],
+      ),
+    ).rejects.toThrow("Language 'fr'");
+    expect(writes).toBe(0);
+  });
 });
