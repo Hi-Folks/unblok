@@ -6,6 +6,7 @@ execution:
   mode: reconcile
 apps:
   install:
+    # Slugs are resolved in the target space's region.
     - import
 tags:
   - stories:

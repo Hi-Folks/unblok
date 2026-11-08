@@ -5,6 +5,35 @@ import {
 } from "./blueprint-apply.ts";
 
 describe("blueprint execution", () => {
+  test("resolves YAML app slugs separately for each target space", async () => {
+    const writes: Array<[number, string]> = [];
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      apps: { install: ["import"] },
+    });
+    const gateway = {
+      listInstalledApps: async () => [],
+      listAvailableApps: async (space: number) => [
+        { id: space === 1_500_000 ? 11 : 22, slug: "import", name: "Import" },
+      ],
+      installApp: async (space: number, id: string) => {
+        writes.push([space, id]);
+        return { app_id: id, slug: "import", name: "Import" };
+      },
+    };
+    expect(
+      (await applySupportedBlueprint(gateway as never, 1_500_000, blueprint))
+        .failed,
+    ).toBe(false);
+    expect(
+      (await applySupportedBlueprint(gateway as never, 2_500_000, blueprint))
+        .failed,
+    ).toBe(false);
+    expect(writes).toEqual([
+      [1_500_000, "11"],
+      [2_500_000, "22"],
+    ]);
+  });
   test("reports the current app before it finishes and reports a continued failure", async () => {
     const blueprint = compileSupportedBlueprint({
       version: 1,

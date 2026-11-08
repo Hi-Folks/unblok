@@ -20,9 +20,9 @@ export async function installAppBySlug(
   const apps = await gateway.listAvailableApps(spaceId);
   const matches = apps.filter((app) => app.slug === slug);
   if (matches.length === 0)
-    throw new CliError(`No app found with slug '${slug}'.`);
+    throw new CliError(`No app found with slug '${slug}'.`, 1, "NOT_FOUND");
   if (matches.length > 1)
-    throw new CliError(`App slug '${slug}' is ambiguous.`);
+    throw new CliError(`App slug '${slug}' is ambiguous.`, 1, "AMBIGUOUS");
   const app = matches[0];
   if (!app || !app.id) throw new CliError(`App '${slug}' has no valid ID.`);
   return {

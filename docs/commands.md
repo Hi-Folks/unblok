@@ -384,6 +384,8 @@ bun run start app install --by-slug=storyblok-gmbh@ai-seo --space-id 123456 --js
 
 `app list` shows installed apps. `app install` resolves the exact slug against available apps and skips apps already installed. The target defaults to `STORYBLOK_SPACE_ID`. Installation can fail if the app is unavailable to the space or requires additional approval, permissions, or configuration.
 
+App slugs in CLI commands and YAML `apps.install` are resolved using the target space's regional API; no app ID is hard-coded for a slug. Unblok infers the region from the space ID and falls back to EU when it cannot infer one. If the inferred region is incorrect, set `STORYBLOK_REGION` to `eu`, `us`, `ca`, `ap`, or `cn`; this overrides the region for all space-scoped operations in the command, including YAML setup. App availability may differ by region. An explicit numeric app ID in YAML is used as supplied.
+
 For multiple apps, call the command in a shell loop; each invocation returns a non-zero exit code on failure:
 
 ```bash

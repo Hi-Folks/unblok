@@ -70,3 +70,5 @@ In an interactive terminal, apply also shows progress as setup phases run, inclu
 ## Schema and current boundaries
 
 The local [JSON Schema](../space-setup.schema.json) provides editor completion and is used by the CLI after input resolution. AI Translations and [space AI settings](../examples/customer-demo/steps/09-space-ai.yaml) are separate, opt-in operations. The example enables space AI and disables inheritance of organization AI configuration. Some capabilities have mocked tests but have not yet been verified end to end in a live space. The `version: 1` blueprint format uses `space setup`; the older `space-man/v1` format uses `space plan` and `space apply` and has different capabilities.
+
+App slugs in `apps.install` are looked up for the target space's region. To override region inference for all space-scoped requests, set `STORYBLOK_REGION` to `eu`, `us`, `ca`, `ap`, or `cn` before running the setup. Explicit numeric app IDs are used as supplied.

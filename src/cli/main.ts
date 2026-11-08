@@ -7,6 +7,7 @@ import { experimentCommand } from "../commands/experiment/index.ts";
 import { appCommand } from "../commands/app/index.ts";
 import {
   getStoryblokRequestsPerSecond,
+  getStoryblokRegion,
   type Environment,
 } from "../config/environment.ts";
 import { CliError, formatError } from "../errors.ts";
@@ -62,6 +63,7 @@ export async function runCli(
             requestsPerSecond: getStoryblokRequestsPerSecond(
               options.environment ?? process.env,
             ),
+            region: getStoryblokRegion(options.environment ?? process.env),
           })),
       environment: options.environment ?? process.env,
       output,

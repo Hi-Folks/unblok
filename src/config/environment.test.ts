@@ -1,8 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import {
   getStoryblokRequestsPerSecond,
+  getStoryblokRegion,
   getStoryblokToken,
 } from "./environment.ts";
+
+test("accepts a region override and rejects invalid values", () => {
+  expect(getStoryblokRegion({})).toBeUndefined();
+  expect(getStoryblokRegion({ STORYBLOK_REGION: " us " })).toBe("us");
+  expect(() => getStoryblokRegion({ STORYBLOK_REGION: "unknown" })).toThrow(
+    "STORYBLOK_REGION",
+  );
+});
 
 describe("getStoryblokToken", () => {
   test("returns a trimmed token", () => {

@@ -3,6 +3,7 @@ import { ClientError } from "@storyblok/management-api-client";
 import {
   UnblokError,
   ensureTranslatedSlugs,
+  ensureAppInstalled,
   updateStoryBlock,
   ensureComponentField,
   assignStoryTags,
@@ -16,7 +17,42 @@ import type {
   StoryBlockGateway,
   ComponentFieldGateway,
   TranslatedSlugsGateway,
+  AppInstallGateway,
 } from "./library.ts";
+
+test("library installs an app by regional slug and skips an existing installation", async () => {
+  let installed = false;
+  let writes = 0;
+  const gateway = {
+    listInstalledApps: async () =>
+      installed ? [{ app_id: 123, slug: "import", name: "Import" }] : [],
+    listAvailableApps: async () => [
+      { id: 123, slug: "import", name: "Import" },
+    ],
+    installApp: async (_space: number, id: string) => {
+      writes++;
+      installed = true;
+      return { app_id: id, slug: "import", name: "Import" };
+    },
+  } as AppInstallGateway;
+  const input = { spaceId: 1_500_000, slug: "import" };
+  expect((await ensureAppInstalled(gateway, input)).status).toBe("installed");
+  expect((await ensureAppInstalled(gateway, input)).status).toBe("unchanged");
+  expect(writes).toBe(1);
+  await expect(
+    ensureAppInstalled(gateway, { ...input, slug: "" }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    ensureAppInstalled(
+      {
+        ...gateway,
+        listInstalledApps: async () => [],
+        listAvailableApps: async () => [],
+      },
+      input,
+    ),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+});
 
 test("library exposes translated slug reconciliation", async () => {
   let saved: unknown;

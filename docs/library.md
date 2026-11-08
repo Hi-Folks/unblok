@@ -35,6 +35,21 @@ The story list must contain exact, nonempty full slugs. Every slug is resolved b
 
 The gateway is supplied explicitly, so the same operations work with a custom implementation of the exported `WorkflowStoryGateway` type. No action reads credentials, prompts, or writes terminal output. The client factory accepts the token explicitly; do not hard-code or log it.
 
+## Install an app by slug
+
+```ts
+import { createStoryblokGateway, ensureAppInstalled } from "unblok";
+
+const gateway = createStoryblokGateway(token); // The target space ID selects the region.
+const result = await ensureAppInstalled(gateway, {
+  spaceId: 1500000,
+  slug: "import",
+});
+console.log(result.status); // "installed" or "unchanged"
+```
+
+The action uses the same slug lookup as CLI and YAML app installation, checks existing installations, and resolves the app ID from the target space's regional catalog. It rejects missing or ambiguous slugs with `UnblokError`. For an ID whose region cannot be inferred correctly, create the gateway with an explicit override, for example `createStoryblokGateway(token, { region: "us" })`. Supported region codes are `eu`, `us`, `ca`, `ap`, and `cn`; the override applies to all space-scoped requests made through that gateway. Otherwise Unblok infers the region from the ID and falls back to EU if it cannot infer one. The availability of a particular app and its regional identifiers depend on Storyblok.
+
 ## Assign story tags
 
 Use the same gateway to preview or add tags to exact story full slugs:

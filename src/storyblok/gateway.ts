@@ -216,10 +216,11 @@ export interface ListWorkflowStagesOptions {
 }
 
 export type StoryblokGatewayFactory = (token: string) => StoryblokGateway;
+export type StoryblokRegion = "eu" | "us" | "ca" | "ap" | "cn";
 
 export const createStoryblokGateway = (
   token: string,
-  options: { requestsPerSecond?: number } = {},
+  options: { requestsPerSecond?: number; region?: StoryblokRegion } = {},
 ): StoryblokGateway => {
   const limiter = createDefaultRateLimiter();
   const rateLimit = {
@@ -256,7 +257,7 @@ export const createStoryblokGateway = (
     if (existing) return existing;
     const regionalClient = createManagementApiClient({
       personalAccessToken: token,
-      region: getRegion(spaceId) ?? "eu",
+      region: options.region ?? getRegion(spaceId) ?? "eu",
       spaceId,
       throwOnError: true,
       rateLimit,

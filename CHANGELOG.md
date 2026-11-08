@@ -5,6 +5,7 @@
 ### Added
 
 - Add a library action to reconcile translated story slugs using the same logic as YAML provisioning.
+- Add a library action to install apps by slug and a region override for space-scoped CLI and YAML operations.
 
 ## 0.3.0 - 2026-11-08
 

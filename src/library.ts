@@ -5,7 +5,13 @@ export type {
   UnblokErrorCode,
   UnblokErrorInfo,
 } from "./actions/action-error.ts";
-export type { StoryblokGateway } from "./storyblok/gateway.ts";
+export type { StoryblokGateway, StoryblokRegion } from "./storyblok/gateway.ts";
+export { ensureAppInstalled } from "./actions/apps/library-apps.ts";
+export type {
+  AppInstallGateway,
+  EnsureAppInstalledInput,
+  EnsureAppInstalledResult,
+} from "./actions/apps/library-apps.ts";
 export { ensureTranslatedSlugs } from "./actions/stories/library-translated-slugs.ts";
 export type {
   TranslatedSlugsGateway,

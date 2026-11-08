@@ -99,7 +99,7 @@ try {
   const consumer = join(temp, "consumer.ts");
   await Bun.write(
     consumer,
-    'import { assignStoryTags, ensureTranslatedSlugs, type StoryTagsInput, type EnsureTranslatedSlugsInput } from "unblok"; const input: StoryTagsInput = { spaceId: 1, stories: ["home"], tags: ["demo"] }; const translation: EnsureTranslatedSlugsInput = { spaceId: 1, story: "about", translations: [{ language: "it", slug: "chi-siamo" }] }; void assignStoryTags; void ensureTranslatedSlugs; void input; void translation;',
+    'import { assignStoryTags, ensureTranslatedSlugs, ensureAppInstalled, type StoryTagsInput, type EnsureTranslatedSlugsInput, type EnsureAppInstalledInput } from "unblok"; const input: StoryTagsInput = { spaceId: 1, stories: ["home"], tags: ["demo"] }; const translation: EnsureTranslatedSlugsInput = { spaceId: 1, story: "about", translations: [{ language: "it", slug: "chi-siamo" }] }; const app: EnsureAppInstalledInput = { spaceId: 1, slug: "import" }; void assignStoryTags; void ensureTranslatedSlugs; void ensureAppInstalled; void input; void translation; void app;',
   );
   await run(
     [
