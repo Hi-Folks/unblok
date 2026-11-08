@@ -15,7 +15,7 @@ Review the disclaimer and ID before applying. The plan is local and cannot check
 
 ## Individual commands
 
-You need a Management API token with the required permissions, an existing home story, and a checkout containing the example files. These commands are not yet in the published release: run `bun install --frozen-lockfile` in the checkout and replace `unblok` with `bun run start` in the commands below. Export `STORYBLOK_TOKEN` and `STORYBLOK_SPACE_ID` in your shell.
+You need Unblok, a Management API token with the required permissions, an existing home story, and a checkout containing the example files. The commands below use the installed `unblok` CLI; from a checkout, use `bun run start` instead. Export `STORYBLOK_TOKEN` and `STORYBLOK_SPACE_ID` in your shell.
 
 Before creating an experiment, install the Experiments app if it is not already installed. Review the current disclaimer and its ID in Storyblok first; the ID observed during manual setup was `173657768407244`:
 
@@ -74,4 +74,4 @@ The command accepts the specified disclaimer and then installs app `173657247642
 
    The first command inspects the current snapshot; an experiment with no results may return an API error. **Pushing replaces any existing snapshot**, so use a disposable experiment and review before proceeding. The example charts are labeled simulated and are not analytics. Storyblok rejects results while the experiment is a draft.
 
-The experiment remains a draft. Publishing its stories, starting it, selecting variants in the frontend, and collecting real analytics are separate steps. See [Storyblok's Experiments documentation](https://www.storyblok.com/docs/concepts/experiments) for runtime integration.
+The individual creation command leaves the experiment in draft. Publish its variant stories and start it in Storyblok before step 5. Selecting variants in the frontend and collecting real analytics are separate steps. See [Storyblok's Experiments documentation](https://www.storyblok.com/docs/concepts/experiments) for runtime integration.
