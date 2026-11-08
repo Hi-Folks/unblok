@@ -48,4 +48,15 @@ test("uploads through the management client's signed upload flow", async () => {
   expect(requests[0]?.url).toContain("asset_folder_id=5");
   expect(requests[1]?.headers.get("authorization")).toBeNull();
   expect(requests[2]?.url).toContain("/finish_upload");
+  requests.length = 0;
+  await createStoryblokGateway("test-token").uploadAsset(
+    42,
+    undefined,
+    "test.png",
+    new Uint8Array([1, 2]),
+  );
+  expect(requests).toHaveLength(4);
+  expect(new URL(requests[0]!.url).searchParams.has("asset_folder_id")).toBe(
+    false,
+  );
 });

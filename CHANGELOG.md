@@ -6,6 +6,11 @@
 
 - Add a library action to reconcile translated story slugs using the same logic as YAML provisioning.
 - Add a library action to install apps by slug and a region override for space-scoped CLI and YAML operations.
+- Add CLI and library asset uploads with optional nested folder creation, shared with YAML asset reconciliation. Identical files are reused; conflicting files are not replaced.
+
+### Changed
+
+- Explain how to create and configure a Storyblok Management API token when credentials are missing or rejected.
 
 ## 0.3.0 - 2026-11-08
 

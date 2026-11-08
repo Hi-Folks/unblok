@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { ClientError } from "@storyblok/management-api-client";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Environment } from "../config/environment.ts";
 import type { Output } from "../output.ts";
 import type { StoryblokGateway } from "../storyblok/gateway.ts";
@@ -111,6 +114,51 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("uploads an asset through the CLI and emits a JSON result", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-upload-"));
+    try {
+      const file = join(dir, "demo.png");
+      await writeFile(file, "image");
+      let count = 0;
+      const harness = createHarness({
+        uploadAsset: async (_space, folder, name, data) => {
+          expect(folder).toBeUndefined();
+          expect(name).toBe("demo.png");
+          expect(new TextDecoder().decode(data)).toBe("image");
+          count++;
+        },
+      });
+      expect(
+        await runCli(
+          [
+            "asset",
+            "upload",
+            "--file",
+            file,
+            "--space-id",
+            "42",
+            "--yes",
+            "--json",
+          ],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(harness.stdout).toEqual([
+        { status: "created", filename: "demo.png" },
+      ]);
+      expect(harness.stderr).toEqual([]);
+      expect(count).toBe(1);
+      expect(
+        await runCli(
+          ["asset", "upload", "--file", file, "--space-id", "42", "--json"],
+          harness.options,
+        ),
+      ).toBe(2);
+      expect(count).toBe(1);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   test("explains token setup on stderr without making a request", async () => {
     const harness = createHarness();
     harness.options.environment = {};

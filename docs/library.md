@@ -35,6 +35,23 @@ The story list must contain exact, nonempty full slugs. Every slug is resolved b
 
 The gateway is supplied explicitly, so the same operations work with a custom implementation of the exported `WorkflowStoryGateway` type. No action reads credentials, prompts, or writes terminal output. The client factory accepts the token explicitly; do not hard-code or log it.
 
+## Upload an asset
+
+```ts
+import { readFile } from "node:fs/promises";
+import { ensureAssetUploaded } from "unblok";
+
+const result = await ensureAssetUploaded(gateway, {
+  spaceId: 123456,
+  filename: "banner.png",
+  data: await readFile("./banner.png"),
+  folder: "Demo/Images", // Omit for the asset root.
+});
+console.log(result.status); // "created" or "unchanged"
+```
+
+The `folder` path uses `/` between levels: `Demo/Images` creates or reuses `Demo` and its child `Images`. The action compares an existing exact filename's content and leaves identical assets unchanged. It rejects ambiguous folder or asset matches and different content with `UnblokError`; it never replaces an asset. Folders created before a later upload failure remain in the space. The YAML asset setup uses the same comparison and upload logic. The caller supplies bytes, so the library does not read local files itself.
+
 ## Install an app by slug
 
 ```ts

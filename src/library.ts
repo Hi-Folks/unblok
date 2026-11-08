@@ -6,6 +6,12 @@ export type {
   UnblokErrorInfo,
 } from "./actions/action-error.ts";
 export type { StoryblokGateway, StoryblokRegion } from "./storyblok/gateway.ts";
+export { ensureAssetUploaded } from "./actions/assets/asset-upload.ts";
+export type {
+  AssetUploadGateway,
+  EnsureAssetUploadedInput,
+  EnsureAssetUploadedResult,
+} from "./actions/assets/asset-upload.ts";
 export { ensureAppInstalled } from "./actions/apps/library-apps.ts";
 export type {
   AppInstallGateway,

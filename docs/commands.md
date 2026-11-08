@@ -2,6 +2,17 @@
 
 All examples use `bun run start` from a checkout. The published CLI is `unblok`. Add `--json` to data commands that support it for machine-readable output.
 
+## `asset upload`
+
+```bash
+bun run start asset upload --file ./images/banner.png --space-id 123456 --yes
+bun run start asset upload --file ./images/banner.png --folder "Demo/Images" --space-id 123456 --yes --json
+```
+
+The file path is relative to the current directory. Omit `--folder` to use the asset root; otherwise missing folders are created. `STORYBLOK_SPACE_ID` supplies the space when `--space-id` is omitted. A file with the same name in the target folder is read and compared: identical content is unchanged, while different content or multiple matching assets causes an error. The command does not replace existing assets. `--yes` confirms the upload and any folder creation. Folders already created remain if the upload fails. JSON output reports `created` or `unchanged` with the filename and optional folder.
+
+Use `/` to separate nested folder names. For example, `--folder "Demo/Images"` creates `Demo` and its child `Images` if needed. Existing folders are reused on later runs; if a folder name is ambiguous within the same parent, the upload stops.
+
 ## `space list`
 
 List the spaces accessible to the authenticated user.
@@ -133,7 +144,7 @@ The bundled examples reference the local [JSON Schema](../space-setup.schema.jso
 | `workflow`                                                            | Assign unstaged stories and exact story slugs to stages.                                                                         | [Workflow](../examples/features/setup-workflow.yaml)                                                               |
 | `tags`                                                                | Add tags to stories selected by exact full slug.                                                                                 | [Apps and tags](../examples/features/setup-apps-tags.yaml)                                                         |
 
-These are YAML setup operations, not all standalone commands: in particular, asset upload, story creation, and space AI configuration are currently available through the setup runner. Unsupported fields are rejected before changes.
+These are YAML setup operations, not all standalone commands: in particular, story creation and space AI configuration are currently available through the setup runner. Unsupported fields are rejected before changes.
 
 ### Reusing smaller blueprints
 
@@ -189,7 +200,7 @@ bun run start space setup apply --config examples/customer-demo/steps/10-ai-tran
 
 The YAML example uses disclaimer ID `35` from a captured UI request; check that it is the right current disclaimer for your space. Enabling sends the captured `space.disclaimer_id` update first, then provisions app `29942`. If the space already lists the disclaimer as accepted or the app as installed, that step is skipped. If acceptance fails, the app is not installed. The operation uses the observed UI requests and has not been verified against a live space by the test suite. `--yes` authorizes accepting the specified disclaimer. Space AI settings are configured separately through the YAML `ai` section.
 
-Asset directories are relative to the YAML file. `include` accepts filename patterns in the source directory (not recursive paths); each pattern must match. Target folder paths are created as needed. An existing filename is reused only when its downloaded content matches the local file; ambiguous names or differing content stop the apply. [Example asset setup](../examples/features/setup-assets.yaml).
+Asset directories are relative to the YAML file. `include` accepts filename patterns in the source directory (not recursive paths); each pattern must match. Use a path such as `target_folder: Demo/Images` to create or reuse nested target folders. An existing filename is reused only when its downloaded content matches the local file; ambiguous names or differing content stop the apply. [Example asset setup](../examples/features/setup-assets.yaml).
 
 Use `assets.upload_url` to download remote files before applying changes. Each entry requires a `name`, HTTP(S) `url`, and `target_folder`; `filename` is optional if the URL path has a filename with an extension. Files are limited to 100 MiB and a 30-second download. Reference one in story content with `asset: { _ref: name }`. The same content comparison applies on repeat runs. See [the remote asset example](../examples/features/setup-remote-asset.yaml).
 

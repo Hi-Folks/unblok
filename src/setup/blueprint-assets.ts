@@ -1,12 +1,11 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, resolve, matchesGlob } from "node:path";
-import { createHash } from "node:crypto";
+import {
+  findAssetFolder as findFolder,
+  reconcileAsset,
+} from "../actions/assets/asset-upload.ts";
 import { CliError } from "../errors.ts";
-import type {
-  StoryblokAsset,
-  StoryblokAssetFolder,
-  StoryblokGateway,
-} from "../storyblok/gateway.ts";
+import type { StoryblokAsset, StoryblokGateway } from "../storyblok/gateway.ts";
 import { BlueprintOperationError } from "./blueprint-report.ts";
 
 type Gateway = Pick<
@@ -164,34 +163,6 @@ export async function prepareAssets(
   return prepared;
 }
 
-async function findFolder(
-  gateway: Gateway,
-  spaceId: number,
-  folders: StoryblokAssetFolder[],
-  path: string,
-  create: boolean,
-): Promise<number> {
-  let parent: number | undefined;
-  for (const name of path.split("/")) {
-    const matches = folders.filter(
-      (folder) =>
-        folder.name === name && (folder.parent_id ?? undefined) === parent,
-    );
-    if (matches.length > 1)
-      throw new CliError(`Asset folder '${path}' is ambiguous.`);
-    let folder = matches[0];
-    if (!folder && create) {
-      folder = await gateway.createAssetFolder(spaceId, name, parent);
-      folders.push(folder);
-    }
-    if (!folder) throw new CliError(`Asset folder '${path}' was not found.`);
-    parent = folder.id;
-  }
-  return parent!;
-}
-
-const hash = (bytes: Uint8Array) =>
-  createHash("sha256").update(bytes).digest("hex");
 export async function applyAssets(
   gateway: Gateway,
   spaceId: number,
@@ -211,37 +182,21 @@ export async function applyAssets(
         asset.folder,
         true,
       );
-      const existing = (
-        await gateway.listAssets(spaceId, folderId, asset.name)
-      ).filter(
-        (item) =>
-          item.asset_folder_id === folderId &&
-          (item.short_filename || basename(new URL(item.filename).pathname)) ===
-            asset.name,
+      const result = await reconcileAsset(
+        gateway,
+        {
+          spaceId,
+          filename: asset.name,
+          data: asset.data,
+          folder: asset.folder,
+        },
+        folderId,
       );
-      if (existing.length > 1)
-        throw new CliError(
-          `Multiple assets named '${asset.name}' exist in '${asset.folder}'.`,
-        );
-      if (existing[0]) {
-        const remote = await gateway.readAsset(existing[0]);
-        if (hash(remote) !== hash(asset.data))
-          throw new CliError(
-            `Asset '${asset.folder}/${asset.name}' already exists with different content.`,
-          );
-        operations.push({
-          operation: "upload-asset",
-          key: `${asset.folder}/${asset.name}`,
-          status: "unchanged",
-        });
-      } else {
-        await gateway.uploadAsset(spaceId, folderId, asset.name, asset.data);
-        operations.push({
-          operation: "upload-asset",
-          key: `${asset.folder}/${asset.name}`,
-          status: "created",
-        });
-      }
+      operations.push({
+        operation: "upload-asset",
+        key: `${asset.folder}/${asset.name}`,
+        status: result.status,
+      });
     } catch (error) {
       throw new BlueprintOperationError(
         "upload-asset",

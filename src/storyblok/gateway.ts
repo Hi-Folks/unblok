@@ -27,7 +27,7 @@ export interface StoryblokGateway {
   ): Promise<StoryblokAsset[]>;
   uploadAsset(
     spaceId: number,
-    folderId: number,
+    folderId: number | undefined,
     filename: string,
     data: Uint8Array,
   ): Promise<void>;
@@ -320,7 +320,7 @@ export const createStoryblokGateway = (
         await clientForSpace(spaceId).assets.upload({
           body: {
             short_filename: filename,
-            asset_folder_id: folderId,
+            ...(folderId === undefined ? {} : { asset_folder_id: folderId }),
             validate_upload: true,
           },
           file: new Blob([new Uint8Array(data)]),

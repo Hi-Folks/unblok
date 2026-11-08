@@ -111,6 +111,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `space duplicate` duplicates content and components into a new space.
 - `space token`, `space preview-set`, and `space demo-remove` configure demo space previews.
 - `app list` and `app install` inspect and provision space apps.
+- `asset upload` uploads a local file to a space's assets or an asset folder.
 - `app ai-translation enable` accepts a specified disclaimer and installs AI Translations.
 - `space plan` validates and previews a versioned setup file without making changes.
 - `space apply` reconciles supported resources after explicit confirmation.

@@ -5,6 +5,7 @@ import { workflowCommand } from "../commands/workflow/index.ts";
 import { storyCommand } from "../commands/story/index.ts";
 import { experimentCommand } from "../commands/experiment/index.ts";
 import { appCommand } from "../commands/app/index.ts";
+import { assetCommand } from "../commands/asset/index.ts";
 import {
   getStoryblokRequestsPerSecond,
   getStoryblokRegion,
@@ -39,6 +40,7 @@ const commands = [
   storyCommand,
   experimentCommand,
   appCommand,
+  assetCommand,
 ];
 
 export async function runCli(
