@@ -4,6 +4,7 @@ import {
   UnblokError,
   ensureTranslatedSlugs,
   ensureStoryCreated,
+  publishStory,
   ensureAppInstalled,
   updateStoryBlock,
   ensureComponentField,
@@ -20,7 +21,93 @@ import type {
   TranslatedSlugsGateway,
   AppInstallGateway,
   StoryCreateGateway,
+  StoryPublishGateway,
 } from "./library.ts";
+
+test("library publishes a draft or pending changes and skips a clean published story", async () => {
+  let published = false;
+  let pending = false;
+  let writes = 0;
+  const gateway = {
+    findStoryBySlug: async (_space: number, slug: string) =>
+      ({ id: 12, full_slug: slug }) as never,
+    getStory: async () =>
+      ({
+        id: 12,
+        full_slug: "folder/welcome",
+        published,
+        unpublished_changes: pending,
+        is_folder: false,
+      }) as never,
+    publishStory: async (space: number, id: number) => {
+      expect([space, id]).toEqual([1, 12]);
+      writes++;
+      published = true;
+      pending = false;
+    },
+  } satisfies StoryPublishGateway;
+  const input = { spaceId: 1, story: "folder/welcome" };
+  expect(await publishStory(gateway, input)).toEqual({
+    status: "published",
+    storyId: 12,
+  });
+  expect(await publishStory(gateway, input)).toEqual({
+    status: "unchanged",
+    storyId: 12,
+  });
+  pending = true;
+  expect(await publishStory(gateway, input)).toEqual({
+    status: "published",
+    storyId: 12,
+  });
+  expect(writes).toBe(2);
+});
+
+test("library refuses invalid, missing, or unverifiable stories and classifies API errors", async () => {
+  let writes = 0;
+  const gateway = {
+    findStoryBySlug: async () => ({ id: 12 }) as never,
+    getStory: async () =>
+      ({ id: 12, full_slug: "home", published: true }) as never,
+    publishStory: async () => {
+      writes++;
+    },
+  } satisfies StoryPublishGateway;
+  const input = { spaceId: 1, story: "home" };
+  await expect(
+    publishStory(gateway, { ...input, story: "*" }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    publishStory({ ...gateway, findStoryBySlug: async () => undefined }, input),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  await expect(publishStory(gateway, input)).rejects.toMatchObject({
+    code: "CONFLICT",
+  });
+  await expect(
+    publishStory(
+      {
+        ...gateway,
+        getStory: async () =>
+          ({
+            id: 12,
+            full_slug: "home",
+            is_folder: false,
+            published: false,
+            unpublished_changes: false,
+          }) as never,
+        publishStory: async () => {
+          throw new ClientError("denied", {
+            status: 403,
+            statusText: "Forbidden",
+            data: {},
+          });
+        },
+      },
+      input,
+    ),
+  ).rejects.toMatchObject({ code: "PERMISSION_DENIED", status: 403 });
+  expect(writes).toBe(0);
+});
 
 test("library creates a root draft story once and preserves existing content", async () => {
   let existing = false;

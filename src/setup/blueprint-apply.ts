@@ -1,6 +1,7 @@
 import { configureSpaceAi } from "../actions/spaces/configure-ai.ts";
 import { installAppById, installAppBySlug } from "../actions/apps/apps.ts";
 import { assignStoryTags } from "../actions/stories/story-tags.ts";
+import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
 import { CliError } from "../errors.ts";
 import type { StoryblokGateway } from "../storyblok/gateway.ts";
 import { planBlueprint } from "./blueprint.ts";
@@ -1335,20 +1336,12 @@ export async function applySupportedBlueprint(
             throw new CliError(
               `Running variant story ${id} has unpublished changes; inspect it before continuing.`,
             );
-          if (story.published && !story.unpublished_changes)
-            operations.push({
-              operation: "publish-experiment-variant",
-              key: String(id),
-              status: "unchanged",
-            });
-          else {
-            await gateway.publishStory(spaceId, id);
-            operations.push({
-              operation: "publish-experiment-variant",
-              key: String(id),
-              status: "completed",
-            });
-          }
+          const result = await publishStoryIfNeeded(gateway, spaceId, story);
+          operations.push({
+            operation: "publish-experiment-variant",
+            key: String(id),
+            status: result.status === "published" ? "completed" : "unchanged",
+          });
         }
         if (experiment.status !== "running")
           await gateway.activateExperiment(spaceId, experiment.id);

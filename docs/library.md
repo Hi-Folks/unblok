@@ -35,6 +35,20 @@ The story list must contain exact, nonempty full slugs. Every slug is resolved b
 
 The gateway is supplied explicitly, so the same operations work with a custom implementation of the exported `WorkflowStoryGateway` type. No action reads credentials, prompts, or writes terminal output. The client factory accepts the token explicitly; do not hard-code or log it.
 
+## Publish a story
+
+```ts
+import { publishStory } from "unblok";
+
+const result = await publishStory(gateway, {
+  spaceId: 123456,
+  story: "pages/welcome", // Exact full slug, without a leading slash.
+});
+console.log(result.status, result.storyId); // "published" or "unchanged"
+```
+
+This explicitly publishes the current draft, including unpublished changes to a story that is already published. A story confirmed published with no pending changes is left unchanged. The action checks the story's current details before publishing and fails if its identity or publication state cannot be verified. Missing stories and API failures reject with `UnblokError`. As with any read followed by a write, another editor could change the draft between the check and publication. This function does not select individual languages or releases. Storyblok describes the endpoint in its [publish API reference](https://www.storyblok.com/docs/api/management/stories/publish-a-story).
+
 ## Create a story
 
 ```ts

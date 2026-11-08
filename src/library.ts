@@ -7,6 +7,12 @@ export type {
 } from "./actions/action-error.ts";
 export type { StoryblokGateway, StoryblokRegion } from "./storyblok/gateway.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
+export { publishStory } from "./actions/stories/publish-story.ts";
+export type {
+  StoryPublishGateway,
+  PublishStoryInput,
+  PublishStoryResult,
+} from "./actions/stories/publish-story.ts";
 export type {
   StoryCreateGateway,
   EnsureStoryCreatedInput,
