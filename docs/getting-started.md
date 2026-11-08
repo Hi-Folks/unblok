@@ -12,7 +12,7 @@ unblok --version
 npx unblok --help
 ```
 
-For the upcoming single-package release, the CLI requires Node.js 26 or newer. Bun users without Node.js can use `bunx --bun unblok --help`. The currently published version may have different runtime requirements.
+The next release requires Node.js 22.21.0 or newer. Bun users without Node.js can use `bunx --bun unblok --help`. The currently published version may have different runtime requirements.
 
 ## Run from source today
 
@@ -59,7 +59,7 @@ Open `.env` in an editor and replace the placeholder with your token:
 STORYBLOK_TOKEN=your-personal-access-token
 ```
 
-Bun loads `.env` automatically. Keep the file private: never commit it or share its contents. Optionally set `STORYBLOK_SPACE_ID` in `.env` to select a default space; an explicit `--space-id` takes precedence.
+The CLI loads `.env` from the working directory. Keep the file private: never commit it or share its contents. Optionally set `STORYBLOK_SPACE_ID` in `.env` to select a default space; an explicit `--space-id` takes precedence.
 
 ## 4. Make a read-only request
 

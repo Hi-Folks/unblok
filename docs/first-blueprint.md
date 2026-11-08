@@ -10,7 +10,7 @@ With Node.js and npm installed, try Unblok without installing it globally:
 npx unblok --version
 ```
 
-You can also use `bunx unblok --version` if you have Bun. The npm launcher requires Node.js with either option. If you prefer a global installation, run `npm install -g unblok` and replace `npx unblok` with `unblok` in the commands below. See [getting started](getting-started.md) for other installation and source options.
+You can also use `bunx --bun unblok --version` if you have Bun. If you prefer a global installation, run `npm install -g unblok` and replace `npx unblok` with `unblok` in the commands below. See [getting started](getting-started.md) for runtime requirements, installation, and source options.
 
 ## 2. Create a blueprint
 

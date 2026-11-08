@@ -62,7 +62,7 @@ AI still needs the right instructions and permissions, and Storyblok state or AP
 
 ## Installation
 
-After a release containing the JavaScript CLI is published, install it with npm (requires Node.js 26 or newer):
+The next release supports Node.js 22.21.0 or newer. Install the CLI with npm:
 
 ```bash
 npm install -g unblok

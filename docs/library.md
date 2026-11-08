@@ -1,6 +1,6 @@
 # Library API
 
-The repository exposes an initial JavaScript/TypeScript library entry point for Node.js 26 and Bun. The release packaging includes the library in the same npm package as the CLI; it becomes available to install when a release containing this change is published. Until then, use this checkout or a workspace dependency. The API may change while it is being developed.
+The repository exposes an initial JavaScript/TypeScript library entry point for Node.js 22.21.0 or newer and Bun. The release packaging includes the library in the same npm package as the CLI. The lower Node.js requirement takes effect in the next release. The API may change while it is being developed.
 
 After a release containing the library is published, install it in a Bun project with `bun add unblok`.
 

@@ -15,6 +15,9 @@
     ".": "./src/library.ts"
   },
   "type": "module",
+  "engines": {
+    "node": ">=22.21.0"
+  },
   "private": true,
   "bin": {
     "unblok": "./index.ts"

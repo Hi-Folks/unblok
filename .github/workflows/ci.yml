@@ -11,6 +11,9 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        node-version: ["22.21.0", "24", "26"]
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: oven-sh/setup-bun@v2.0.2
@@ -18,8 +21,13 @@ jobs:
           bun-version: 1.4.4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 26
+          node-version: ${{ matrix.node-version }}
       - run: bun install --frozen-lockfile
-      - run: bun run quality
-      - run: bun run build
-      - run: bun run release:check
+      - name: Bun quality checks and unit tests
+        run: bun run quality
+      - name: Build CLI and library
+        run: bun run build
+      - name: Node.js runtime tests
+        run: node --test scripts/node-runtime-check.mjs
+      - name: Test packed package with Node.js and Bun
+        run: bun run release:check

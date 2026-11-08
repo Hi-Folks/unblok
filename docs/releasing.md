@@ -1,6 +1,6 @@
 # Releasing
 
-Unblok uses Bun for development and produces one JavaScript npm package for Node.js 26 and Bun. The package contains the CLI, library, and TypeScript declarations.
+Unblok uses Bun for development and produces one JavaScript npm package for Node.js 22.21.0 or newer and Bun. The package contains the CLI, library, and TypeScript declarations. CI checks the minimum Node version and newer versions.
 
 Before preparing a release, review the changelog and commit all changes. Verify npm ownership and trusted publishing for the `unblok` package and the `release.yml` GitHub Actions workflow with environment `release`.
 
@@ -13,7 +13,7 @@ bun run build
 bun run release:check
 ```
 
-The release check packs the staged package, installs it into a temporary project, and checks CLI help, version, YAML planning, library imports, and TypeScript declarations. It requires both Node.js and Bun and does not publish.
+The release check packs the staged package, installs it into a temporary project, and checks CLI help, version, YAML planning, library imports, and TypeScript declarations. It requires both Node.js and Bun and does not publish. CI also runs Node.js's own test runner against the built CLI and library on Node 22.21.0, 24, and 26; the release workflow repeats the Node tests before publication.
 
 To prepare a version locally:
 

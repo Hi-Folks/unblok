@@ -27,6 +27,8 @@ jobs:
         run: bun -e 'import p from "./package.json"; if (process.env.GITHUB_REF_NAME !== `v${p.version}`) throw Error("Tag must match package version");'
       - run: bun run quality
       - run: bun run build
+      - name: Node.js runtime tests
+        run: node --test scripts/node-runtime-check.mjs
       - run: bun run release:check
       - name: Publish package
         run: npm publish ./dist/npm/unblok --access public

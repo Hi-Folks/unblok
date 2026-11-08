@@ -30,7 +30,7 @@ await Bun.write(
         },
       },
       types: "./types/library.d.ts",
-      engines: { node: ">=26" },
+      engines: manifest.engines,
       dependencies: manifest.dependencies,
       files: ["dist", "types", "README.md", "LICENSE"],
     },
@@ -145,6 +145,29 @@ try {
     `unblok ${manifest.version}`
   )
     throw new Error("Installed bunx command failed.");
+  await Bun.write(
+    join(temp, ".env"),
+    "STORYBLOK_TOKEN=example-test-token\nSTORYBLOK_REQUESTS_PER_SECOND=0\n",
+  );
+  const env = { ...process.env };
+  delete env.STORYBLOK_TOKEN;
+  delete env.STORYBLOK_REQUESTS_PER_SECOND;
+  const envCheck = Bun.spawn(["bun", "x", "--bun", "unblok", "space", "list"], {
+    cwd: temp,
+    env,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [envOut, envErr, envExit] = await Promise.all([
+    new Response(envCheck.stdout).text(),
+    new Response(envCheck.stderr).text(),
+    envCheck.exited,
+  ]);
+  if (
+    envExit === 0 ||
+    !(envOut + envErr).includes("STORYBLOK_REQUESTS_PER_SECOND")
+  )
+    throw new Error("bunx CLI did not load the working directory's .env.");
   for (const runtime of ["node", "bun"]) {
     if (!(await run([runtime, cli, "--help"], temp)).includes("Usage: unblok"))
       throw new Error(`${runtime} CLI help failed.`);

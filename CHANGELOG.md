@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Support Node.js 22.21.0 and newer for the CLI and library; Bun remains supported.
+- Test the built CLI and library with Node.js in CI, alongside Bun tests and packed-package checks.
+
+### Fixed
+
+- Load `.env` from the working directory when the CLI is run through `bunx --bun`.
+
 ## 0.2.0 - 2026-11-20
 
 ### Changed
