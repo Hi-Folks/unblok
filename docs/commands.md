@@ -2,6 +2,15 @@
 
 All examples use `bun run start` from a checkout. The published CLI is `unblok`. Add `--json` to data commands that support it for machine-readable output.
 
+## Storyblok pipeline stages
+
+```bash
+bun run start pipeline list --space-id 123456 --json
+bun run start pipeline create --name "Go Live" --space-id 123456 --yes
+```
+
+The Pipelines app (`branches`) must be installed. Creation requires `--yes` and uses exact, case-sensitive stage names. The optional `--source` resolves an existing stage returned by the API by name. An existing target is skipped if its requested source matches; missing or ambiguous names and mismatched sources stop the operation. When no source is specified, Unblok leaves source selection to Storyblok and does not verify an existing stage's source. No deployment is triggered. The [pipeline YAML recipe](../examples/features/setup-pipeline.yaml) installs the app and creates `Go Live` without an explicit source. Storyblok documents the API as [branches](https://www.storyblok.com/docs/api/management/pipelines/create-a-branch).
+
 ## Storyblok content releases
 
 ```bash
@@ -181,6 +190,7 @@ The bundled examples reference the local [JSON Schema](../space-setup.schema.jso
 | `ai_translation`                                                      | Accept a specified `disclaimer_id`, then install AI Translations (app `29942`).                                                  | [AI Translations](../examples/customer-demo/steps/10-ai-translation.yaml)                                          |
 | `experiments`                                                         | Install Experiments, reconcile variants and test content, and optionally publish, activate, and push simulated results.          | [Experiment](../examples/features/setup-experiment.yaml)                                                           |
 | `releases.create`                                                     | Create content releases with fixed or relative schedules.                                                                        | [Releases](../examples/features/setup-releases.yaml)                                                               |
+| `pipelines.create`                                                    | Create Pipeline stages using an optional existing source stage.                                                                  | [Pipeline](../examples/features/setup-pipeline.yaml)                                                               |
 | `ai`                                                                  | Configure space AI and organization configuration inheritance using explicit booleans `enabled` and `inherit_org_configuration`. | [Space AI](../examples/customer-demo/steps/09-space-ai.yaml)                                                       |
 | `components.fields`                                                   | Reconcile declared fields, including custom `field_type`, tabs, and rich-text `customize_toolbar`.                               | [Component fields](../examples/features/setup-component-fields.yaml)                                               |
 | `assets.upload_directory`                                             | Upload selected files from a local directory.                                                                                    | [Local assets](../examples/features/setup-assets.yaml)                                                             |
@@ -201,7 +211,7 @@ bun run start space setup apply --config examples/customer-demo/steps/02-setting
 bun run start space setup apply --config examples/customer-demo/steps/05-assets.yaml --space-id 123456 --input 'asset_url=https://your-host.example/banner.png' --yes
 ```
 
-Run files 03–08 with `--space-id` in order; the story, workflow, and tag steps depend on earlier steps and the source space's content. The modular blueprint also includes [space AI settings](../examples/customer-demo/steps/09-space-ai.yaml), AI Translations, the [experiment setup](../examples/features/setup-experiment.yaml), and the [release setup](../examples/features/setup-releases.yaml). Review the disclaimer IDs and terms before applying. The combined setup publishes the experiment variant, starts the experiment, pushes simulated results, and creates a release scheduled seven days after creation; verify its time in Storyblok. To run it, use `--config examples/customer-demo/setup.yaml` and provide the same input overrides. The runner always executes resource operations in dependency order, regardless of the order of sections in YAML.
+Run files 03–08 with `--space-id` in order; the story, workflow, and tag steps depend on earlier steps and the source space's content. The modular blueprint also includes [space AI settings](../examples/customer-demo/steps/09-space-ai.yaml), AI Translations, the [experiment setup](../examples/features/setup-experiment.yaml), the [release setup](../examples/features/setup-releases.yaml), and the [Pipeline setup](../examples/features/setup-pipeline.yaml). Review the disclaimer IDs and terms before applying. The combined setup publishes the experiment variant, starts the experiment, pushes simulated results, creates a release scheduled seven days after creation, and creates a `Go Live` Pipeline stage without an explicit source. Verify Pipeline availability, its source and the scheduled time in Storyblok. To run it, use `--config examples/customer-demo/setup.yaml` and provide the same input overrides. The runner always executes resource operations in dependency order, regardless of the order of sections in YAML.
 
 `extends` accepts one path or an array of paths, relative to the file declaring it. Included files are merged in order and then the including file is merged. Objects merge recursively, later scalar values and configuration lists replace earlier ones, and operation lists (apps, component fields, assets, stories, workflow assignments, and tags) are appended. A file shared through multiple paths is included once; cycles are rejected. Inputs are merged before substitution, so `--input` overrides work across files. Include paths are literal, not input expressions. Local asset source paths are relative to the file declaring them; use relative input values when interpolating paths in included fragments.
 

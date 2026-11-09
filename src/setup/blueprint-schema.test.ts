@@ -23,6 +23,7 @@ describe("blueprint editor schema", () => {
       "ai_translation",
       "experiments",
       "releases",
+      "pipelines",
       "apps",
       "components",
       "assets",
@@ -61,6 +62,7 @@ describe("blueprint editor schema", () => {
       "setup-experiment",
       "setup-remote-asset",
       "setup-releases",
+      "setup-pipeline",
       "setup-stories",
       "setup-workflow",
     ]) {
@@ -134,6 +136,7 @@ describe("blueprint editor schema", () => {
     expect(compiled.releases).toEqual([
       { name: "Demo campaign", releaseInDays: 7 },
     ]);
+    expect(compiled.pipelines).toEqual([{ name: "Go Live" }]);
     expect(
       compiled.apps.filter(
         (app) => "slug" in app && app.slug === "releases_only",

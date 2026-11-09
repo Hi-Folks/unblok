@@ -158,6 +158,26 @@
         }
       }
     },
+    "pipelines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["create"],
+      "properties": {
+        "create": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "$ref": "#/$defs/nonempty" },
+              "source": { "$ref": "#/$defs/nonempty" }
+            }
+          }
+        }
+      }
+    },
     "apps": {
       "type": "object",
       "additionalProperties": false,

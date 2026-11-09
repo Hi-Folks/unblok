@@ -7,6 +7,7 @@ import { experimentCommand } from "../commands/experiment/index.ts";
 import { appCommand } from "../commands/app/index.ts";
 import { assetCommand } from "../commands/asset/index.ts";
 import { releaseCommand } from "../commands/release/index.ts";
+import { pipelineCommand } from "../commands/pipeline/index.ts";
 import {
   getStoryblokRequestsPerSecond,
   getStoryblokRegion,
@@ -43,6 +44,7 @@ const commands = [
   appCommand,
   assetCommand,
   releaseCommand,
+  pipelineCommand,
 ];
 
 export async function runCli(

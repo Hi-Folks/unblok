@@ -18,6 +18,7 @@ const operationLists = new Set([
   "tags",
   "experiments.create",
   "releases.create",
+  "pipelines.create",
 ]);
 
 function merge(base: Mapping, overlay: Mapping, prefix = ""): Mapping {

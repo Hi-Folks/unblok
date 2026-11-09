@@ -35,6 +35,21 @@ The story list must contain exact, nonempty full slugs. Every slug is resolved b
 
 The gateway is supplied explicitly, so the same operations work with a custom implementation of the exported `WorkflowStoryGateway` type. No action reads credentials, prompts, or writes terminal output. The client factory accepts the token explicitly; do not hard-code or log it.
 
+## List and create Pipeline stages
+
+```ts
+import { listPipelineBranches, ensurePipelineBranch } from "unblok";
+
+const stages = await listPipelineBranches(gateway, { spaceId: 123456 });
+const result = await ensurePipelineBranch(gateway, {
+  spaceId: 123456,
+  name: "Go Live",
+});
+console.log(result.status, result.branch.id); // "created" or "unchanged"
+```
+
+The Pipelines app (`branches`) must be installed. Names match exactly, with surrounding spaces removed. The optional `source` must identify one stage returned by the API; an existing target with a different or missing source reports `CONFLICT`. If omitted, Unblok leaves source selection to Storyblok and does not verify the source of an existing stage. Missing or ambiguous stages reject with `UnblokError`. It does not change existing stages or deploy content. The CLI and YAML use the same action; concurrent operations and incomplete API pagination can still result in duplicates.
+
 ## List and create Storyblok releases
 
 ```ts

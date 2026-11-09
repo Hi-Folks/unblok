@@ -31,6 +31,8 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     text: (message) => stdout.push(message),
   };
   const fallback: StoryblokGateway = {
+    listPipelineBranches: async () => [],
+    createPipelineBranch: async (_spaceId, branch) => ({ id: 1, ...branch }),
     listReleases: async () => [],
     createRelease: async (_spaceId, name) => ({ id: 1, name }),
     listAssetFolders: async () => [],
@@ -116,6 +118,64 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("lists and creates pipeline stages with confirmation", async () => {
+    const stages = [{ id: 1, name: "Preview" }];
+    let writes = 0;
+    const harness = createHarness({
+      listInstalledApps: async () => [
+        { app_id: 7, name: "Pipelines", slug: "branches" },
+      ],
+      listPipelineBranches: async () => stages,
+      createPipelineBranch: async (_space, input) => {
+        writes++;
+        return { id: 2, ...input };
+      },
+    });
+    expect(
+      await runCli(
+        ["pipeline", "list", "--space-id", "42", "--json"],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(
+      await runCli(
+        [
+          "pipeline",
+          "create",
+          "--name",
+          "Go Live",
+          "--source",
+          "Preview",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(writes).toBe(0);
+    expect(
+      await runCli(
+        [
+          "pipeline",
+          "create",
+          "--name",
+          "Go Live",
+          "--source",
+          "Preview",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout).toEqual([
+      [{ id: 1, name: "Preview" }],
+      { status: "created", branch: { id: 2, name: "Go Live", source_id: 1 } },
+    ]);
+  });
   test("schedules a release a specified number of days from now", async () => {
     setSystemTime(new Date("2027-01-01T12:34:45Z"));
     try {

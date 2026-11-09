@@ -11,6 +11,15 @@ export type {
   StoryblokRelease,
 } from "./storyblok/gateway.ts";
 export { listReleases, createRelease } from "./actions/releases/releases.ts";
+export {
+  listPipelineBranches,
+  ensurePipelineBranch,
+} from "./actions/pipelines/branches.ts";
+export type {
+  PipelineGateway,
+  EnsurePipelineBranchInput,
+  EnsurePipelineBranchResult,
+} from "./actions/pipelines/branches.ts";
 export type {
   ReleaseGateway,
   ReleaseSpaceInput,

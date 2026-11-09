@@ -90,6 +90,9 @@ export function planBlueprint(value: unknown): BlueprintPlan {
     releases: {
       create: { operation: "create content releases", support: "available" },
     },
+    pipelines: {
+      create: { operation: "create pipeline stages", support: "available" },
+    },
     components: {
       fields: { operation: "add component fields", support: "available" },
     },
@@ -242,6 +245,6 @@ export function planBlueprint(value: unknown): BlueprintPlan {
         (item) => item.support === "not-implemented",
       ).length,
     },
-    note: "Capability inventory only: no Storyblok state was read or changed. Blueprint execution supports space settings, apps, components, assets, stories, workflows, tags, releases and experiments.",
+    note: "Capability inventory only: no Storyblok state was read or changed. Blueprint execution supports space settings, apps, components, assets, stories, workflows, tags, releases, pipelines and experiments.",
   };
 }

@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Pipeline Go Live
+execution:
+  mode: reconcile
+apps:
+  install:
+    - branches
+pipelines:
+  create:
+    - name: Go Live

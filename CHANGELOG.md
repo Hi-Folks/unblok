@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3 - WIP
+
+### Added
+
+- Add Pipeline stage listing and creation through the CLI and library, plus a modular YAML recipe for a `Go Live` stage.
+
 ## 0.3.2 - 2026-11-09
 
 ### Added

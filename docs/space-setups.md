@@ -33,7 +33,7 @@ This is an alternative to file 05 when running the steps individually. The modul
 
 ## Combine the steps
 
-The [modular blueprint](../examples/customer-demo/setup.yaml) uses `extends` to combine steps 01–10 with the experiment and release recipes. It enables space AI, disables inheritance of organization AI configuration, accepts AI Translations and Experiments disclaimers, publishes a variant, starts an experiment, pushes simulated results, and creates a release scheduled seven days from creation. Verify the scheduled time in Storyblok. Review both disclaimer IDs and terms and the [experiment configuration](../examples/features/setup-experiment.yaml) before applying. Inputs declared in fragments are available to the main blueprint:
+The [modular blueprint](../examples/customer-demo/setup.yaml) uses `extends` to combine steps 01–10 with the experiment, release, and Pipeline recipes. It enables space AI, disables inheritance of organization AI configuration, accepts AI Translations and Experiments disclaimers, publishes a variant, starts an experiment, pushes simulated results, creates a release scheduled seven days from creation, and creates a `Go Live` Pipeline stage without an explicit source. Verify Pipeline availability and the stage source, as well as the scheduled time in Storyblok. Review both disclaimer IDs and terms and the [experiment configuration](../examples/features/setup-experiment.yaml) before applying. Inputs declared in fragments are available to the main blueprint:
 
 ```bash
 bun run start space setup plan --config examples/customer-demo/setup.yaml \

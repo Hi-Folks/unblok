@@ -6,7 +6,7 @@ The demo duplicates the source space specified in [step 01](steps/01-space.yaml)
 
 ## The main blueprint
 
-[setup.yaml](setup.yaml) uses `extends` to combine the numbered files in `steps/`, the [experiment recipe](../features/setup-experiment.yaml), and the [releases recipe](../features/setup-releases.yaml). Inputs declared in a step can be overridden when running the main blueprint. The runner orders operations by dependency, which may differ from the order of the files.
+[setup.yaml](setup.yaml) uses `extends` to combine the numbered files in `steps/`, the [experiment recipe](../features/setup-experiment.yaml), the [releases recipe](../features/setup-releases.yaml), and the [pipeline recipe](../features/setup-pipeline.yaml). Inputs declared in a step can be overridden when running the main blueprint. The runner orders operations by dependency, which may differ from the order of the files.
 
 Check the combined recipe locally:
 
@@ -22,7 +22,7 @@ bun run start space setup apply --config examples/customer-demo/setup.yaml \
   --input 'space_name=Customer Demo' --yes
 ```
 
-The command shows the new space and asks whether to continue. Review the AI Translations and Experiments disclaimers and their IDs before applying. The complete setup enables space AI, disables inheritance of organization AI configuration, publishes the experiment variant, starts the experiment, pushes simulated results, and creates a `Demo campaign` release scheduled seven days from creation. Verify the resulting release time in Storyblok: the UTC calculation is sent in the API's timezone-free format. See the [experiment guide](../../docs/experiments.md) for prerequisites and partial-failure behavior. Override `asset_url`, `frontend_host`, or `review_stage` with additional `--input 'name=value'` options when needed.
+The command shows the new space and asks whether to continue. Review the AI Translations and Experiments disclaimers and their IDs before applying. The complete setup enables space AI, disables inheritance of organization AI configuration, publishes the experiment variant, starts the experiment, pushes simulated results, creates a `Demo campaign` release scheduled seven days from creation, and creates a `Go Live` Pipeline stage without an explicit source. The Pipeline operation requires the app to be available; verify the stage source in your space. Verify the resulting release time in Storyblok: the UTC calculation is sent in the API's timezone-free format. See the [experiment guide](../../docs/experiments.md) for prerequisites and partial-failure behavior. Override `asset_url`, `frontend_host`, or `review_stage` with additional `--input 'name=value'` options when needed.
 
 ## Reusable steps
 
@@ -42,6 +42,7 @@ Run a step by itself to test or reuse only that capability. Steps 02–10 accept
 | [10 AI Translations](steps/10-ai-translation.yaml) | Accepts the specified disclaimer and installs AI Translations; reuse only when that feature and disclaimer are appropriate.            |
 | [Experiment](../features/setup-experiment.yaml)    | Creates and activates a demo experiment with a modified hero variant and simulated results.                                            |
 | [Releases](../features/setup-releases.yaml)        | Creates a demo release scheduled seven days from creation; existing releases retain their schedules on rerun.                          |
+| [Pipeline](../features/setup-pipeline.yaml)        | Installs Pipelines and creates the `Go Live` stage without an explicit source.                                                         |
 
 For local images, apply [alternatives/local-assets.yaml](alternatives/local-assets.yaml) **instead of step 05** when running steps individually. Supply `--input 'asset_dir=/absolute/path/to/images'`; the directory must contain the three filenames listed in that file. The main blueprint continues to use the remote asset step.
 

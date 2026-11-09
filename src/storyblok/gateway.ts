@@ -14,6 +14,11 @@ import {
 import { getRegion } from "@storyblok/region-helper";
 
 export interface StoryblokGateway {
+  listPipelineBranches(spaceId: number): Promise<StoryblokPipelineBranch[]>;
+  createPipelineBranch(
+    spaceId: number,
+    branch: { name: string; source_id?: number },
+  ): Promise<StoryblokPipelineBranch>;
   listReleases(spaceId: number): Promise<StoryblokRelease[]>;
   createRelease(
     spaceId: number,
@@ -142,6 +147,12 @@ export interface StoryblokGateway {
     componentId: number,
     component: ComponentUpdate,
   ): Promise<Component>;
+}
+
+export interface StoryblokPipelineBranch {
+  id: number;
+  name: string;
+  source_id?: number | null;
 }
 
 export interface StoryblokRelease {
@@ -281,6 +292,59 @@ export const createStoryblokGateway = (
   };
 
   return {
+    async listPipelineBranches(spaceId) {
+      const all: StoryblokPipelineBranch[] = [];
+      const seen = new Set<number>();
+      for (let page = 1; ; page++) {
+        const response = await clientForSpace(spaceId).get<{
+          branches: StoryblokPipelineBranch[];
+        }>(`/v1/spaces/${spaceId}/branches/`, {
+          query: { page, per_page: 100 },
+        });
+        if (!Array.isArray(response.data.branches))
+          throw new Error("Invalid pipeline branch list.");
+        for (const branch of response.data.branches) {
+          if (
+            !branch ||
+            !Number.isSafeInteger(branch.id) ||
+            branch.id <= 0 ||
+            typeof branch.name !== "string" ||
+            seen.has(branch.id)
+          )
+            throw new Error("Invalid or repeated pipeline branch in list.");
+          seen.add(branch.id);
+          all.push({
+            id: branch.id,
+            name: branch.name,
+            ...(branch.source_id === undefined
+              ? {}
+              : { source_id: branch.source_id }),
+          });
+        }
+        if (response.data.branches.length < 100) return all;
+      }
+    },
+    async createPipelineBranch(spaceId, branch) {
+      const response = await clientForSpace(spaceId).post<{
+        branch: StoryblokPipelineBranch;
+      }>(`/v1/spaces/${spaceId}/branches/`, {
+        headers: { "Content-Type": "application/json" },
+        body: { branch },
+      });
+      const item = response.data.branch;
+      if (
+        !item ||
+        !Number.isSafeInteger(item.id) ||
+        item.id <= 0 ||
+        typeof item.name !== "string"
+      )
+        throw new Error("Invalid pipeline branch returned by Storyblok.");
+      return {
+        id: item.id,
+        name: item.name,
+        ...(item.source_id === undefined ? {} : { source_id: item.source_id }),
+      };
+    },
     async listReleases(spaceId) {
       const all: StoryblokRelease[] = [];
       const seenIds = new Set<number>();

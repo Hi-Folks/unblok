@@ -6,6 +6,8 @@ import {
   ensureStoryCreated,
   listReleases,
   createRelease,
+  listPipelineBranches,
+  ensurePipelineBranch,
   publishStory,
   ensureAppInstalled,
   updateStoryBlock,
@@ -26,6 +28,32 @@ import type {
   StoryCreateGateway,
   StoryPublishGateway,
 } from "./library.ts";
+
+test("public library exposes pipeline listing and creation", async () => {
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 7, name: "Pipelines", slug: "branches" },
+    ],
+    listPipelineBranches: async () => [{ id: 1, name: "Preview" }],
+    createPipelineBranch: async (
+      _space: number,
+      branch: { name: string; source_id?: number },
+    ) => ({ id: 2, ...branch }),
+  };
+  expect(await listPipelineBranches(gateway, { spaceId: 42 })).toEqual([
+    { id: 1, name: "Preview" },
+  ]);
+  expect(
+    await ensurePipelineBranch(gateway, {
+      spaceId: 42,
+      name: "Go Live",
+      source: "Preview",
+    }),
+  ).toEqual({
+    status: "created",
+    branch: { id: 2, name: "Go Live", source_id: 1 },
+  });
+});
 
 test("public library exposes release listing and creation", async () => {
   const gateway = {

@@ -13,6 +13,7 @@ extends:
   - steps/10-ai-translation.yaml
   - ../features/setup-experiment.yaml
   - ../features/setup-releases.yaml
+  - ../features/setup-pipeline.yaml
 template:
   name: Customer Demo
   description: Duplicate and configure the showcase space from reusable parts.

@@ -3,6 +3,11 @@ import { installAppById, installAppBySlug } from "../actions/apps/apps.ts";
 import { assignStoryTags } from "../actions/stories/story-tags.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
 import { createRelease } from "../actions/releases/releases.ts";
+import { ensurePipelineBranch } from "../actions/pipelines/branches.ts";
+import {
+  compilePipelineBranches,
+  type BlueprintPipelineBranch,
+} from "./blueprint-pipelines.ts";
 import {
   compileReleases,
   type BlueprintRelease,
@@ -79,6 +84,7 @@ export interface SupportedBlueprint {
   aiSettings?: { enabled: boolean; inheritOrgConfiguration: boolean };
   experiments?: ReturnType<typeof compileExperiments>;
   releases: BlueprintRelease[];
+  pipelines: BlueprintPipelineBranch[];
   fields: DesiredComponentField[];
   assets: AssetDirectory[];
   remoteAssets: RemoteAsset[];
@@ -107,6 +113,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
         "ai_translation",
         "experiments",
         "releases",
+        "pipelines",
         "apps",
         "components",
         "assets",
@@ -242,6 +249,10 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       : compileExperiments(value.experiments);
   const releases =
     value.releases === undefined ? [] : compileReleases(value.releases);
+  const pipelines =
+    value.pipelines === undefined
+      ? []
+      : compilePipelineBranches(value.pipelines);
   if (value.ai_translation !== undefined) {
     if (
       !isObject(value.ai_translation) ||
@@ -753,6 +764,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       tags,
       experiments,
       releases,
+      pipelines,
     }).includes("${{")
   )
     throw new CliError(
@@ -785,6 +797,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     tags,
     experiments,
     releases,
+    pipelines,
   };
 }
 
@@ -799,7 +812,8 @@ export interface BlueprintProgress {
     | "workflow"
     | "tags"
     | "experiments"
-    | "releases";
+    | "releases"
+    | "pipelines";
   current?: number;
   total?: number;
   item?: string;
@@ -900,6 +914,10 @@ export async function applySupportedBlueprint(
     })) ?? [],
     blueprint.releases.map((item) => ({
       operation: "create-release",
+      key: item.name,
+    })),
+    blueprint.pipelines.map((item) => ({
+      operation: "create-pipeline-branch",
       key: item.name,
     })),
   ];
@@ -1456,6 +1474,33 @@ export async function applySupportedBlueprint(
         error: error instanceof Error ? error.message : "Unexpected error",
       });
       return finish(12);
+    }
+  }
+  for (const [index, branch] of blueprint.pipelines.entries()) {
+    onProgress?.({
+      stage: "pipelines",
+      current: index + 1,
+      total: blueprint.pipelines.length,
+      item: branch.name,
+    });
+    try {
+      const result = await ensurePipelineBranch(gateway, {
+        spaceId,
+        ...branch,
+      });
+      operations.push({
+        operation: "create-pipeline-branch",
+        key: branch.name,
+        status: result.status,
+      });
+    } catch (error) {
+      operations.push({
+        operation: "create-pipeline-branch",
+        key: branch.name,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unexpected error",
+      });
+      return finish(13);
     }
   }
   return finish();
