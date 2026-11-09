@@ -4,7 +4,7 @@ import { assignStoryTags } from "../actions/stories/story-tags.ts";
 import { isValidStoryCreationSlug } from "../actions/stories/create-story.ts";
 import { ensureStoryFolder } from "../actions/stories/ensure-folder.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
-import { createRelease } from "../actions/releases/releases.ts";
+import { createRelease, listReleases } from "../actions/releases/releases.ts";
 import { ensurePipelineBranch } from "../actions/pipelines/branches.ts";
 import {
   compilePipelineBranches,
@@ -419,7 +419,14 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
         if (
           !isObject(item) ||
           Object.keys(item).some(
-            (key) => !["story_slug", "component", "fields"].includes(key),
+            (key) =>
+              ![
+                "story_slug",
+                "component",
+                "fields",
+                "release_id",
+                "release",
+              ].includes(key),
           ) ||
           typeof item.story_slug !== "string" ||
           !item.story_slug.trim() ||
@@ -427,6 +434,12 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
           /[*,]/.test(item.story_slug) ||
           typeof item.component !== "string" ||
           !item.component.trim() ||
+          (item.release_id !== undefined &&
+            (!Number.isSafeInteger(item.release_id) ||
+              (item.release_id as number) <= 0)) ||
+          (item.release !== undefined &&
+            (typeof item.release !== "string" || !item.release.trim())) ||
+          (item.release !== undefined && item.release_id !== undefined) ||
           !isObject(item.fields) ||
           !Object.keys(item.fields).length ||
           Object.keys(item.fields).some((key) =>
@@ -447,6 +460,12 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
           story_slug: item.story_slug,
           component: item.component,
           fields: item.fields,
+          ...(item.release_id === undefined
+            ? {}
+            : { release_id: item.release_id as number }),
+          ...(typeof item.release === "string"
+            ? { release: item.release.trim() }
+            : {}),
         });
       }
     }
@@ -458,13 +477,22 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
         if (
           !isObject(item) ||
           Object.keys(item).some(
-            (key) => !["name", "slug", "content"].includes(key),
+            (key) =>
+              !["name", "slug", "content", "release_id", "release"].includes(
+                key,
+              ),
           ) ||
           typeof item.name !== "string" ||
           !item.name.trim() ||
           typeof item.slug !== "string" ||
           !item.slug.trim() ||
           !isValidStoryCreationSlug(item.slug) ||
+          (item.release_id !== undefined &&
+            (!Number.isSafeInteger(item.release_id) ||
+              (item.release_id as number) <= 0)) ||
+          (item.release !== undefined &&
+            (typeof item.release !== "string" || !item.release.trim())) ||
+          (item.release !== undefined && item.release_id !== undefined) ||
           !isObject(item.content) ||
           typeof item.content.component !== "string" ||
           !item.content.component.trim()
@@ -476,7 +504,17 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
         const slug = item.slug.trim();
         if (stories.some((story) => story.slug === slug))
           throw new CliError(`${path} duplicates story slug '${slug}'.`, 2);
-        stories.push({ name: item.name.trim(), slug, content: item.content });
+        stories.push({
+          name: item.name.trim(),
+          slug,
+          content: item.content,
+          ...(item.release_id === undefined
+            ? {}
+            : { releaseId: item.release_id as number }),
+          ...(typeof item.release === "string"
+            ? { release: item.release.trim() }
+            : {}),
+        });
       }
     }
     if (value.stories.translated_slugs !== undefined) {
@@ -885,10 +923,16 @@ export async function applySupportedBlueprint(
           },
           { operation: "install-ai-translations", key: AI_TRANSLATION_APP_ID },
         ],
-    blueprint.apps.map((app) => ({
-      operation: "install-app",
-      key: "slug" in app ? app.slug : app.id,
-    })),
+    [
+      ...blueprint.apps.map((app) => ({
+        operation: "install-app",
+        key: "slug" in app ? app.slug : app.id,
+      })),
+      ...blueprint.releases.map((item) => ({
+        operation: "create-release",
+        key: item.name,
+      })),
+    ],
     blueprint.fields.map((field) => ({
       operation: "ensure-component-field",
       key: `${field.component}.${field.field}`,
@@ -940,15 +984,33 @@ export async function applySupportedBlueprint(
       operation: "push-experiment-results",
       key: item.name,
     })) ?? [],
-    blueprint.releases.map((item) => ({
-      operation: "create-release",
-      key: item.name,
-    })),
+    [],
     blueprint.pipelines.map((item) => ({
       operation: "create-pipeline-branch",
       key: item.name,
     })),
   ];
+  const releaseIds = new Map<string, number>();
+  const resolveRelease = async (name: string): Promise<number> => {
+    const cached = releaseIds.get(name);
+    if (cached !== undefined) return cached;
+    const matches = (await listReleases(gateway, { spaceId })).filter(
+      (item) => item.name === name,
+    );
+    if (!matches.length)
+      throw new CliError(`Release '${name}' was not found.`, 1, "NOT_FOUND");
+    if (matches.length > 1)
+      throw new CliError(
+        `Multiple releases named '${name}' exist.`,
+        1,
+        "AMBIGUOUS",
+      );
+    const release = matches[0]!;
+    if (!Number.isSafeInteger(release.id) || release.id <= 0)
+      throw new CliError(`Release '${name}' has an invalid ID.`, 1, "CONFLICT");
+    releaseIds.set(name, release.id);
+    return release.id;
+  };
   const finish = (stoppedAt?: number) => {
     if (stoppedAt === undefined)
       return finishBlueprintReport(spaceId, operations);
@@ -1072,6 +1134,37 @@ export async function applySupportedBlueprint(
       if (!blueprint.continueOnAppError) return finish(2);
     }
   }
+  for (const [index, release] of blueprint.releases.entries()) {
+    onProgress?.({
+      stage: "releases",
+      current: index + 1,
+      total: blueprint.releases.length,
+      item: release.name,
+    });
+    try {
+      const result = await createRelease(gateway, { spaceId, ...release });
+      if (!Number.isSafeInteger(result.release.id) || result.release.id <= 0)
+        throw new CliError(
+          `Release '${release.name}' has an invalid ID.`,
+          1,
+          "CONFLICT",
+        );
+      releaseIds.set(release.name, result.release.id);
+      operations.push({
+        operation: "create-release",
+        key: release.name,
+        status: result.status,
+      });
+    } catch (error) {
+      operations.push({
+        operation: "create-release",
+        key: release.name,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unexpected error",
+      });
+      return finish(2);
+    }
+  }
   for (const [index, field] of blueprint.fields.entries()) {
     const key = `${field.component}.${field.field}`;
     onProgress?.({
@@ -1143,6 +1236,7 @@ export async function applySupportedBlueprint(
       blueprint.translations,
       operations,
       blueprint.remoteAssets,
+      resolveRelease,
     );
   } catch (error) {
     operations.push({
@@ -1276,6 +1370,26 @@ export async function applySupportedBlueprint(
     for (const update of blueprint.storyUpdates) {
       const key = `${update.story_slug}/${update.component}`;
       try {
+        if (update.release !== undefined || update.release_id !== undefined) {
+          const releaseId =
+            update.release === undefined
+              ? update.release_id
+              : await resolveRelease(update.release);
+          const changed = await updateBlueprintStoryBlock(
+            gateway,
+            spaceId,
+            update,
+            undefined,
+            true,
+            releaseId,
+          );
+          operations.push({
+            operation: "update-story-block",
+            key,
+            status: changed ? "updated" : "unchanged",
+          });
+          continue;
+        }
         const ids: number[] = [];
         let running = false;
         for (const experiment of created) {
@@ -1321,6 +1435,7 @@ export async function applySupportedBlueprint(
           update,
           ids[0],
           !running,
+          undefined,
         );
         operations.push({
           operation: "update-story-block",
@@ -1479,11 +1594,25 @@ export async function applySupportedBlueprint(
     for (const update of blueprint.storyUpdates) {
       const key = `${update.story_slug}/${update.component}`;
       try {
-        await updateBlueprintStoryBlock(gateway, spaceId, update);
+        const changed = await updateBlueprintStoryBlock(
+          gateway,
+          spaceId,
+          update,
+          undefined,
+          true,
+          update.release === undefined
+            ? update.release_id
+            : await resolveRelease(update.release),
+        );
         operations.push({
           operation: "update-story-block",
           key,
-          status: "updated",
+          status:
+            update.release !== undefined || update.release_id !== undefined
+              ? changed
+                ? "updated"
+                : "unchanged"
+              : "updated",
         });
       } catch (error) {
         operations.push({
@@ -1494,30 +1623,6 @@ export async function applySupportedBlueprint(
         });
         return finish(10);
       }
-    }
-  }
-  for (const [index, release] of blueprint.releases.entries()) {
-    onProgress?.({
-      stage: "releases",
-      current: index + 1,
-      total: blueprint.releases.length,
-      item: release.name,
-    });
-    try {
-      const result = await createRelease(gateway, { spaceId, ...release });
-      operations.push({
-        operation: "create-release",
-        key: release.name,
-        status: result.status,
-      });
-    } catch (error) {
-      operations.push({
-        operation: "create-release",
-        key: release.name,
-        status: "failed",
-        error: error instanceof Error ? error.message : "Unexpected error",
-      });
-      return finish(12);
     }
   }
   for (const [index, branch] of blueprint.pipelines.entries()) {

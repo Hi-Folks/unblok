@@ -18,6 +18,8 @@ export interface StoryCreate {
   name: string;
   slug: string;
   content: Record<string, unknown>;
+  releaseId?: number;
+  release?: string;
 }
 export const updateBlueprintStoryBlock = reconcileStoryBlock;
 
@@ -28,12 +30,19 @@ export async function applyStories(
   translations: StoryTranslations[],
   operations: Array<{ operation: string; key: string; status: string }>,
   references: RemoteAsset[] = [],
+  resolveRelease?: (name: string) => Promise<number>,
 ): Promise<void> {
   for (const desired of creates) {
     try {
+      let releaseId = desired.releaseId;
+      if (desired.release !== undefined) {
+        if (!resolveRelease)
+          throw new Error("Release name resolution is unavailable.");
+        releaseId = await resolveRelease(desired.release);
+      }
       const result = await createStoryIfMissing(
         gateway,
-        { spaceId, ...desired },
+        { spaceId, ...desired, releaseId },
         async (content) =>
           (await resolveStoryAssetReferences(
             gateway,

@@ -8,16 +8,18 @@ import { CliError } from "../../errors.ts";
 export const storyCreateCommand: Command = {
   name: "create",
   description: "Create a draft story from JSON",
-  usage: "unblok story create --file <path> [--space-id <id>] --yes",
+  usage:
+    "unblok story create --file <path> [--release-id <id>] [--space-id <id>] --yes",
   async run(args, context) {
     if (args.includes("--help") || args.includes("-h")) {
       context.output.text(
-        `Usage: ${this.usage}\n\nCreate a draft story at the root or in an existing folder. An existing story with the same full slug is preserved.\n\nOptions:\n  --file <path>    JSON definition with name, full slug, and content\n  --space-id <id>  Target space; defaults to STORYBLOK_SPACE_ID\n  --yes            Confirm creation (required)\n  --json           Emit machine-readable JSON\n  -h, --help       Show command help`,
+        `Usage: ${this.usage}\n\nCreate a draft story at the root or in an existing folder. An existing story with the same full slug is preserved.\n\nOptions:\n  --file <path>      JSON definition with name, full slug, and content\n  --release-id <id>  Create the story in this release\n  --space-id <id>    Target space; defaults to STORYBLOK_SPACE_ID\n  --yes              Confirm creation (required)\n  --json             Emit machine-readable JSON\n  -h, --help         Show command help`,
       );
       return;
     }
     let file: string | undefined;
     let spaceIdOption: string | undefined;
+    let releaseId: number | undefined;
     let yes = false;
     for (let i = 0; i < args.length; i++) {
       const arg = args[i]!;
@@ -27,7 +29,7 @@ export const storyCreateCommand: Command = {
       }
       const equal = arg.indexOf("=");
       const key = equal < 0 ? arg : arg.slice(0, equal);
-      if (key !== "--file" && key !== "--space-id")
+      if (key !== "--file" && key !== "--space-id" && key !== "--release-id")
         throw new CliError(`Unknown argument '${arg}'.`, 2);
       const value = equal < 0 ? args[++i] : arg.slice(equal + 1);
       if (!value?.trim() || value.startsWith("--"))
@@ -36,6 +38,15 @@ export const storyCreateCommand: Command = {
         if (file !== undefined)
           throw new CliError("Provide one definition file.", 2);
         file = value;
+      } else if (key === "--release-id") {
+        if (
+          releaseId !== undefined ||
+          !/^\d+$/.test(value) ||
+          !Number.isSafeInteger(Number(value)) ||
+          Number(value) < 1
+        )
+          throw new CliError("Provide one positive release ID.", 2);
+        releaseId = Number(value);
       } else {
         if (spaceIdOption !== undefined)
           throw new CliError("Provide one space ID.", 2);
@@ -89,6 +100,7 @@ export const storyCreateCommand: Command = {
           name: name as string,
           slug: slug as string,
           content: content as Record<string, unknown>,
+          releaseId,
         }),
     );
     if (context.output.mode === "json") context.output.data(result);

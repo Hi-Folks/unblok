@@ -81,6 +81,41 @@ test("creates content folders with the documented story payload", async () => {
   });
 });
 
+test("passes release scope as a query parameter for story reads and writes", async () => {
+  const requests: Request[] = [];
+  globalThis.fetch = (async (
+    input: string | Request | URL,
+    init?: RequestInit,
+  ) => {
+    const request =
+      input instanceof Request
+        ? new Request(input, init)
+        : new Request(String(input), init);
+    requests.push(request);
+    return Response.json({ story: { id: 5, content: { component: "page" } } });
+  }) as typeof fetch;
+  const gateway = createStoryblokGateway("test-token");
+  await gateway.createStory(
+    42,
+    { name: "Page", slug: "page", content: { component: "page" } },
+    9,
+  );
+  await gateway.getStory(42, 5, 9);
+  await gateway.updateStoryContent(42, 5, { component: "page" }, 9);
+  expect(
+    requests.map((request) =>
+      new URL(request.url).searchParams.get("release_id"),
+    ),
+  ).toEqual(["9", "9", "9"]);
+  expect(await requests[0]!.json()).toEqual({
+    story: { name: "Page", slug: "page", content: { component: "page" } },
+  });
+  expect(await requests[2]!.json()).toEqual({
+    story: { content: { component: "page" } },
+    publish: false,
+  });
+});
+
 test("sends story creation and translated slug attributes to the Management API", async () => {
   const requests: Request[] = [];
   globalThis.fetch = (async (

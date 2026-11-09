@@ -106,8 +106,8 @@ const result = await ensureStoryCreated(gateway, {
   name: "Welcome",
   slug: "welcome",
   content: {
-    component: "page",
-    body: [{ component: "hero", headline: "Hello" }],
+    component: "default-page",
+    body: [],
   },
 });
 console.log(result.status); // "created" or "unchanged"
@@ -116,6 +116,8 @@ console.log(result.status); // "created" or "unchanged"
 This creates an unpublished story at the space root. To create one in an existing folder, pass a full slug such as `articles/news/welcome`; Unblok resolves `articles/news` to its folder ID and creates `welcome` inside it. The folder must already exist and resolve uniquely; missing or ambiguous folders cause an error and are not created. Custom gateways must implement `findStoryFolderBySlug` for nested creation. The content's component names and fields must match components in the space. Missing `_uid` values are generated for component blocks, including nested blocks; supplied IDs are preserved and the input is not modified.
 
 If a story already exists at that slug, the action reports `unchanged` and preserves its content without comparing or updating it. Errors use `UnblokError`. YAML `stories.create` shares this behavior and additionally resolves its YAML-specific asset directives; library callers should provide resolved asset objects in their content. Concurrent creation by another process can still cause an API conflict.
+
+Pass `releaseId: 123456` to `ensureStoryCreated` to create the new story in an existing release. If a story with that full slug already exists, Unblok skips it only when the returned `release_ids` confirms it belongs to the selected release; otherwise it reports a conflict. Pass the same `releaseId` to `updateStoryBlock` to read and update the selected release version. Without it, both operations target the ordinary draft. The API integration is covered by mocked tests and has not been verified against a live release.
 
 ## Upload an asset
 

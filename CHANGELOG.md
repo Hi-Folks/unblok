@@ -4,6 +4,7 @@
 
 ### Added
 
+- Support creating and editing stories in a selected Storyblok release through the CLI, YAML and library. YAML can refer to a release by name, including one created by the same setup.
 - Add nested content folder creation to the CLI, YAML and library, reusing existing folders on repeat runs.
 - Support creating draft stories inside existing folders through the CLI, YAML and library using a full slug.
 - Add Pipeline stage listing and creation through the CLI and library, plus a modular YAML recipe for a `Go Live` stage.

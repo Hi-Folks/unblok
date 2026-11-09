@@ -32,17 +32,18 @@ export const storyBlockUpdateCommand: Command = {
   async run(args, ctx) {
     if (args.includes("--help") || args.includes("-h")) {
       ctx.output.text(
-        "Usage: unblok story block-update --id <story-id> --uid <block-uid> --file <fields.yaml> --yes [--space-id <id>] [--json]\n\nReplaces supplied field values and saves without publishing.",
+        "Usage: unblok story block-update --id <story-id> --uid <block-uid> --file <fields.yaml> --yes [--release-id <id>] [--space-id <id>] [--json]\n\nReplaces supplied field values and saves without publishing. --release-id targets the selected release.",
       );
       return;
     }
     const o = parseOptions(
       args,
-      ["--id", "--uid", "--file", "--space-id", "--yes"],
+      ["--id", "--uid", "--file", "--space-id", "--release-id", "--yes"],
       true,
     );
     const storyId = id(o, "--id"),
       uid = required(o, "--uid");
+    const releaseId = o["--release-id"] ? id(o, "--release-id") : undefined;
     const fields = object(
       await loadDocument(required(o, "--file"), "Block fields"),
       "Block fields",
@@ -51,7 +52,7 @@ export const storyBlockUpdateCommand: Command = {
     show(
       ctx,
       "Story updated",
-      await updateStoryBlock(gateway, spaceId, storyId, uid, fields),
+      await updateStoryBlock(gateway, spaceId, storyId, uid, fields, releaseId),
     );
   },
 };

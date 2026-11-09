@@ -6,6 +6,134 @@ import {
 } from "./blueprint-apply.ts";
 
 describe("story setup", () => {
+  test("creates a story in the selected release", async () => {
+    let selected: number | undefined;
+    const gateway = {
+      findStoryBySlug: async () => undefined,
+      createStory: async (
+        _space: number,
+        _story: unknown,
+        releaseId?: number,
+      ) => {
+        selected = releaseId;
+        return {};
+      },
+    };
+    const operations: Array<{
+      operation: string;
+      key: string;
+      status: string;
+    }> = [];
+    await applyStories(
+      gateway as never,
+      42,
+      [
+        {
+          name: "Page",
+          slug: "page",
+          content: { component: "page" },
+          releaseId: 9,
+        },
+      ],
+      [],
+      operations,
+    );
+    expect(selected).toBe(9);
+    expect(operations).toMatchObject([{ status: "created" }]);
+  });
+
+  test("updates a block in the selected release", async () => {
+    const scopes: Array<number | undefined> = [];
+    const gateway = {
+      findStoryBySlug: async () => ({ id: 7 }),
+      getStory: async (_space: number, _id: number, releaseId?: number) => {
+        scopes.push(releaseId);
+        return {
+          id: 7,
+          full_slug: "home",
+          is_folder: false,
+          content: { component: "page", _uid: "p", title: "Old" },
+        };
+      },
+      updateStoryContent: async (
+        _space: number,
+        _id: number,
+        _content: unknown,
+        releaseId?: number,
+      ) => {
+        scopes.push(releaseId);
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        update_blocks: [
+          {
+            story_slug: "home",
+            component: "page",
+            fields: { title: "New" },
+            release_id: 9,
+          },
+        ],
+      },
+    });
+    const report = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(report.failed).toBe(false);
+    expect(scopes).toEqual([9, 9, 9]);
+  });
+
+  test("resolves an existing release name for a block update", async () => {
+    const scopes: Array<number | undefined> = [];
+    const gateway = {
+      listInstalledApps: async () => [
+        { app_id: 1, name: "Releases", slug: "releases_only" },
+      ],
+      listReleases: async () => [{ id: 9, name: "Campaign" }],
+      findStoryBySlug: async () => ({ id: 7 }),
+      getStory: async (_space: number, _id: number, releaseId?: number) => {
+        scopes.push(releaseId);
+        return {
+          id: 7,
+          full_slug: "home",
+          content: { component: "page", _uid: "p", title: "Old" },
+        };
+      },
+      updateStoryContent: async (
+        _space: number,
+        _id: number,
+        _content: unknown,
+        releaseId?: number,
+      ) => {
+        scopes.push(releaseId);
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        update_blocks: [
+          {
+            story_slug: "home",
+            component: "page",
+            fields: { title: "New" },
+            release: "Campaign",
+          },
+        ],
+      },
+    });
+    const report = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(report.operations).toMatchObject([
+      { operation: "update-story-block", status: "updated" },
+    ]);
+    expect(scopes).toEqual([9, 9, 9]);
+  });
   test("ensures a folder before creating the story and skips both on rerun", async () => {
     const folders = new Map<string, number>();
     let storyExists = false;

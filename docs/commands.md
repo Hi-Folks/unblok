@@ -65,6 +65,10 @@ bun run start story publish --slug welcome --space-id 123456 --yes
 
 If creation reported `unchanged`, review the existing story before publishing: the publish command publishes its current draft, including any pending edits.
 
+To create a new story in an existing release, add `--release-id 123456` to `story create`. To edit a block in a release version, add the same option to `story block-update`. The CLI uses the release ID on the Management API request and does not publish the story. If the story already exists, creation skips it only when its returned release membership confirms that release; otherwise it reports a conflict.
+
+In YAML, story creation and block updates can use `release: Campaign` instead of `release_id`. The name must match exactly one existing release or a release declared under `releases.create`; Unblok creates or finds declared releases before processing stories and resolves the ID during apply. Use either `release` or `release_id`, not both. Plan validates the configuration without looking up releases. See the [release story YAML example](../examples/features/setup-release-stories.yaml), and adapt its component fields to your space. Release-scoped behavior has been tested with mocks, not a live release.
+
 ## `story publish`
 
 ```bash

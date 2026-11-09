@@ -62,6 +62,7 @@ describe("blueprint editor schema", () => {
       "setup-experiment",
       "setup-remote-asset",
       "setup-releases",
+      "setup-release-stories",
       "setup-pipeline",
       "setup-stories",
       "setup-story-in-folder",
@@ -73,8 +74,9 @@ describe("blueprint editor schema", () => {
       );
       const document = await loadDocument(path, "Setup");
       expect(validate(document)).toBe(true);
+      const loaded = await loadBlueprint(path);
       expect(() =>
-        compileSupportedBlueprint(resolveBlueprint(document)),
+        compileSupportedBlueprint(resolveBlueprint(loaded)),
       ).not.toThrow();
     }
   });
@@ -108,6 +110,81 @@ describe("blueprint editor schema", () => {
     ).toThrow("target_folder");
   });
 
+  test("accepts positive release IDs for story creation and block edits", () => {
+    const compiled = compileSupportedBlueprint(
+      resolveBlueprint({
+        version: 1,
+        stories: {
+          create: [
+            {
+              name: "Page",
+              slug: "page",
+              content: { component: "page" },
+              release_id: 9,
+            },
+          ],
+          update_blocks: [
+            {
+              story_slug: "home",
+              component: "hero",
+              fields: { title: "New" },
+              release_id: 9,
+            },
+          ],
+        },
+      }),
+    );
+    expect(compiled.stories[0]?.releaseId).toBe(9);
+    expect(compiled.storyUpdates[0]?.release_id).toBe(9);
+    expect(() =>
+      resolveBlueprint({
+        version: 1,
+        stories: {
+          create: [
+            {
+              name: "Page",
+              slug: "page",
+              content: { component: "page" },
+              release_id: 0,
+            },
+          ],
+        },
+      }),
+    ).toThrow();
+  });
+
+  test("accepts release names and rejects a name combined with an ID", () => {
+    const story = {
+      name: "Page",
+      slug: "page",
+      content: { component: "page" },
+      release: "Campaign",
+    };
+    const update = {
+      story_slug: "page",
+      component: "page",
+      fields: { title: "New" },
+      release: "Campaign",
+    };
+    const compiled = compileSupportedBlueprint(
+      resolveBlueprint({
+        version: 1,
+        stories: { create: [story], update_blocks: [update] },
+      }),
+    );
+    expect(compiled.stories[0]?.release).toBe("Campaign");
+    expect(compiled.storyUpdates[0]?.release).toBe("Campaign");
+    for (const stories of [
+      { create: [{ ...story, release_id: 9 }] },
+      { update_blocks: [{ ...update, release_id: 9 }] },
+    ]) {
+      expect(() => resolveBlueprint({ version: 1, stories })).toThrow();
+      expect(() =>
+        compileSupportedBlueprint({ version: 1, stories }),
+      ).toThrow();
+    }
+  });
+
   test("the modular example and its fragments conform to the schema", async () => {
     const validate = new Ajv2020({ allErrors: true, strict: false }).compile(
       schema,
@@ -137,6 +214,18 @@ describe("blueprint editor schema", () => {
     expect(compiled.releases).toEqual([
       { name: "Demo campaign", releaseInDays: 7 },
     ]);
+    expect(compiled.stories).toContainEqual({
+      name: "Release page",
+      slug: "release-page",
+      release: "Demo campaign",
+      content: { component: "default-page", body: [] },
+    });
+    expect(compiled.storyUpdates).toContainEqual({
+      story_slug: "home",
+      component: "hero-section",
+      release: "Demo campaign",
+      fields: { eyebrow: "Release announcement" },
+    });
     expect(compiled.pipelines).toEqual([{ name: "Go Live" }]);
     expect(
       compiled.apps.filter(

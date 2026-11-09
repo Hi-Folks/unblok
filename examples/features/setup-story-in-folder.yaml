@@ -9,5 +9,5 @@ stories:
     - name: Welcome
       slug: articles/news/welcome
       content:
-        component: page
+        component: default-page
         body: []

@@ -232,6 +232,76 @@ test("library creates a root draft story once and preserves existing content", a
   expect(writes).toBe(1);
 });
 
+test("library creates a story in a selected release and preserves existing release content", async () => {
+  let existing: unknown;
+  let writes = 0;
+  const gateway = {
+    findStoryBySlug: async () => existing as never,
+    createStory: async (
+      _space: number,
+      _story: unknown,
+      releaseId?: number,
+    ) => {
+      expect(releaseId).toBe(9);
+      writes++;
+      existing = { id: 7, release_ids: [9] };
+      return {} as never;
+    },
+  };
+  const input = {
+    spaceId: 42,
+    name: "Page",
+    slug: "page",
+    content: { component: "page" },
+    releaseId: 9,
+  };
+  expect((await ensureStoryCreated(gateway, input)).status).toBe("created");
+  expect((await ensureStoryCreated(gateway, input)).status).toBe("unchanged");
+  existing = { id: 7, release_ids: [10] };
+  await expect(ensureStoryCreated(gateway, input)).rejects.toMatchObject({
+    code: "CONFLICT",
+  });
+  expect(writes).toBe(1);
+});
+
+test("library edits a block using the selected release on reads and writes", async () => {
+  const reads: Array<number | undefined> = [];
+  let saved: unknown;
+  const gateway = {
+    findStoryBySlug: async () => ({ id: 7 }) as never,
+    getStory: async (_space: number, _id: number, releaseId?: number) => {
+      reads.push(releaseId);
+      return {
+        id: 7,
+        full_slug: "home",
+        is_folder: false,
+        content: { component: "page", _uid: "p", title: "Old" },
+      } as never;
+    },
+    updateStoryContent: async (
+      _space: number,
+      _id: number,
+      content: unknown,
+      releaseId?: number,
+    ) => {
+      expect(releaseId).toBe(9);
+      saved = content;
+      return {} as never;
+    },
+  };
+  expect(
+    await updateStoryBlock(gateway, {
+      spaceId: 42,
+      story: "home",
+      component: "page",
+      fields: { title: "New" },
+      releaseId: 9,
+    }),
+  ).toEqual({ status: "updated" });
+  expect(reads).toEqual([9, 9]);
+  expect(saved).toMatchObject({ title: "New" });
+});
+
 test("public library can ensure a content folder", async () => {
   const gateway = {
     findStoryFolderBySlug: async () => ({ id: 8 }),

@@ -20,6 +20,7 @@ export async function updateStoryBlock(
   storyId: number,
   uid: string,
   fields: Record<string, unknown>,
+  releaseId?: number,
 ): Promise<Story> {
   if (
     !uid ||
@@ -33,7 +34,7 @@ export async function updateStoryBlock(
     throw new CliError(
       "Provide a block UID and nonempty fields without _uid or component.",
     );
-  const story = await gateway.getStory(spaceId, storyId);
+  const story = await gateway.getStory(spaceId, storyId, releaseId);
   if (
     !story.content ||
     typeof story.content !== "object" ||
@@ -64,5 +65,5 @@ export async function updateStoryBlock(
         `Field '${key}' does not exist on the selected block.`,
       );
   Object.assign(block, fields);
-  return gateway.updateStoryContent(spaceId, storyId, content);
+  return gateway.updateStoryContent(spaceId, storyId, content, releaseId);
 }

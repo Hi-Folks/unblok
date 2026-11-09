@@ -58,13 +58,18 @@ export interface StoryblokGateway {
     spaceId: number,
     input: { name: string; slug: string; parentId: number },
   ): Promise<{ id: number }>;
-  getStory(spaceId: number, storyId: number): Promise<Story>;
+  getStory(
+    spaceId: number,
+    storyId: number,
+    releaseId?: number,
+  ): Promise<Story>;
   publishStory(spaceId: number, storyId: number): Promise<unknown>;
   activateExperiment(spaceId: number, experimentId: number): Promise<unknown>;
   updateStoryContent(
     spaceId: number,
     storyId: number,
     content: Record<string, unknown>,
+    releaseId?: number,
   ): Promise<Story>;
   listExperiments(spaceId: number): Promise<unknown>;
   getExperiment(spaceId: number, experimentId: number): Promise<unknown>;
@@ -97,6 +102,7 @@ export interface StoryblokGateway {
       content: Record<string, unknown>;
       parent_id?: number;
     },
+    releaseId?: number,
   ): Promise<Story>;
   updateTranslatedSlugs(
     spaceId: number,
@@ -562,8 +568,13 @@ export const createStoryblokGateway = (
         );
       return { id };
     },
-    async getStory(spaceId, storyId) {
-      const response = await clientForSpace(spaceId).stories.get(storyId);
+    async getStory(spaceId, storyId, releaseId) {
+      const response = await clientForSpace(spaceId).stories.get(
+        storyId,
+        releaseId === undefined
+          ? undefined
+          : { query: { release_id: releaseId } },
+      );
       if (!response.data.story)
         throw new Error(`Story ${storyId} was not returned by Storyblok.`);
       return response.data.story;
@@ -582,11 +593,14 @@ export const createStoryblokGateway = (
         )
       ).data;
     },
-    async updateStoryContent(spaceId, storyId, content) {
+    async updateStoryContent(spaceId, storyId, content, releaseId) {
       const response = await clientForSpace(spaceId).put<{ story: Story }>(
         `/v1/spaces/${spaceId}/stories/${storyId}`,
         {
           headers: { "Content-Type": "application/json" },
+          ...(releaseId === undefined
+            ? {}
+            : { query: { release_id: releaseId } }),
           body: { story: { content }, publish: false },
         },
       );
@@ -661,10 +675,16 @@ export const createStoryblokGateway = (
         )
       ).data;
     },
-    async createStory(spaceId, story) {
+    async createStory(spaceId, story, releaseId) {
       const response = await clientForSpace(spaceId).post<{ story: Story }>(
         `/v1/spaces/${spaceId}/stories/`,
-        { headers: { "Content-Type": "application/json" }, body: { story } },
+        {
+          headers: { "Content-Type": "application/json" },
+          body: { story },
+          ...(releaseId === undefined
+            ? {}
+            : { query: { release_id: releaseId } }),
+        },
       );
       return response.data.story;
     },

@@ -12,6 +12,7 @@ export interface UpdateStoryBlockInput {
   story: string;
   component: string;
   fields: Record<string, unknown>;
+  releaseId?: number;
 }
 
 /** Update one uniquely matching component block, saving an unpublished draft. */
@@ -23,6 +24,8 @@ export async function updateStoryBlock(
     if (
       !Number.isSafeInteger(input.spaceId) ||
       input.spaceId <= 0 ||
+      (input.releaseId !== undefined &&
+        (!Number.isSafeInteger(input.releaseId) || input.releaseId <= 0)) ||
       typeof input.story !== "string" ||
       !input.story.trim() ||
       input.story !== input.story.trim() ||
@@ -52,11 +55,18 @@ export async function updateStoryBlock(
         1,
         "INVALID_INPUT",
       );
-    const changed = await reconcileStoryBlock(gateway, input.spaceId, {
-      story_slug: input.story,
-      component: input.component,
-      fields: input.fields,
-    });
+    const changed = await reconcileStoryBlock(
+      gateway,
+      input.spaceId,
+      {
+        story_slug: input.story,
+        component: input.component,
+        fields: input.fields,
+      },
+      undefined,
+      true,
+      input.releaseId,
+    );
     return { status: changed ? "updated" : "unchanged" };
   } catch (error) {
     throw toUnblokError(error);

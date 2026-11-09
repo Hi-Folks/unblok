@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+extends: setup-releases.yaml
+template:
+  name: Create and edit stories in a release
+stories:
+  create:
+    # Uses the demo space content type; adapt it for other spaces.
+    - name: Release page
+      slug: release-page
+      release: Demo campaign
+      content:
+        component: default-page
+        body: []
+  update_blocks:
+    # Based on the demo space home story; adapt for other schemas.
+    - story_slug: home
+      component: hero-section
+      release: Demo campaign
+      fields:
+        eyebrow: Release announcement

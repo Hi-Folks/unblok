@@ -12,6 +12,7 @@ export interface EnsureStoryCreatedInput {
   name: string;
   slug: string;
   content: Record<string, unknown>;
+  releaseId?: number;
 }
 export interface EnsureStoryCreatedResult {
   status: "created" | "unchanged";
@@ -37,8 +38,20 @@ export async function createStoryIfMissing(
     content: Record<string, unknown>,
   ) => Promise<Record<string, unknown>> = async (content) => content,
 ): Promise<EnsureStoryCreatedResult> {
-  if (await gateway.findStoryBySlug(input.spaceId, input.slug))
+  const existing = await gateway.findStoryBySlug(input.spaceId, input.slug);
+  if (existing) {
+    if (input.releaseId !== undefined) {
+      const releaseIds = (existing as unknown as { release_ids?: unknown })
+        .release_ids;
+      if (!Array.isArray(releaseIds) || !releaseIds.includes(input.releaseId))
+        throw new CliError(
+          `Story '${input.slug}' already exists but its membership in the selected release could not be verified.`,
+          1,
+          "CONFLICT",
+        );
+    }
     return { status: "unchanged" };
+  }
   const separator = input.slug.lastIndexOf("/");
   const folderSlug = separator < 0 ? undefined : input.slug.slice(0, separator);
   const storySlug =
@@ -70,12 +83,16 @@ export async function createStoryIfMissing(
     parentId = folder.id;
   }
   const content = await resolveContent(input.content);
-  await gateway.createStory(input.spaceId, {
-    name: input.name,
-    slug: storySlug,
-    content: addComponentIds(content) as Record<string, unknown>,
-    ...(parentId === undefined ? {} : { parent_id: parentId }),
-  });
+  await gateway.createStory(
+    input.spaceId,
+    {
+      name: input.name,
+      slug: storySlug,
+      content: addComponentIds(content) as Record<string, unknown>,
+      ...(parentId === undefined ? {} : { parent_id: parentId }),
+    },
+    input.releaseId,
+  );
   return { status: "created" };
 }
 
@@ -89,6 +106,8 @@ export async function ensureStoryCreated(
       !input ||
       !Number.isSafeInteger(input.spaceId) ||
       input.spaceId <= 0 ||
+      (input.releaseId !== undefined &&
+        (!Number.isSafeInteger(input.releaseId) || input.releaseId <= 0)) ||
       typeof input.name !== "string" ||
       !input.name.trim() ||
       typeof input.slug !== "string" ||

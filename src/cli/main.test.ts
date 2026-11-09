@@ -120,6 +120,94 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("edits a block in a specified release", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-release-edit-"));
+    try {
+      const file = join(dir, "fields.json");
+      await writeFile(file, JSON.stringify({ title: "New" }));
+      const reads: Array<number | undefined> = [];
+      let writeScope: number | undefined;
+      const harness = createHarness({
+        getStory: async (_space, _id, releaseId) => {
+          reads.push(releaseId);
+          return {
+            content: { _uid: "hero-uid", component: "hero", title: "Old" },
+          } as never;
+        },
+        updateStoryContent: async (_space, _id, _content, releaseId) => {
+          writeScope = releaseId;
+          return {} as never;
+        },
+      });
+      expect(
+        await runCli(
+          [
+            "story",
+            "block-update",
+            "--id",
+            "7",
+            "--uid",
+            "hero-uid",
+            "--file",
+            file,
+            "--release-id",
+            "9",
+            "--space-id",
+            "42",
+            "--yes",
+            "--json",
+          ],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(reads).toEqual([9]);
+      expect(writeScope).toBe(9);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+  test("creates a story in a specified release", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-release-story-"));
+    try {
+      const file = join(dir, "story.json");
+      await writeFile(
+        file,
+        JSON.stringify({
+          name: "Page",
+          slug: "page",
+          content: { component: "page" },
+        }),
+      );
+      let selected: number | undefined;
+      const harness = createHarness({
+        createStory: async (_space, _story, releaseId) => {
+          selected = releaseId;
+          return {} as never;
+        },
+      });
+      expect(
+        await runCli(
+          [
+            "story",
+            "create",
+            "--file",
+            file,
+            "--release-id",
+            "9",
+            "--space-id",
+            "42",
+            "--yes",
+            "--json",
+          ],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(selected).toBe(9);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   test("creates a nested folder path with confirmation and JSON output", async () => {
     const created: unknown[] = [];
     const harness = createHarness({

@@ -94,3 +94,104 @@ test("validates schedules and reports remaining releases after a failure", async
     { operation: "create-release", key: "Two", status: "not_run" },
   ]);
 });
+
+test("creates a release before its story and reuses both on retry", async () => {
+  const blueprint = compileSupportedBlueprint({
+    version: 1,
+    releases: { create: [{ name: "Campaign" }] },
+    stories: {
+      create: [
+        {
+          name: "Welcome",
+          slug: "welcome",
+          release: "Campaign",
+          content: { component: "page" },
+        },
+      ],
+    },
+  });
+  const releases: Array<{ id: number; name: string }> = [];
+  let story: { id: number; release_ids: number[] } | undefined;
+  const calls: string[] = [];
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases_only" },
+    ],
+    listReleases: async () => releases,
+    createRelease: async (_space: number, name: string) => {
+      calls.push("release");
+      const release = { id: 99, name };
+      releases.push(release);
+      return release;
+    },
+    findStoryBySlug: async () => story,
+    createStory: async (
+      _space: number,
+      _story: unknown,
+      releaseId?: number,
+    ) => {
+      calls.push("story");
+      expect(releaseId).toBe(99);
+      story = { id: 7, release_ids: [99] };
+    },
+  };
+  const first = await applySupportedBlueprint(gateway as never, 42, blueprint);
+  expect(first.operations).toMatchObject([
+    { operation: "create-release", status: "created" },
+    { operation: "create-story", status: "created" },
+  ]);
+  const second = await applySupportedBlueprint(gateway as never, 42, blueprint);
+  expect(second.operations).toMatchObject([
+    { operation: "create-release", status: "unchanged" },
+    { operation: "create-story", status: "unchanged" },
+  ]);
+  expect(calls).toEqual(["release", "story"]);
+});
+
+test.each([
+  [[], "was not found"],
+  [
+    [
+      { id: 1, name: "Campaign" },
+      { id: 2, name: "Campaign" },
+    ],
+    "Multiple releases",
+  ],
+])(
+  "fails safely when a named release is missing or ambiguous",
+  async (releases, message) => {
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        create: [
+          {
+            name: "Welcome",
+            slug: "welcome",
+            release: "Campaign",
+            content: { component: "page" },
+          },
+        ],
+      },
+    });
+    let wrote = false;
+    const gateway = {
+      listInstalledApps: async () => [
+        { app_id: 1, name: "Releases", slug: "releases_only" },
+      ],
+      listReleases: async () => releases,
+      createStory: async () => {
+        wrote = true;
+      },
+    };
+    const report = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(report.operations).toMatchObject([
+      { operation: "create-story", status: "failed" },
+    ]);
+    expect(report.operations[0]?.error).toContain(message);
+    expect(wrote).toBe(false);
+  },
+);

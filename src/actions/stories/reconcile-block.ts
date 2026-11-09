@@ -7,6 +7,8 @@ export interface StoryBlockUpdate {
   story_slug: string;
   component: string;
   fields: Record<string, unknown>;
+  release_id?: number;
+  release?: string;
 }
 
 export async function reconcileStoryBlock(
@@ -18,6 +20,7 @@ export async function reconcileStoryBlock(
   update: StoryBlockUpdate,
   expectedId?: number,
   allowChanges = true,
+  releaseId?: number,
 ): Promise<boolean> {
   const found =
     expectedId === undefined
@@ -34,7 +37,7 @@ export async function reconcileStoryBlock(
       1,
       "NOT_FOUND",
     );
-  const story = await gateway.getStory(spaceId, storyId);
+  const story = await gateway.getStory(spaceId, storyId, releaseId);
   if (
     story.id !== storyId ||
     story.full_slug !== update.story_slug ||
@@ -83,6 +86,7 @@ export async function reconcileStoryBlock(
     storyId,
     matches[0]._uid,
     update.fields,
+    releaseId,
   );
   return true;
 }
