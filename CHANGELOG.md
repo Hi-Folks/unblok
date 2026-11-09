@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add nested content folder creation to the CLI, YAML and library, reusing existing folders on repeat runs.
+- Support creating draft stories inside existing folders through the CLI, YAML and library using a full slug.
 - Add Pipeline stage listing and creation through the CLI and library, plus a modular YAML recipe for a `Go Live` stage.
 
 ## 0.3.2 - 2026-11-09

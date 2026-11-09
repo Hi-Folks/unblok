@@ -12,6 +12,7 @@ const operationLists = new Set([
   "assets.upload_directory",
   "assets.upload_url",
   "stories.create",
+  "stories.ensure_folders",
   "stories.translated_slugs",
   "stories.update_blocks",
   "workflow.assign",

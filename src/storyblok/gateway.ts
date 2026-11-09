@@ -12,6 +12,7 @@ import {
   type WorkflowStageCreate,
 } from "@storyblok/management-api-client";
 import { getRegion } from "@storyblok/region-helper";
+import { CliError } from "../errors.ts";
 
 export interface StoryblokGateway {
   listPipelineBranches(spaceId: number): Promise<StoryblokPipelineBranch[]>;
@@ -49,6 +50,14 @@ export interface StoryblokGateway {
     stage: WorkflowStageCreate,
   ): Promise<WorkflowStage>;
   findStoryBySlug(spaceId: number, slug: string): Promise<Story | undefined>;
+  findStoryFolderBySlug(
+    spaceId: number,
+    slug: string,
+  ): Promise<{ id: number } | undefined>;
+  createStoryFolder(
+    spaceId: number,
+    input: { name: string; slug: string; parentId: number },
+  ): Promise<{ id: number }>;
   getStory(spaceId: number, storyId: number): Promise<Story>;
   publishStory(spaceId: number, storyId: number): Promise<unknown>;
   activateExperiment(spaceId: number, experimentId: number): Promise<unknown>;
@@ -82,7 +91,12 @@ export interface StoryblokGateway {
   ): Promise<unknown>;
   createStory(
     spaceId: number,
-    story: { name: string; slug: string; content: Record<string, unknown> },
+    story: {
+      name: string;
+      slug: string;
+      content: Record<string, unknown>;
+      parent_id?: number;
+    },
   ): Promise<Story>;
   updateTranslatedSlugs(
     spaceId: number,
@@ -492,6 +506,61 @@ export const createStoryblokGateway = (
       if (matches.length > 1)
         throw new Error(`Multiple stories match full slug '${slug}'.`);
       return matches[0];
+    },
+    async findStoryFolderBySlug(spaceId, slug) {
+      const matches: Story[] = [];
+      for (let page = 1; ; page++) {
+        const response = await clientForSpace(spaceId).stories.list({
+          query: { with_slug: slug, folder_only: true, page, per_page: 100 },
+        });
+        if (!Array.isArray(response.data.stories))
+          throw new Error("Invalid story folder list.");
+        matches.push(
+          ...response.data.stories.filter(
+            (story) =>
+              story.is_folder === true &&
+              story.full_slug?.replace(/\/+$/, "") === slug,
+          ),
+        );
+        if (matches.length > 1)
+          throw new CliError(
+            `Multiple folders match '${slug}'.`,
+            1,
+            "AMBIGUOUS",
+          );
+        if (response.data.stories.length < 100) break;
+      }
+      const folder = matches[0];
+      if (folder && (!Number.isSafeInteger(folder.id) || folder.id <= 0))
+        throw new CliError(
+          `Folder '${slug}' has an invalid ID.`,
+          1,
+          "CONFLICT",
+        );
+      return folder ? { id: folder.id } : undefined;
+    },
+    async createStoryFolder(spaceId, input) {
+      const response = await clientForSpace(spaceId).post<{
+        story: { id: number };
+      }>(`/v1/spaces/${spaceId}/stories/`, {
+        headers: { "Content-Type": "application/json" },
+        body: {
+          story: {
+            name: input.name,
+            slug: input.slug,
+            is_folder: true,
+            parent_id: input.parentId,
+          },
+        },
+      });
+      const id = response.data.story?.id;
+      if (!Number.isSafeInteger(id) || id <= 0)
+        throw new CliError(
+          "Storyblok did not return a valid folder ID.",
+          1,
+          "CONFLICT",
+        );
+      return { id };
     },
     async getStory(spaceId, storyId) {
       const response = await clientForSpace(spaceId).stories.get(storyId);

@@ -1,6 +1,8 @@
 import { configureSpaceAi } from "../actions/spaces/configure-ai.ts";
 import { installAppById, installAppBySlug } from "../actions/apps/apps.ts";
 import { assignStoryTags } from "../actions/stories/story-tags.ts";
+import { isValidStoryCreationSlug } from "../actions/stories/create-story.ts";
+import { ensureStoryFolder } from "../actions/stories/ensure-folder.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
 import { createRelease } from "../actions/releases/releases.ts";
 import { ensurePipelineBranch } from "../actions/pipelines/branches.ts";
@@ -89,6 +91,7 @@ export interface SupportedBlueprint {
   assets: AssetDirectory[];
   remoteAssets: RemoteAsset[];
   stories: StoryCreate[];
+  storyFolders: string[];
   translations: StoryTranslations[];
   storyUpdates: StoryBlockUpdate[];
   workflow: BlueprintWorkflow;
@@ -306,6 +309,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
   const assets: AssetDirectory[] = [];
   const remoteAssets: RemoteAsset[] = [];
   const stories: StoryCreate[] = [];
+  const storyFolders: string[] = [];
   const storyUpdates: StoryBlockUpdate[] = [];
   const translations: StoryTranslations[] = [];
   const workflow: BlueprintWorkflow = {
@@ -386,10 +390,28 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     if (
       !isObject(value.stories) ||
       Object.keys(value.stories).some(
-        (key) => !["create", "translated_slugs", "update_blocks"].includes(key),
+        (key) =>
+          ![
+            "create",
+            "translated_slugs",
+            "update_blocks",
+            "ensure_folders",
+          ].includes(key),
       )
     )
       throw new CliError("Unsupported stories options.", 2);
+    if (value.stories.ensure_folders !== undefined) {
+      const paths = strings(
+        value.stories.ensure_folders,
+        "stories.ensure_folders",
+      );
+      if (paths.some((path) => !isValidStoryCreationSlug(path)))
+        throw new CliError(
+          "stories.ensure_folders requires valid folder paths.",
+          2,
+        );
+      storyFolders.push(...paths);
+    }
     if (value.stories.update_blocks !== undefined) {
       if (!Array.isArray(value.stories.update_blocks))
         throw new CliError("stories.update_blocks must be an array.", 2);
@@ -442,13 +464,13 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
           !item.name.trim() ||
           typeof item.slug !== "string" ||
           !item.slug.trim() ||
-          item.slug.includes("/") ||
+          !isValidStoryCreationSlug(item.slug) ||
           !isObject(item.content) ||
           typeof item.content.component !== "string" ||
           !item.content.component.trim()
         )
           throw new CliError(
-            `${path} requires name, a root-level slug and content with a component.`,
+            `${path} requires name, a full story slug and content with a component.`,
             2,
           );
         const slug = item.slug.trim();
@@ -758,6 +780,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       assets,
       remoteAssets,
       stories,
+      storyFolders,
       translations,
       storyUpdates,
       workflow,
@@ -791,6 +814,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     assets,
     remoteAssets,
     stories,
+    storyFolders,
     translations,
     storyUpdates,
     workflow,
@@ -874,6 +898,10 @@ export async function applySupportedBlueprint(
       key: `${asset.folder}/${asset.name}`,
     })),
     [
+      ...blueprint.storyFolders.map((key) => ({
+        operation: "ensure-story-folder",
+        key,
+      })),
       ...blueprint.stories.map((story) => ({
         operation: "create-story",
         key: story.slug,
@@ -1090,8 +1118,24 @@ export async function applySupportedBlueprint(
     return finish(4);
   }
   try {
-    if (blueprint.stories.length || blueprint.translations.length)
+    if (
+      blueprint.storyFolders.length ||
+      blueprint.stories.length ||
+      blueprint.translations.length
+    )
       onProgress?.({ stage: "stories" });
+    for (const path of blueprint.storyFolders) {
+      try {
+        const result = await ensureStoryFolder(gateway, { spaceId, path });
+        operations.push({
+          operation: "ensure-story-folder",
+          key: path,
+          status: result.status,
+        });
+      } catch (error) {
+        throw new BlueprintOperationError("ensure-story-folder", path, error);
+      }
+    }
     await applyStories(
       gateway,
       spaceId,

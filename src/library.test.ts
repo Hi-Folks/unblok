@@ -4,6 +4,7 @@ import {
   UnblokError,
   ensureTranslatedSlugs,
   ensureStoryCreated,
+  ensureStoryFolder,
   listReleases,
   createRelease,
   listPipelineBranches,
@@ -231,6 +232,64 @@ test("library creates a root draft story once and preserves existing content", a
   expect(writes).toBe(1);
 });
 
+test("public library can ensure a content folder", async () => {
+  const gateway = {
+    findStoryFolderBySlug: async () => ({ id: 8 }),
+    findStoryBySlug: async () => undefined,
+    createStoryFolder: async () => ({ id: 9 }),
+  };
+  expect(
+    await ensureStoryFolder(gateway, { spaceId: 42, path: "news" }),
+  ).toEqual({ status: "unchanged", path: "news", folderId: 8, created: [] });
+});
+
+test("library creates a story in an existing nested folder and skips repeats", async () => {
+  let exists = false;
+  let folderLookups = 0;
+  let writes = 0;
+  const gateway = {
+    findStoryBySlug: async (_space: number, slug: string) => {
+      expect(slug).toBe("articles/news/welcome");
+      return exists ? ({ id: 8 } as never) : undefined;
+    },
+    findStoryFolderBySlug: async (_space: number, slug: string) => {
+      folderLookups++;
+      expect(slug).toBe("articles/news");
+      return { id: 19 };
+    },
+    createStory: async (
+      _space: number,
+      story: { slug: string; parent_id?: number },
+    ) => {
+      writes++;
+      expect(story.slug).toBe("welcome");
+      expect(story.parent_id).toBe(19);
+      exists = true;
+      return {} as never;
+    },
+  };
+  const input = {
+    spaceId: 42,
+    name: "Welcome",
+    slug: "articles/news/welcome",
+    content: { component: "page" },
+  };
+  expect((await ensureStoryCreated(gateway, input)).status).toBe("created");
+  expect((await ensureStoryCreated(gateway, input)).status).toBe("unchanged");
+  expect([writes, folderLookups]).toEqual([1, 1]);
+  await expect(
+    ensureStoryCreated(
+      {
+        ...gateway,
+        findStoryBySlug: async () => undefined,
+        findStoryFolderBySlug: async () => undefined,
+      },
+      input,
+    ),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  expect(writes).toBe(1);
+});
+
 test("library validates story inputs and classifies API failures", async () => {
   let requests = 0;
   const gateway = {
@@ -253,7 +312,7 @@ test("library validates story inputs and classifies API failures", async () => {
     content: { component: "page" },
   };
   await expect(
-    ensureStoryCreated(gateway, { ...input, slug: "folder/page" }),
+    ensureStoryCreated(gateway, { ...input, slug: "folder//page" }),
   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
   await expect(
     ensureStoryCreated(gateway, { ...input, content: {} }),

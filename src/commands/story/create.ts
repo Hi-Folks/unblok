@@ -7,12 +7,12 @@ import { CliError } from "../../errors.ts";
 
 export const storyCreateCommand: Command = {
   name: "create",
-  description: "Create a root-level draft story from JSON",
+  description: "Create a draft story from JSON",
   usage: "unblok story create --file <path> [--space-id <id>] --yes",
   async run(args, context) {
     if (args.includes("--help") || args.includes("-h")) {
       context.output.text(
-        `Usage: ${this.usage}\n\nCreate a root-level draft story. An existing story with the same slug is preserved.\n\nOptions:\n  --file <path>    JSON definition with name, slug, and content\n  --space-id <id>  Target space; defaults to STORYBLOK_SPACE_ID\n  --yes            Confirm creation (required)\n  --json           Emit machine-readable JSON\n  -h, --help       Show command help`,
+        `Usage: ${this.usage}\n\nCreate a draft story at the root or in an existing folder. An existing story with the same full slug is preserved.\n\nOptions:\n  --file <path>    JSON definition with name, full slug, and content\n  --space-id <id>  Target space; defaults to STORYBLOK_SPACE_ID\n  --yes            Confirm creation (required)\n  --json           Emit machine-readable JSON\n  -h, --help       Show command help`,
       );
       return;
     }

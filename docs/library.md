@@ -82,6 +82,20 @@ console.log(result.status, result.storyId); // "published" or "unchanged"
 
 This explicitly publishes the current draft, including unpublished changes to a story that is already published. A story confirmed published with no pending changes is left unchanged. The action checks the story's current details before publishing and fails if its identity or publication state cannot be verified. Missing stories and API failures reject with `UnblokError`. As with any read followed by a write, another editor could change the draft between the check and publication. This function does not select individual languages or releases. Storyblok describes the endpoint in its [publish API reference](https://www.storyblok.com/docs/api/management/stories/publish-a-story).
 
+## Create content folders
+
+```ts
+import { ensureStoryFolder } from "unblok";
+
+const result = await ensureStoryFolder(gateway, {
+  spaceId: 123456,
+  path: "articles/news",
+});
+console.log(result.status, result.folderId, result.created);
+```
+
+Missing path segments are created in order and existing folders are reused. Each segment is used as its name and slug. The result reports `created` or `unchanged`, the final folder ID, and created paths. The action rejects story collisions and ambiguous folder matches. If a later request fails, already created folders remain; inspect and retry. Concurrent creation can still race. CLI and YAML use the same action.
+
 ## Create a story
 
 ```ts
@@ -99,7 +113,7 @@ const result = await ensureStoryCreated(gateway, {
 console.log(result.status); // "created" or "unchanged"
 ```
 
-This creates an unpublished story at the space root. The slug must be root-level; creating stories inside folders is not supported. The content's component names and fields must match components in the space. Missing `_uid` values are generated for component blocks, including nested blocks; supplied IDs are preserved and the input is not modified.
+This creates an unpublished story at the space root. To create one in an existing folder, pass a full slug such as `articles/news/welcome`; Unblok resolves `articles/news` to its folder ID and creates `welcome` inside it. The folder must already exist and resolve uniquely; missing or ambiguous folders cause an error and are not created. Custom gateways must implement `findStoryFolderBySlug` for nested creation. The content's component names and fields must match components in the space. Missing `_uid` values are generated for component blocks, including nested blocks; supplied IDs are preserved and the input is not modified.
 
 If a story already exists at that slug, the action reports `unchanged` and preserves its content without comparing or updating it. Errors use `UnblokError`. YAML `stories.create` shares this behavior and additionally resolves its YAML-specific asset directives; library callers should provide resolved asset objects in their content. Concurrent creation by another process can still cause an API conflict.
 

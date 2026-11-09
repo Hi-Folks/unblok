@@ -64,6 +64,7 @@ describe("blueprint editor schema", () => {
       "setup-releases",
       "setup-pipeline",
       "setup-stories",
+      "setup-story-in-folder",
       "setup-workflow",
     ]) {
       const path = `examples/features/${name}.yaml`;

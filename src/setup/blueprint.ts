@@ -107,6 +107,10 @@ export function planBlueprint(value: unknown): BlueprintPlan {
       },
     },
     stories: {
+      ensure_folders: {
+        operation: "create content folders",
+        support: "available",
+      },
       update_blocks: {
         operation: "update selected story blocks",
         support: "available",

@@ -31,6 +31,8 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     text: (message) => stdout.push(message),
   };
   const fallback: StoryblokGateway = {
+    createStoryFolder: async () => ({ id: 1 }),
+    findStoryFolderBySlug: async () => undefined,
     listPipelineBranches: async () => [],
     createPipelineBranch: async (_spaceId, branch) => ({ id: 1, ...branch }),
     listReleases: async () => [],
@@ -118,6 +120,85 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("creates a nested folder path with confirmation and JSON output", async () => {
+    const created: unknown[] = [];
+    const harness = createHarness({
+      findStoryFolderBySlug: async () => undefined,
+      findStoryBySlug: async () => undefined,
+      createStoryFolder: async (_space, input) => {
+        created.push(input);
+        return { id: created.length };
+      },
+    });
+    const args = [
+      "story",
+      "folder",
+      "create",
+      "--path",
+      "folder1/subfolder2",
+      "--space-id",
+      "42",
+      "--json",
+    ];
+    expect(await runCli(args, harness.options)).toBe(2);
+    expect(created).toEqual([]);
+    expect(await runCli([...args, "--yes"], harness.options)).toBe(0);
+    expect(harness.stdout).toEqual([
+      {
+        status: "created",
+        path: "folder1/subfolder2",
+        folderId: 2,
+        created: ["folder1", "folder1/subfolder2"],
+      },
+    ]);
+    expect(created).toEqual([
+      { name: "folder1", slug: "folder1", parentId: 0 },
+      { name: "subfolder2", slug: "subfolder2", parentId: 1 },
+    ]);
+  });
+  test("creates a story inside an existing folder using its full slug", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-nested-story-"));
+    try {
+      const file = join(dir, "story.json");
+      await writeFile(
+        file,
+        JSON.stringify({
+          name: "Welcome",
+          slug: "articles/news/welcome",
+          content: { component: "page" },
+        }),
+      );
+      const harness = createHarness({
+        findStoryFolderBySlug: async (_space, slug) => {
+          expect(slug).toBe("articles/news");
+          return { id: 19 };
+        },
+        createStory: async (_space, story) => {
+          expect(story.slug).toBe("welcome");
+          expect(story.parent_id).toBe(19);
+          return {} as never;
+        },
+      });
+      expect(
+        await runCli(
+          [
+            "story",
+            "create",
+            "--file",
+            file,
+            "--space-id",
+            "42",
+            "--yes",
+            "--json",
+          ],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(harness.stdout).toEqual([{ status: "created" }]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   test("lists and creates pipeline stages with confirmation", async () => {
     const stages = [{ id: 1, name: "Preview" }];
     let writes = 0;
@@ -381,7 +462,7 @@ describe("runCli", () => {
         file,
         JSON.stringify({
           name: "Page",
-          slug: "folder/page",
+          slug: "folder//page",
           content: { component: "page" },
         }),
       );

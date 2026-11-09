@@ -5,6 +5,7 @@ import { storyTagsCommand } from "./tags.ts";
 import { storyGetCommand, storyBlockUpdateCommand } from "./content.ts";
 import { storyPublishCommand } from "./publish.ts";
 import { storyCreateCommand } from "./create.ts";
+import { storyFolderCommand } from "./folder.ts";
 
 export const storyCommand: Command = {
   name: "story",
@@ -16,6 +17,7 @@ export const storyCommand: Command = {
       [
         storyGetCommand,
         storyCreateCommand,
+        storyFolderCommand,
         storyBlockUpdateCommand,
         storyPublishCommand,
         storyWorkflowCommand,

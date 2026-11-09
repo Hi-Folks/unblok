@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Create a story in an existing folder
+stories:
+  ensure_folders:
+    - articles/news
+  create:
+    - name: Welcome
+      slug: articles/news/welcome
+      content:
+        component: page
+        body: []

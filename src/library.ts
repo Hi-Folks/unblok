@@ -27,6 +27,12 @@ export type {
   CreateReleaseResult,
 } from "./actions/releases/releases.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
+export { ensureStoryFolder } from "./actions/stories/ensure-folder.ts";
+export type {
+  StoryFolderGateway,
+  EnsureStoryFolderInput,
+  EnsureStoryFolderResult,
+} from "./actions/stories/ensure-folder.ts";
 export { publishStory } from "./actions/stories/publish-story.ts";
 export type {
   StoryPublishGateway,
