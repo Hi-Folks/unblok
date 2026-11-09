@@ -17,6 +17,7 @@ const operationLists = new Set([
   "workflow.assign",
   "tags",
   "experiments.create",
+  "releases.create",
 ]);
 
 function merge(base: Mapping, overlay: Mapping, prefix = ""): Mapping {

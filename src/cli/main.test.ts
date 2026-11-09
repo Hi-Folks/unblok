@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, setSystemTime } from "bun:test";
 import { ClientError } from "@storyblok/management-api-client";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -31,6 +31,8 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     text: (message) => stdout.push(message),
   };
   const fallback: StoryblokGateway = {
+    listReleases: async () => [],
+    createRelease: async (_spaceId, name) => ({ id: 1, name }),
     listAssetFolders: async () => [],
     createAssetFolder: async (_spaceId, name, parentId) => ({
       id: 1,
@@ -114,6 +116,125 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("schedules a release a specified number of days from now", async () => {
+    setSystemTime(new Date("2027-01-01T12:34:45Z"));
+    try {
+      const harness = createHarness({
+        listInstalledApps: async () => [
+          { app_id: 1, name: "Releases", slug: "releases" },
+        ],
+        listReleases: async () => [],
+        createRelease: async (_space, name, releaseAt) => ({
+          id: 4,
+          name,
+          release_at: releaseAt,
+        }),
+      });
+      expect(
+        await runCli(
+          [
+            "release",
+            "create",
+            "--name",
+            "Campaign",
+            "--in-days",
+            "7",
+            "--space-id",
+            "42",
+            "--yes",
+            "--json",
+          ],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(harness.stdout).toEqual([
+        {
+          status: "created",
+          release: { id: 4, name: "Campaign", release_at: "2027-01-08 12:34" },
+        },
+      ]);
+    } finally {
+      setSystemTime();
+    }
+  });
+  test("lists and creates releases using the Releases app", async () => {
+    let writes = 0;
+    const harness = createHarness({
+      listInstalledApps: async () => [
+        { app_id: 1, name: "Releases", slug: "releases_only" },
+      ],
+      listReleases: async () => [{ id: 3, name: "Launch" }],
+      createRelease: async (_space, name, releaseAt) => {
+        expect(releaseAt).toBe("2027-02-20 15:30");
+        writes++;
+        return { id: 4, name };
+      },
+    });
+    expect(
+      await runCli(
+        ["release", "list", "--space-id", "42", "--json"],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(
+      await runCli(
+        [
+          "release",
+          "create",
+          "--name",
+          "Campaign",
+          "--release-at",
+          "2027-02-20 15:30",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(writes).toBe(0);
+    expect(
+      await runCli(
+        [
+          "release",
+          "create",
+          "--name",
+          "Campaign",
+          "--release-at",
+          "2027-02-20 15:30",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout).toEqual([
+      [{ id: 3, name: "Launch" }],
+      { status: "created", release: { id: 4, name: "Campaign" } },
+    ]);
+    expect(
+      await runCli(
+        [
+          "release",
+          "create",
+          "--name",
+          "Launch",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout.at(-1)).toEqual({
+      status: "unchanged",
+      release: { id: 3, name: "Launch" },
+    });
+    expect(writes).toBe(1);
+  });
   test("creates a draft story and preserves it on repeat runs", async () => {
     const dir = await mkdtemp(join(tmpdir(), "unblok-story-"));
     try {

@@ -6,6 +6,7 @@ import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError, formatError } from "../../errors.ts";
 import { planBlueprint } from "../../setup/blueprint.ts";
 import { compileExperiments } from "../../setup/blueprint-experiments.ts";
+import { compileReleases } from "../../setup/blueprint-releases.ts";
 import { resolveBlueprint } from "../../setup/blueprint-validation.ts";
 import {
   applySupportedBlueprint,
@@ -34,6 +35,7 @@ function formatProgress(progress: BlueprintProgress): string {
     workflow: "Assigning workflow stages",
     tags: "Assigning tags",
     experiments: "Configuring experiments",
+    releases: "Configuring releases",
   };
   const count =
     progress.current && progress.total
@@ -102,6 +104,7 @@ const plan: Command = {
     );
     if (blueprint.experiments !== undefined)
       compileExperiments(blueprint.experiments);
+    if (blueprint.releases !== undefined) compileReleases(blueprint.releases);
     const result = {
       ...planBlueprint(blueprint),
       resolvedBlueprint: blueprint,

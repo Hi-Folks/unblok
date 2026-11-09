@@ -2,6 +2,25 @@
 
 All examples use `bun run start` from a checkout. The published CLI is `unblok`. Add `--json` to data commands that support it for machine-readable output.
 
+## Storyblok content releases
+
+```bash
+bun run start release list --space-id 123456 --json
+bun run start release create --name "Summer campaign" --space-id 123456 --yes
+bun run start release create --name "Autumn campaign" --release-at "2027-10-01 09:00" --space-id 123456 --yes
+bun run start release create --name "Demo campaign" --in-days 7 --space-id 123456 --yes
+```
+
+These commands manage Storyblok content releases, not npm or GitHub releases. The Releases app must be installed and enabled in the space. Unblok checks installed app slugs `releases_only` and `releases`; installation does not prove it is enabled. `STORYBLOK_SPACE_ID` supplies the space if `--space-id` is omitted.
+
+`release list` returns releases from Storyblok. `release create` requires `--yes` and creates a release only when no release with the exact, case-sensitive name exists. `--release-at` optionally sets its scheduled date and time in Storyblok's `YYYY-MM-DD HH:mm` format; omit it for an unscheduled release. The value is sent unchanged. Storyblok says schedule times are stored in UTC and displayed using the account timezone; its API reference does not specify how timezone-free input is interpreted, so verify the resulting time in Storyblok before relying on it. See [Storyblok's scheduling guide](https://www.storyblok.com/faq/how-to-schedule-stories-for-releases).
+
+`--in-days` accepts a whole number from 1 to 36500. On creation, Unblok adds that many 24-hour days to the current UTC time, rounds down to the minute, and sends the result as `release_at`. Use either `--in-days` or `--release-at`, not both. As with a fixed schedule, verify the displayed time in Storyblok because the API does not specify how it interprets timezone-free input.
+
+An existing name is preserved and reported as `unchanged`; multiple matches cause an error. For a relative schedule, the existing schedule is preserved on reruns and is not compared to a newly calculated date. If a fixed schedule was requested, the existing `release_at` must exactly match the supplied value or the command reports a conflict; it never reschedules an existing release. Storyblok may return an equivalent time in a different format, which also produces a conflict. Leading and trailing spaces in the requested name are removed. JSON creation output contains `status` (`created` or `unchanged`) and `release`. Concurrent creations or incomplete API pagination could still result in duplicates; inspect releases after an uncertain failure. The commands do not add stories or immediately publish a release. See [Storyblok's Releases guide](https://www.storyblok.com/docs/apps/releases).
+
+The [release setup example](../examples/features/setup-releases.yaml) installs the Releases app and creates a release using `release_in_days: 7`; use `release_at` for a fixed date instead. `space setup plan` validates locally, while `space setup apply` performs the installation and creation.
+
 ## `asset upload`
 
 ```bash
@@ -161,6 +180,7 @@ The bundled examples reference the local [JSON Schema](../space-setup.schema.jso
 | `apps`                                                                | Install slugs or `{ id: 123 }`; `continue_on_error` controls whether setup continues after an app failure.                       | [Configuration](../examples/features/setup-configure.yaml)                                                         |
 | `ai_translation`                                                      | Accept a specified `disclaimer_id`, then install AI Translations (app `29942`).                                                  | [AI Translations](../examples/customer-demo/steps/10-ai-translation.yaml)                                          |
 | `experiments`                                                         | Install Experiments, reconcile variants and test content, and optionally publish, activate, and push simulated results.          | [Experiment](../examples/features/setup-experiment.yaml)                                                           |
+| `releases.create`                                                     | Create content releases with fixed or relative schedules.                                                                        | [Releases](../examples/features/setup-releases.yaml)                                                               |
 | `ai`                                                                  | Configure space AI and organization configuration inheritance using explicit booleans `enabled` and `inherit_org_configuration`. | [Space AI](../examples/customer-demo/steps/09-space-ai.yaml)                                                       |
 | `components.fields`                                                   | Reconcile declared fields, including custom `field_type`, tabs, and rich-text `customize_toolbar`.                               | [Component fields](../examples/features/setup-component-fields.yaml)                                               |
 | `assets.upload_directory`                                             | Upload selected files from a local directory.                                                                                    | [Local assets](../examples/features/setup-assets.yaml)                                                             |
@@ -181,7 +201,7 @@ bun run start space setup apply --config examples/customer-demo/steps/02-setting
 bun run start space setup apply --config examples/customer-demo/steps/05-assets.yaml --space-id 123456 --input 'asset_url=https://your-host.example/banner.png' --yes
 ```
 
-Run files 03–08 with `--space-id` in order; the story, workflow, and tag steps depend on earlier steps and the source space's content. The modular blueprint also includes [space AI settings](../examples/customer-demo/steps/09-space-ai.yaml), AI Translations, and the [experiment setup](../examples/features/setup-experiment.yaml). Review the disclaimer IDs and terms before applying. The combined setup publishes the experiment variant, starts the experiment, and pushes simulated results. To run it, use `--config examples/customer-demo/setup.yaml` and provide the same input overrides. The runner always executes resource operations in dependency order, regardless of the order of sections in YAML.
+Run files 03–08 with `--space-id` in order; the story, workflow, and tag steps depend on earlier steps and the source space's content. The modular blueprint also includes [space AI settings](../examples/customer-demo/steps/09-space-ai.yaml), AI Translations, the [experiment setup](../examples/features/setup-experiment.yaml), and the [release setup](../examples/features/setup-releases.yaml). Review the disclaimer IDs and terms before applying. The combined setup publishes the experiment variant, starts the experiment, pushes simulated results, and creates a release scheduled seven days after creation; verify its time in Storyblok. To run it, use `--config examples/customer-demo/setup.yaml` and provide the same input overrides. The runner always executes resource operations in dependency order, regardless of the order of sections in YAML.
 
 `extends` accepts one path or an array of paths, relative to the file declaring it. Included files are merged in order and then the including file is merged. Objects merge recursively, later scalar values and configuration lists replace earlier ones, and operation lists (apps, component fields, assets, stories, workflow assignments, and tags) are appended. A file shared through multiple paths is included once; cycles are rejected. Inputs are merged before substitution, so `--input` overrides work across files. Include paths are literal, not input expressions. Local asset source paths are relative to the file declaring them; use relative input values when interpolating paths in included fragments.
 

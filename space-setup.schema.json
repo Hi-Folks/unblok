@@ -129,6 +129,35 @@
         }
       }
     },
+    "releases": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["create"],
+      "properties": {
+        "create": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "$ref": "#/$defs/nonempty" },
+              "release_at": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}$"
+              },
+              "release_in_days": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 36500
+              }
+            },
+            "not": { "required": ["release_at", "release_in_days"] }
+          }
+        }
+      }
+    },
     "apps": {
       "type": "object",
       "additionalProperties": false,

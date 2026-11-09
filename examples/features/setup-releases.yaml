@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Storyblok releases
+execution:
+  mode: reconcile
+apps:
+  install:
+    - releases_only
+releases:
+  create:
+    # Schedule once, seven 24-hour periods after creation.
+    - name: Demo campaign
+      release_in_days: 7
+    # Alternatively, specify a fixed Storyblok API date and time:
+    # - name: Autumn campaign
+    #   release_at: "2027-10-01 09:00"

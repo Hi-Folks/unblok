@@ -14,6 +14,12 @@ import {
 import { getRegion } from "@storyblok/region-helper";
 
 export interface StoryblokGateway {
+  listReleases(spaceId: number): Promise<StoryblokRelease[]>;
+  createRelease(
+    spaceId: number,
+    name: string,
+    releaseAt?: string,
+  ): Promise<StoryblokRelease>;
   listAssetFolders(spaceId: number): Promise<StoryblokAssetFolder[]>;
   createAssetFolder(
     spaceId: number,
@@ -136,6 +142,13 @@ export interface StoryblokGateway {
     componentId: number,
     component: ComponentUpdate,
   ): Promise<Component>;
+}
+
+export interface StoryblokRelease {
+  id: number;
+  name: string;
+  released?: boolean;
+  release_at?: string | null;
 }
 
 export interface StoryblokApp {
@@ -268,6 +281,55 @@ export const createStoryblokGateway = (
   };
 
   return {
+    async listReleases(spaceId) {
+      const all: StoryblokRelease[] = [];
+      const seenIds = new Set<number>();
+      for (let page = 1; ; page++) {
+        const response = await clientForSpace(spaceId).get<{
+          releases: StoryblokRelease[];
+        }>(`/v1/spaces/${spaceId}/releases/`, {
+          query: { page, per_page: 100 },
+        });
+        if (!Array.isArray(response.data.releases))
+          throw new Error("Invalid release list.");
+        for (const release of response.data.releases) {
+          if (
+            !release ||
+            !Number.isSafeInteger(release.id) ||
+            release.id <= 0 ||
+            typeof release.name !== "string" ||
+            seenIds.has(release.id)
+          )
+            throw new Error(
+              "Invalid or repeated release in list; cannot verify existing releases.",
+            );
+          seenIds.add(release.id);
+          all.push(release);
+        }
+        if (response.data.releases.length < 100) return all;
+      }
+    },
+    async createRelease(spaceId, name, releaseAt) {
+      const response = await clientForSpace(spaceId).post<{
+        release: StoryblokRelease;
+      }>(`/v1/spaces/${spaceId}/releases/`, {
+        headers: { "Content-Type": "application/json" },
+        body: {
+          release: {
+            name,
+            ...(releaseAt === undefined ? {} : { release_at: releaseAt }),
+          },
+        },
+      });
+      if (
+        !response.data.release ||
+        !Number.isSafeInteger(response.data.release.id) ||
+        response.data.release.id <= 0 ||
+        typeof response.data.release.name !== "string"
+      )
+        throw new Error("Invalid release returned by Storyblok.");
+      return response.data.release;
+    },
     async listAssetFolders(spaceId) {
       const all: StoryblokAssetFolder[] = [];
       for (let page = 1; ; page++) {

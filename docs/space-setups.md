@@ -1,6 +1,8 @@
 # Repeatable space setups
 
-Describe a Storyblok space setup in version-controlled YAML, review it, and apply it to a new or existing space. A blueprint can combine reusable files, inputs, apps, component fields, assets, stories, workflows, and tags. This makes a demo or customer setup easier to review and repeat than a sequence of manual UI changes.
+Describe a Storyblok space setup in version-controlled YAML, review it, and apply it to a new or existing space. A blueprint can combine reusable files, inputs, apps, component fields, assets, stories, workflows, tags, and releases. This makes a demo or customer setup easier to review and repeat than a sequence of manual UI changes.
+
+The [release example](../examples/features/setup-releases.yaml) installs the Releases app and creates a release scheduled seven days after creation. A rerun keeps the existing release and its schedule. The date is calculated in UTC and sent in Storyblok's timezone-free format; verify the resulting time in Storyblok before relying on it. [Release command details](commands.md#storyblok-content-releases).
 
 ## Try it step by step
 
@@ -31,7 +33,7 @@ This is an alternative to file 05 when running the steps individually. The modul
 
 ## Combine the steps
 
-The [modular blueprint](../examples/customer-demo/setup.yaml) uses `extends` to combine steps 01–10 and the experiment recipe. It enables space AI, disables inheritance of organization AI configuration, accepts AI Translations and Experiments disclaimers, publishes a variant, starts an experiment, and pushes simulated results. Review both disclaimer IDs and terms and the [experiment configuration](../examples/features/setup-experiment.yaml) before applying. Inputs declared in fragments are available to the main blueprint:
+The [modular blueprint](../examples/customer-demo/setup.yaml) uses `extends` to combine steps 01–10 with the experiment and release recipes. It enables space AI, disables inheritance of organization AI configuration, accepts AI Translations and Experiments disclaimers, publishes a variant, starts an experiment, pushes simulated results, and creates a release scheduled seven days from creation. Verify the scheduled time in Storyblok. Review both disclaimer IDs and terms and the [experiment configuration](../examples/features/setup-experiment.yaml) before applying. Inputs declared in fragments are available to the main blueprint:
 
 ```bash
 bun run start space setup plan --config examples/customer-demo/setup.yaml \

@@ -22,6 +22,7 @@ describe("blueprint editor schema", () => {
       "ai",
       "ai_translation",
       "experiments",
+      "releases",
       "apps",
       "components",
       "assets",
@@ -59,6 +60,7 @@ describe("blueprint editor schema", () => {
       "setup-duplicate",
       "setup-experiment",
       "setup-remote-asset",
+      "setup-releases",
       "setup-stories",
       "setup-workflow",
     ]) {
@@ -129,6 +131,14 @@ describe("blueprint editor schema", () => {
       inheritOrgConfiguration: false,
     });
     expect(compiled.aiTranslationDisclaimerId).toBe(35);
+    expect(compiled.releases).toEqual([
+      { name: "Demo campaign", releaseInDays: 7 },
+    ]);
+    expect(
+      compiled.apps.filter(
+        (app) => "slug" in app && app.slug === "releases_only",
+      ),
+    ).toHaveLength(1);
     expect(compiled.apps.some((app) => "id" in app && app.id === "29942")).toBe(
       false,
     );

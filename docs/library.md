@@ -35,6 +35,24 @@ The story list must contain exact, nonempty full slugs. Every slug is resolved b
 
 The gateway is supplied explicitly, so the same operations work with a custom implementation of the exported `WorkflowStoryGateway` type. No action reads credentials, prompts, or writes terminal output. The client factory accepts the token explicitly; do not hard-code or log it.
 
+## List and create Storyblok releases
+
+```ts
+import { listReleases, createRelease } from "unblok";
+
+const releases = await listReleases(gateway, { spaceId: 123456 });
+const result = await createRelease(gateway, {
+  spaceId: 123456,
+  name: "Summer campaign",
+  releaseAt: "2027-10-01 09:00", // Optional; omit for an unscheduled release.
+});
+console.log(result.status, result.release.id); // "created" or "unchanged"
+```
+
+The Releases app must be installed and enabled. The action checks installed app slugs `releases_only` and `releases`; it cannot confirm whether the app is enabled. Creation checks for an exact, case-sensitive name and returns the existing release as `unchanged`; multiple matches cause an `AMBIGUOUS` error. The optional `releaseAt` is sent unchanged in Storyblok's `YYYY-MM-DD HH:mm` format. Storyblok says it stores schedules in UTC and displays them in the account timezone, but does not specify how the API interprets timezone-free input; verify the time in Storyblok. For an existing name, a requested schedule must exactly match the returned `release_at` string or the action reports a conflict; equivalent times formatted differently may also conflict. It never reschedules an existing release. Requested names are trimmed. Concurrent creations or incomplete API pagination could still produce duplicates. Inputs and API failures reject with `UnblokError`. These functions use the gateway's region selection and do not install the app.
+
+Alternatively, use `releaseInDays: 7` instead of `releaseAt`. The integer must be between 1 and 36500. At creation time, Unblok adds that many 24-hour days to the current UTC time, rounds down to the minute, and sends the resulting timezone-free value to Storyblok. An existing release keeps its schedule on reruns; the relative date is calculated only for a new release. Verify the resulting time in Storyblok.
+
 ## Publish a story
 
 ```ts

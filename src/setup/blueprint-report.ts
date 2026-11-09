@@ -20,6 +20,7 @@ export class BlueprintOperationError extends Error {
 
 const unchangedReasons: Record<string, string> = {
   "create-story": "Story already exists; its content was preserved.",
+  "create-release": "Release already exists; its schedule was preserved.",
   "install-app": "App is already installed.",
   "install-ai-translations": "App is already installed.",
   "accept-ai-translation-disclaimer": "Disclaimer is already accepted.",

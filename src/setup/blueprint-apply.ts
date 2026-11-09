@@ -2,6 +2,11 @@ import { configureSpaceAi } from "../actions/spaces/configure-ai.ts";
 import { installAppById, installAppBySlug } from "../actions/apps/apps.ts";
 import { assignStoryTags } from "../actions/stories/story-tags.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
+import { createRelease } from "../actions/releases/releases.ts";
+import {
+  compileReleases,
+  type BlueprintRelease,
+} from "./blueprint-releases.ts";
 import { CliError } from "../errors.ts";
 import type { StoryblokGateway } from "../storyblok/gateway.ts";
 import { planBlueprint } from "./blueprint.ts";
@@ -73,6 +78,7 @@ export interface SupportedBlueprint {
   aiTranslationDisclaimerId?: number;
   aiSettings?: { enabled: boolean; inheritOrgConfiguration: boolean };
   experiments?: ReturnType<typeof compileExperiments>;
+  releases: BlueprintRelease[];
   fields: DesiredComponentField[];
   assets: AssetDirectory[];
   remoteAssets: RemoteAsset[];
@@ -100,6 +106,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
         "ai",
         "ai_translation",
         "experiments",
+        "releases",
         "apps",
         "components",
         "assets",
@@ -233,6 +240,8 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     value.experiments === undefined
       ? undefined
       : compileExperiments(value.experiments);
+  const releases =
+    value.releases === undefined ? [] : compileReleases(value.releases);
   if (value.ai_translation !== undefined) {
     if (
       !isObject(value.ai_translation) ||
@@ -743,6 +752,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       workflow,
       tags,
       experiments,
+      releases,
     }).includes("${{")
   )
     throw new CliError(
@@ -774,6 +784,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     workflow,
     tags,
     experiments,
+    releases,
   };
 }
 
@@ -787,7 +798,8 @@ export interface BlueprintProgress {
     | "stories"
     | "workflow"
     | "tags"
-    | "experiments";
+    | "experiments"
+    | "releases";
   current?: number;
   total?: number;
   item?: string;
@@ -886,6 +898,10 @@ export async function applySupportedBlueprint(
       operation: "push-experiment-results",
       key: item.name,
     })) ?? [],
+    blueprint.releases.map((item) => ({
+      operation: "create-release",
+      key: item.name,
+    })),
   ];
   const finish = (stoppedAt?: number) => {
     if (stoppedAt === undefined)
@@ -908,7 +924,7 @@ export async function applySupportedBlueprint(
       return true;
     });
     const report = finishBlueprintReport(spaceId, operations, notRun);
-    if (stoppedAt >= 8 && report.recovery)
+    if (stoppedAt >= 8 && stoppedAt <= 11 && report.recovery)
       report.recovery.message = `Inspect the experiment and partial changes in space ${spaceId} before retrying.`;
     return report;
   };
@@ -1416,6 +1432,30 @@ export async function applySupportedBlueprint(
         });
         return finish(10);
       }
+    }
+  }
+  for (const [index, release] of blueprint.releases.entries()) {
+    onProgress?.({
+      stage: "releases",
+      current: index + 1,
+      total: blueprint.releases.length,
+      item: release.name,
+    });
+    try {
+      const result = await createRelease(gateway, { spaceId, ...release });
+      operations.push({
+        operation: "create-release",
+        key: release.name,
+        status: result.status,
+      });
+    } catch (error) {
+      operations.push({
+        operation: "create-release",
+        key: release.name,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unexpected error",
+      });
+      return finish(12);
     }
   }
   return finish();

@@ -5,7 +5,18 @@ export type {
   UnblokErrorCode,
   UnblokErrorInfo,
 } from "./actions/action-error.ts";
-export type { StoryblokGateway, StoryblokRegion } from "./storyblok/gateway.ts";
+export type {
+  StoryblokGateway,
+  StoryblokRegion,
+  StoryblokRelease,
+} from "./storyblok/gateway.ts";
+export { listReleases, createRelease } from "./actions/releases/releases.ts";
+export type {
+  ReleaseGateway,
+  ReleaseSpaceInput,
+  CreateReleaseInput,
+  CreateReleaseResult,
+} from "./actions/releases/releases.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
 export { publishStory } from "./actions/stories/publish-story.ts";
 export type {

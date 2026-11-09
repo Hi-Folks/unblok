@@ -1,9 +1,11 @@
-import { expect, test } from "bun:test";
+import { expect, test, setSystemTime } from "bun:test";
 import { ClientError } from "@storyblok/management-api-client";
 import {
   UnblokError,
   ensureTranslatedSlugs,
   ensureStoryCreated,
+  listReleases,
+  createRelease,
   publishStory,
   ensureAppInstalled,
   updateStoryBlock,
@@ -13,6 +15,7 @@ import {
   assignStoryWorkflow,
   planStoryWorkflow,
 } from "./library.ts";
+
 import type {
   StoryTagGateway,
   WorkflowStoryGateway,
@@ -23,6 +26,55 @@ import type {
   StoryCreateGateway,
   StoryPublishGateway,
 } from "./library.ts";
+
+test("public library exposes release listing and creation", async () => {
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases_only" },
+    ],
+    listReleases: async () => [{ id: 1, name: "Existing" }],
+    createRelease: async (_space: number, name: string) => ({ id: 2, name }),
+  };
+  expect(await listReleases(gateway, { spaceId: 42 })).toEqual([
+    { id: 1, name: "Existing" },
+  ]);
+  expect(await createRelease(gateway, { spaceId: 42, name: "New" })).toEqual({
+    status: "created",
+    release: { id: 2, name: "New" },
+  });
+  expect(
+    await createRelease(gateway, { spaceId: 42, name: "Existing" }),
+  ).toEqual({ status: "unchanged", release: { id: 1, name: "Existing" } });
+});
+
+test("public library supports a relative release schedule", async () => {
+  setSystemTime(new Date("2027-01-01T12:34:45Z"));
+  try {
+    const gateway = {
+      listInstalledApps: async () => [
+        { app_id: 1, name: "Releases", slug: "releases" },
+      ],
+      listReleases: async () => [],
+      createRelease: async (
+        _space: number,
+        name: string,
+        releaseAt?: string,
+      ) => ({ id: 1, name, release_at: releaseAt }),
+    };
+    expect(
+      await createRelease(gateway, {
+        spaceId: 42,
+        name: "Launch",
+        releaseInDays: 7,
+      }),
+    ).toEqual({
+      status: "created",
+      release: { id: 1, name: "Launch", release_at: "2027-01-08 12:34" },
+    });
+  } finally {
+    setSystemTime();
+  }
+});
 
 test("library publishes a draft or pending changes and skips a clean published story", async () => {
   let published = false;

@@ -122,6 +122,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `story tags plan` and `story tags assign` add tags to stories by full slug.
 - `story publish` publishes the current draft of a story by full slug.
 - `story create` creates a root-level draft from a JSON definition.
+- `release list` and `release create` manage Storyblok content releases.
 - `workflow list`, `workflow stage`, and `story workflow` inspect stages and assign stories.
 
 Run any command with `--help` for an inline summary:
