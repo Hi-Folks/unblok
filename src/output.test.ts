@@ -32,7 +32,9 @@ describe("createOutput", () => {
     output.error("Not found");
 
     expect(stdoutValue()).toBe('{\n  "id": 42\n}\n');
-    expect(stderrValue()).toBe("Error: Not found\n");
+    expect(JSON.parse(stderrValue())).toEqual({
+      error: { code: "UNKNOWN", message: "Not found", exitCode: 1 },
+    });
   });
 
   test("uses Clack semantics for human messages", () => {

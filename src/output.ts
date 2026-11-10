@@ -12,6 +12,7 @@ import {
 import type { Writable } from "node:stream";
 import { styleText } from "node:util";
 import { CliError } from "./errors.ts";
+import type { UnblokErrorCode } from "./actions/action-error.ts";
 
 export type OutputMode = "human" | "json";
 
@@ -37,7 +38,10 @@ export interface Output {
     message: string,
     validate: (value: string) => string | undefined,
   ): Promise<string | null>;
-  error(message: string): void;
+  error(
+    message: string,
+    details?: { code: UnblokErrorCode; exitCode: number; status?: number },
+  ): void;
   info(message: string): void;
   note(title: string, message: string): void;
   summary(title: string, message: string): void;
@@ -128,9 +132,21 @@ export function createOutput(options: OutputOptions = {}): Output {
       });
       return isCancel(answer) ? null : answer;
     },
-    error(message) {
+    error(message, details) {
       if (mode === "json") {
-        writeLine(stderr, `Error: ${message}`);
+        writeLine(
+          stderr,
+          JSON.stringify({
+            error: {
+              code: details?.code ?? "UNKNOWN",
+              message,
+              ...(details?.status === undefined
+                ? {}
+                : { status: details.status }),
+              exitCode: details?.exitCode ?? 1,
+            },
+          }),
+        );
         return;
       }
 

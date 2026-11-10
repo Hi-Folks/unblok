@@ -21,6 +21,7 @@ import {
 } from "../storyblok/gateway.ts";
 import { dispatch } from "./dispatch.ts";
 import { version as packageVersion } from "../../package.json";
+import { toUnblokError } from "../actions/action-error.ts";
 
 declare const UNBLOK_BUILD_VERSION: string | undefined;
 const version =
@@ -76,7 +77,19 @@ export async function runCli(
     });
     return 0;
   } catch (error) {
-    output.error(formatError(error));
-    return error instanceof CliError ? error.exitCode : 1;
+    const exitCode = error instanceof CliError ? error.exitCode : 1;
+    const classified = toUnblokError(error);
+    const code =
+      classified.code === "UNKNOWN" &&
+      error instanceof CliError &&
+      exitCode === 2
+        ? "INVALID_INPUT"
+        : classified.code;
+    output.error(formatError(error), {
+      code,
+      exitCode,
+      ...(classified.status === undefined ? {} : { status: classified.status }),
+    });
+    return exitCode;
   }
 }

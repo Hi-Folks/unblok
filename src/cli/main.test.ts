@@ -3,8 +3,9 @@ import { ClientError } from "@storyblok/management-api-client";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
 import type { Environment } from "../config/environment.ts";
-import type { Output } from "../output.ts";
+import { createOutput, type Output } from "../output.ts";
 import type { StoryblokGateway } from "../storyblok/gateway.ts";
 import type { ListSpacesOptions } from "../storyblok/gateway.ts";
 import { runCli } from "./main.ts";
@@ -129,6 +130,80 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("writes structured JSON for invalid input and API authentication errors", async () => {
+    for (const apiFailure of [false, true]) {
+      const harness = createHarness({
+        listSpaces: async () => {
+          throw new ClientError("secret", {
+            status: 401,
+            statusText: "Unauthorized",
+            data: { message: "secret" },
+          });
+        },
+      });
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      let output = "";
+      let errors = "";
+      stdout.on("data", (chunk) => (output += chunk.toString()));
+      stderr.on("data", (chunk) => (errors += chunk.toString()));
+      harness.options.output = createOutput({ json: true, stdout, stderr });
+      const args = apiFailure
+        ? ["space", "list", "--json"]
+        : ["story", "ai-translate", "--json"];
+      expect(await runCli(args, harness.options)).toBe(apiFailure ? 1 : 2);
+      expect(output).toBe("");
+      expect(JSON.parse(errors).error).toMatchObject(
+        apiFailure
+          ? { code: "UNAUTHORIZED", status: 401, exitCode: 1 }
+          : { code: "INVALID_INPUT", exitCode: 2 },
+      );
+      expect(errors).not.toContain("secret");
+    }
+  });
+
+  test("preserves the JSON partial report when a translation fails", async () => {
+    const harness = createHarness({
+      getStory: async () =>
+        ({ id: 7, content: { component: "default-page" } }) as never,
+      aiTranslateStory: async () => {
+        throw new Error("Translation unavailable");
+      },
+    });
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    let report = "";
+    let errors = "";
+    stdout.on("data", (chunk) => (report += chunk.toString()));
+    stderr.on("data", (chunk) => (errors += chunk.toString()));
+    harness.options.output = createOutput({ json: true, stdout, stderr });
+    expect(
+      await runCli(
+        [
+          "story",
+          "ai-translate",
+          "--id",
+          "7",
+          "--language",
+          "de",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(1);
+    expect(JSON.parse(report)).toMatchObject({
+      failed: true,
+      results: [{ status: "failed" }],
+    });
+    expect(JSON.parse(errors).error).toMatchObject({
+      code: "UNKNOWN",
+      exitCode: 1,
+    });
+  });
+
   test("requires confirmation and publishes a release once", async () => {
     let released = false;
     let writes = 0;
