@@ -8,8 +8,11 @@ import {
   ensureStoryCreated,
   ensureStoryFolder,
   listReleases,
+  getRelease,
+  publishRelease,
   createRelease,
   listPipelineBranches,
+  getPipelineBranch,
   ensurePipelineBranch,
   publishStory,
   ensureAppInstalled,
@@ -20,6 +23,45 @@ import {
   assignStoryWorkflow,
   planStoryWorkflow,
 } from "./library.ts";
+
+test("public library publishes a release", async () => {
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases" },
+    ],
+    listReleases: async () => [],
+    getRelease: async () => ({ id: 5, name: "Campaign", released: false }),
+    publishRelease: async () => ({ id: 5, name: "Campaign", released: true }),
+  };
+  expect(
+    await publishRelease(gateway as never, { spaceId: 42, reference: "5" }),
+  ).toEqual({ status: "published", releaseId: 5 });
+});
+
+test("library retrieves releases and pipeline stages", async () => {
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases_only" },
+      { app_id: 2, name: "Pipelines", slug: "branches" },
+    ],
+    listReleases: async () => [{ id: 5, name: "Campaign" }],
+    getRelease: async (_space: number, id: number) => ({
+      id,
+      name: "Campaign",
+    }),
+    listPipelineBranches: async () => [{ id: 8, name: "Go Live" }],
+    getPipelineBranch: async (_space: number, id: number) => ({
+      id,
+      name: "Go Live",
+    }),
+  };
+  expect(
+    await getRelease(gateway as never, { spaceId: 42, reference: "Campaign" }),
+  ).toEqual({ id: 5, name: "Campaign" });
+  expect(
+    await getPipelineBranch(gateway as never, { spaceId: 42, reference: "8" }),
+  ).toEqual({ id: 8, name: "Go Live" });
+});
 
 test("public library edits workflow settings", async () => {
   let enabled = false;

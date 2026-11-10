@@ -21,6 +21,7 @@ const operationLists = new Set([
   "tags",
   "experiments.create",
   "releases.create",
+  "releases.publish",
   "pipelines.create",
 ]);
 

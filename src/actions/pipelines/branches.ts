@@ -18,11 +18,19 @@ export interface EnsurePipelineBranchResult {
   status: "created" | "unchanged";
   branch: StoryblokPipelineBranch;
 }
+export type PipelineLookupGateway = Pick<
+  StoryblokGateway,
+  "listInstalledApps" | "listPipelineBranches" | "getPipelineBranch"
+>;
+export interface GetPipelineBranchInput {
+  spaceId: number;
+  reference: string;
+}
 
-async function branches(
-  gateway: Pick<PipelineGateway, "listInstalledApps" | "listPipelineBranches">,
+async function checkPipelineApp(
+  gateway: Pick<PipelineGateway, "listInstalledApps">,
   spaceId: number,
-): Promise<StoryblokPipelineBranch[]> {
+): Promise<void> {
   if (!Number.isSafeInteger(spaceId) || spaceId <= 0)
     throw new CliError("Provide a positive spaceId.", 1, "INVALID_INPUT");
   if (
@@ -35,6 +43,12 @@ async function branches(
       1,
       "NOT_FOUND",
     );
+}
+async function branches(
+  gateway: Pick<PipelineGateway, "listInstalledApps" | "listPipelineBranches">,
+  spaceId: number,
+): Promise<StoryblokPipelineBranch[]> {
+  await checkPipelineApp(gateway, spaceId);
   return gateway.listPipelineBranches(spaceId);
 }
 export async function listPipelineBranches(
@@ -43,6 +57,82 @@ export async function listPipelineBranches(
 ): Promise<StoryblokPipelineBranch[]> {
   try {
     return await branches(gateway, input?.spaceId);
+  } catch (error) {
+    throw toUnblokError(error);
+  }
+}
+
+/** Retrieve a pipeline stage by numeric ID or unique exact name. */
+export async function getPipelineBranch(
+  gateway: PipelineLookupGateway,
+  input: GetPipelineBranchInput,
+): Promise<StoryblokPipelineBranch> {
+  try {
+    if (
+      !Number.isSafeInteger(input?.spaceId) ||
+      input.spaceId <= 0 ||
+      typeof input.reference !== "string" ||
+      !input.reference.trim() ||
+      input.reference !== input.reference.trim()
+    )
+      throw new CliError(
+        "Provide a positive spaceId and pipeline stage ID or exact name.",
+        1,
+        "INVALID_INPUT",
+      );
+    const numeric = /^\d+$/.test(input.reference);
+    let id = numeric ? Number(input.reference) : undefined;
+    if (numeric && (!Number.isSafeInteger(id) || id! <= 0))
+      throw new CliError(
+        "Provide a positive pipeline stage ID.",
+        1,
+        "INVALID_INPUT",
+      );
+    await checkPipelineApp(gateway, input.spaceId);
+    if (id === undefined) {
+      const matches = (
+        await gateway.listPipelineBranches(input.spaceId)
+      ).filter((item) => item.name === input.reference);
+      if (!matches.length)
+        throw new CliError(
+          `Pipeline stage '${input.reference}' was not found.`,
+          1,
+          "NOT_FOUND",
+        );
+      if (matches.length > 1)
+        throw new CliError(
+          `Multiple pipeline stages named '${input.reference}' exist.`,
+          1,
+          "AMBIGUOUS",
+        );
+      id = matches[0]!.id;
+    }
+    if (!Number.isSafeInteger(id) || id <= 0)
+      throw new CliError(
+        "Storyblok returned an invalid pipeline stage ID.",
+        1,
+        "CONFLICT",
+      );
+    const branch = await gateway.getPipelineBranch(input.spaceId, id);
+    if (
+      !branch ||
+      branch.id !== id ||
+      typeof branch.name !== "string" ||
+      !branch.name.trim() ||
+      (!numeric && branch.name !== input.reference)
+    )
+      throw new CliError(
+        "The pipeline stage could not be verified.",
+        1,
+        "CONFLICT",
+      );
+    return {
+      id: branch.id,
+      name: branch.name,
+      ...(branch.source_id === undefined
+        ? {}
+        : { source_id: branch.source_id }),
+    };
   } catch (error) {
     throw toUnblokError(error);
   }

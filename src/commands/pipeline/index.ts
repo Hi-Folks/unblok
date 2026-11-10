@@ -1,8 +1,10 @@
 import {
   ensurePipelineBranch,
+  getPipelineBranch,
   listPipelineBranches,
 } from "../../actions/pipelines/branches.ts";
 import type { Command } from "../../cli/command.ts";
+import { resourceGetCommand } from "../resource-get.ts";
 import { dispatch } from "../../cli/dispatch.ts";
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
@@ -102,7 +104,19 @@ export const pipelineCommand: Command = {
   async run(args, context) {
     await dispatch(
       "unblok pipeline",
-      [command("list"), command("create")],
+      [
+        command("list"),
+        resourceGetCommand({
+          resource: "pipeline",
+          description: "Get a Storyblok pipeline stage",
+          lookup: getPipelineBranch,
+          render: (branch) => ({
+            title: branch.name,
+            details: `ID: ${branch.id}\nSource ID: ${branch.source_id ?? "Not specified"}`,
+          }),
+        }),
+        command("create"),
+      ],
       args,
       context,
     );

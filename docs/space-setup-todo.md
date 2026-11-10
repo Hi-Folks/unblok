@@ -1,13 +1,13 @@
 # Demo space setup implementation checklist
 
-Goal: run the [blokctl demo-space blueprint](https://github.com/Hi-Folks/blokctl/blob/main/examples/demo-space.yaml) through `unblok space setup`, using reusable actions and a repeatable, reviewable workflow. The existing `version: 1` inventory and limited app/tag apply are a starting point; they do not yet execute the full blueprint.
+Goal: run the [blokctl demo-space blueprint](https://github.com/Hi-Folks/blokctl/blob/main/examples/demo-space.yaml) through `unblok space setup`, using reusable actions and a repeatable, reviewable workflow. Unblok now applies a substantial supported subset through its modular customer demo; full compatibility and live repeat-run verification remain open.
 
 ## 1. Blueprint foundation
 
 - [ ] Define and validate the complete version 1 schema, including nested fields, types, defaults, selectors, and unknown-option errors. Keep it distinct from `space-man/v1`.
-- [ ] Resolve declared inputs from explicit CLI values and defaults, prompt only when appropriate, and reject missing or unknown inputs before writes. Local planning now supports string defaults and overrides; apply integration remains.
-- [ ] Resolve `${{ inputs.* }}` and runtime references such as `${{ space.preview_token }}` without evaluating arbitrary code or exposing tokens in output. Planning resolves inputs and preserves runtime placeholders; runtime resolution remains.
-- [ ] Build an ordered execution plan, with clear dependencies, failure reporting, JSON output, and a dry run that makes no changes. Define which decisions require existing space state.
+- [x] Resolve declared string inputs from CLI values and defaults for plan and apply; reject missing or unknown inputs before writes.
+- [x] Resolve `${{ inputs.* }}` and supported runtime references such as `${{ space.preview_token }}` without evaluating arbitrary code or exposing tokens in output.
+- [ ] Extend local planning into an ordered, state-aware execution plan. The current plan validates and inventories operations without querying Storyblok; apply executes in dependency order and reports failures, partial results and JSON output.
 
 ## 2. Create the target space
 
@@ -30,12 +30,12 @@ Goal: run the [blokctl demo-space blueprint](https://github.com/Hi-Folks/blokctl
 
 ## 5. Reconcile content and workflows
 
-- [x] Implement `stories.translated_slugs` and root-level `stories.create`, including nested content and resolved asset references. Existing stories are left unchanged on repeat runs.
+- [x] Implement `stories.translated_slugs` and `stories.create`, including nested content, folders, release selection and resolved asset references. Existing stories are preserved where their state can be verified.
 - [x] Support `workflow.assign_unstaged`, optional `stage_id`, and explicit story assignments by workflow and stage name. Handle delayed or missing default stages using the existing workflow action.
 - [x] Integrate existing tag assignment after stories are available; preserve existing tags and report missing story selectors and partial failures.
 
 ## 6. Verify and document
 
-- [ ] Add fixture-based validation, planning, execution-order, retry, failure, and repeat-run tests, including the entire representative YAML and mocked API responses.
+- [ ] Expand fixture-based validation, planning, execution-order, retry, failure, and repeat-run tests to cover the entire representative YAML. Existing tests cover the modular customer demo schema and individual operation flows with mocked API responses.
 - [ ] Test a complete setup in a disposable Storyblok space, inspect results in the UI, then rerun against that space to verify reconciliation and document any API-dependent behavior.
-- [ ] Document input overrides, dry-run and apply commands, confirmation, reports, partial failures, supported fields, and a working example. Mark the full blueprint supported only after end-to-end verification.
+- [ ] Keep the documented supported subset and examples current, and mark the full blueprint supported only after end-to-end verification. Input overrides, local planning, apply commands, confirmation and partial reports are already documented.

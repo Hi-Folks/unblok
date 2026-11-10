@@ -4,7 +4,11 @@ import { assignStoryTags } from "../actions/stories/story-tags.ts";
 import { isValidStoryCreationSlug } from "../actions/stories/create-story.ts";
 import { ensureStoryFolder } from "../actions/stories/ensure-folder.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
-import { createRelease, listReleases } from "../actions/releases/releases.ts";
+import {
+  createRelease,
+  listReleases,
+  publishRelease,
+} from "../actions/releases/releases.ts";
 import {
   editWorkflow,
   type EditWorkflowInput,
@@ -20,6 +24,7 @@ import {
 } from "./blueprint-pipelines.ts";
 import {
   compileReleases,
+  compileReleasePublications,
   type BlueprintRelease,
 } from "./blueprint-releases.ts";
 import { CliError } from "../errors.ts";
@@ -94,6 +99,7 @@ export interface SupportedBlueprint {
   aiSettings?: { enabled: boolean; inheritOrgConfiguration: boolean };
   experiments?: ReturnType<typeof compileExperiments>;
   releases: BlueprintRelease[];
+  releasePublications: string[];
   pipelines: BlueprintPipelineBranch[];
   fields: DesiredComponentField[];
   assets: AssetDirectory[];
@@ -269,6 +275,10 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       : compileExperiments(value.experiments);
   const releases =
     value.releases === undefined ? [] : compileReleases(value.releases);
+  const releasePublications =
+    value.releases === undefined
+      ? []
+      : compileReleasePublications(value.releases as Record<string, unknown>);
   const pipelines =
     value.pipelines === undefined
       ? []
@@ -991,6 +1001,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       tags,
       experiments,
       releases,
+      releasePublications,
       pipelines,
     }).includes("${{")
   )
@@ -1027,6 +1038,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     tags,
     experiments,
     releases,
+    releasePublications,
     pipelines,
   };
 }
@@ -1045,6 +1057,7 @@ export interface BlueprintProgress {
     | "tags"
     | "experiments"
     | "releases"
+    | "publish-releases"
     | "pipelines";
   current?: number;
   total?: number;
@@ -1175,6 +1188,10 @@ export async function applySupportedBlueprint(
     blueprint.pipelines.map((item) => ({
       operation: "create-pipeline-branch",
       key: item.name,
+    })),
+    blueprint.releasePublications.map((key) => ({
+      operation: "publish-release",
+      key,
     })),
   ];
   const releaseIds = new Map<string, number>();
@@ -1963,6 +1980,44 @@ export async function applySupportedBlueprint(
         error: error instanceof Error ? error.message : "Unexpected error",
       });
       return finish(13);
+    }
+  }
+  if (operations.some((operation) => operation.status === "failed"))
+    return finish(14);
+  for (const [index, reference] of blueprint.releasePublications.entries()) {
+    onProgress?.({
+      stage: "publish-releases",
+      item: reference,
+      current: index + 1,
+      total: blueprint.releasePublications.length,
+    });
+    try {
+      if (
+        operations.some(
+          (operation) =>
+            operation.operation === "ai-translate-story" &&
+            operation.status === "queued",
+        )
+      )
+        throw new CliError(
+          "Translation tasks were queued in this setup; check their completion before publishing the release.",
+          1,
+          "CONFLICT",
+        );
+      const result = await publishRelease(gateway, { spaceId, reference });
+      operations.push({
+        operation: "publish-release",
+        key: reference,
+        status: result.status,
+      });
+    } catch (error) {
+      operations.push({
+        operation: "publish-release",
+        key: reference,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unexpected error",
+      });
+      return finish(14);
     }
   }
   return finish();

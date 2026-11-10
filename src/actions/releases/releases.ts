@@ -3,7 +3,7 @@ import type {
   StoryblokGateway,
   StoryblokRelease,
 } from "../../storyblok/gateway.ts";
-import { toUnblokError } from "../action-error.ts";
+import { toUnblokError, UnblokError } from "../action-error.ts";
 
 export type ReleaseGateway = Pick<
   StoryblokGateway,
@@ -20,6 +20,19 @@ export interface CreateReleaseInput extends ReleaseSpaceInput {
 export interface CreateReleaseResult {
   status: "created" | "unchanged";
   release: StoryblokRelease;
+}
+export type ReleaseLookupGateway = Pick<
+  StoryblokGateway,
+  "listInstalledApps" | "listReleases" | "getRelease"
+>;
+export interface GetReleaseInput extends ReleaseSpaceInput {
+  reference: string;
+}
+export type ReleasePublishGateway = ReleaseLookupGateway &
+  Pick<StoryblokGateway, "publishRelease">;
+export interface PublishReleaseResult {
+  status: "published" | "unchanged";
+  releaseId: number;
 }
 
 async function checkApp(
@@ -94,6 +107,113 @@ export async function listReleases(
     validateSpace(input?.spaceId);
     await checkApp(gateway, input.spaceId);
     return await gateway.listReleases(input.spaceId);
+  } catch (error) {
+    throw toUnblokError(error);
+  }
+}
+
+/** Retrieve a release by numeric ID or unique exact name. */
+export async function getRelease(
+  gateway: ReleaseLookupGateway,
+  input: GetReleaseInput,
+): Promise<StoryblokRelease> {
+  try {
+    validateSpace(input?.spaceId);
+    if (
+      typeof input.reference !== "string" ||
+      !input.reference.trim() ||
+      input.reference !== input.reference.trim()
+    )
+      throw new CliError(
+        "Provide a release ID or exact name.",
+        1,
+        "INVALID_INPUT",
+      );
+    const numeric = /^\d+$/.test(input.reference);
+    let id = numeric ? Number(input.reference) : undefined;
+    if (numeric && (!Number.isSafeInteger(id) || id! <= 0))
+      throw new CliError("Provide a positive release ID.", 1, "INVALID_INPUT");
+    await checkApp(gateway, input.spaceId);
+    if (id === undefined) {
+      const matches = (await gateway.listReleases(input.spaceId)).filter(
+        (item) => item.name === input.reference,
+      );
+      if (!matches.length)
+        throw new CliError(
+          `Release '${input.reference}' was not found.`,
+          1,
+          "NOT_FOUND",
+        );
+      if (matches.length > 1)
+        throw new CliError(
+          `Multiple releases named '${input.reference}' exist.`,
+          1,
+          "AMBIGUOUS",
+        );
+      id = matches[0]!.id;
+    }
+    if (!Number.isSafeInteger(id) || id <= 0)
+      throw new CliError(
+        "Storyblok returned an invalid release ID.",
+        1,
+        "CONFLICT",
+      );
+    const release = await gateway.getRelease(input.spaceId, id);
+    if (
+      !release ||
+      release.id !== id ||
+      typeof release.name !== "string" ||
+      !release.name.trim() ||
+      (!numeric && release.name !== input.reference)
+    )
+      throw new CliError("The release could not be verified.", 1, "CONFLICT");
+    return release;
+  } catch (error) {
+    throw toUnblokError(error);
+  }
+}
+
+/** Publish a release after checking its current status. */
+export async function publishRelease(
+  gateway: ReleasePublishGateway,
+  input: GetReleaseInput,
+): Promise<PublishReleaseResult> {
+  try {
+    const release = await getRelease(gateway, input);
+    if (typeof release.released !== "boolean")
+      throw new CliError(
+        "Storyblok did not return the release's publication status; publishing was stopped.",
+        1,
+        "CONFLICT",
+      );
+    if (release.released) return { status: "unchanged", releaseId: release.id };
+    const result = await gateway.publishRelease(
+      input.spaceId,
+      release.id,
+      release.name,
+    );
+    if (result?.id === release.id && result.released === true)
+      return { status: "published", releaseId: release.id };
+    let current: StoryblokRelease;
+    try {
+      current = await gateway.getRelease(input.spaceId, release.id);
+    } catch (error) {
+      throw new UnblokError(
+        {
+          code: "CONFLICT",
+          message:
+            "The publish request was sent, but publication could not be confirmed. Inspect the release in Storyblok before retrying.",
+        },
+        { cause: error },
+      );
+    }
+    if (current?.id !== release.id || current.released !== true)
+      throw new CliError(
+        "The publish request was sent, but publication could not be confirmed. Inspect the release in Storyblok before retrying.",
+        1,
+        "CONFLICT",
+      );
+    return { status: "published", releaseId: release.id };
   } catch (error) {
     throw toUnblokError(error);
   }

@@ -89,6 +89,7 @@ export function planBlueprint(value: unknown): BlueprintPlan {
     },
     releases: {
       create: { operation: "create content releases", support: "available" },
+      publish: { operation: "publish content releases", support: "available" },
     },
     pipelines: {
       create: { operation: "create pipeline stages", support: "available" },

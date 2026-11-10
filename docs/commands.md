@@ -6,15 +6,22 @@ All examples use `bun run start` from a checkout. The published CLI is `unblok`.
 
 ```bash
 bun run start pipeline list --space-id 123456 --json
+bun run start pipeline get --ref "Go Live" --space-id 123456
+bun run start pipeline get --ref 789012 --space-id 123456 --json
 bun run start pipeline create --name "Go Live" --space-id 123456 --yes
 ```
 
 The Pipelines app (`branches`) must be installed. Creation requires `--yes` and uses exact, case-sensitive stage names. The optional `--source` resolves an existing stage returned by the API by name. An existing target is skipped if its requested source matches; missing or ambiguous names and mismatched sources stop the operation. When no source is specified, Unblok leaves source selection to Storyblok and does not verify an existing stage's source. No deployment is triggered. The [pipeline YAML recipe](../examples/features/setup-pipeline.yaml) installs the app and creates `Go Live` without an explicit source. Storyblok documents the API as [branches](https://www.storyblok.com/docs/api/management/pipelines/create-a-branch).
 
+`pipeline get` accepts a numeric ID or an exact, case-sensitive name. A numeric-only reference is interpreted as an ID. Name lookups must match exactly one stage. JSON output contains the ID, name and, when returned, source ID; URLs are not exposed.
+
 ## Storyblok content releases
 
 ```bash
 bun run start release list --space-id 123456 --json
+bun run start release get --ref "Summer campaign" --space-id 123456
+bun run start release get --ref 789012 --space-id 123456 --json
+bun run start release publish --ref "Summer campaign" --space-id 123456 --yes
 bun run start release create --name "Summer campaign" --space-id 123456 --yes
 bun run start release create --name "Autumn campaign" --release-at "2027-10-01 09:00" --space-id 123456 --yes
 bun run start release create --name "Demo campaign" --in-days 7 --space-id 123456 --yes
@@ -24,11 +31,17 @@ These commands manage Storyblok content releases, not npm or GitHub releases. Th
 
 `release list` returns releases from Storyblok. `release create` requires `--yes` and creates a release only when no release with the exact, case-sensitive name exists. `--release-at` optionally sets its scheduled date and time in Storyblok's `YYYY-MM-DD HH:mm` format; omit it for an unscheduled release. The value is sent unchanged. Storyblok says schedule times are stored in UTC and displayed using the account timezone; its API reference does not specify how timezone-free input is interpreted, so verify the resulting time in Storyblok before relying on it. See [Storyblok's scheduling guide](https://www.storyblok.com/faq/how-to-schedule-stories-for-releases).
 
+`release get` retrieves a release by numeric ID or unique exact, case-sensitive name. Numeric-only references are interpreted as IDs. The Releases app must be installed, as with listing; missing and ambiguous names return errors.
+
 `--in-days` accepts a whole number from 1 to 36500. On creation, Unblok adds that many 24-hour days to the current UTC time, rounds down to the minute, and sends the result as `release_at`. Use either `--in-days` or `--release-at`, not both. As with a fixed schedule, verify the displayed time in Storyblok because the API does not specify how it interprets timezone-free input.
 
-An existing name is preserved and reported as `unchanged`; multiple matches cause an error. For a relative schedule, the existing schedule is preserved on reruns and is not compared to a newly calculated date. If a fixed schedule was requested, the existing `release_at` must exactly match the supplied value or the command reports a conflict; it never reschedules an existing release. Storyblok may return an equivalent time in a different format, which also produces a conflict. Leading and trailing spaces in the requested name are removed. JSON creation output contains `status` (`created` or `unchanged`) and `release`. Concurrent creations or incomplete API pagination could still result in duplicates; inspect releases after an uncertain failure. The commands do not add stories or immediately publish a release. See [Storyblok's Releases guide](https://www.storyblok.com/docs/apps/releases).
+An existing name is preserved and reported as `unchanged`; multiple matches cause an error. For a relative schedule, the existing schedule is preserved on reruns and is not compared to a newly calculated date. If a fixed schedule was requested, the existing `release_at` must exactly match the supplied value or the command reports a conflict; it never reschedules an existing release. Storyblok may return an equivalent time in a different format, which also produces a conflict. Leading and trailing spaces in the requested name are removed. JSON creation output contains `status` (`created` or `unchanged`) and `release`. Concurrent creations or incomplete API pagination could still result in duplicates; inspect releases after an uncertain failure. See [Storyblok's Releases guide](https://www.storyblok.com/docs/apps/releases).
+
+`release publish` explicitly requests immediate publication of the selected release and requires `--yes`. It accepts the same ID or unique exact name as `release get`. Unblok checks the release's `released` status first and skips it if already published; it stops if that status is missing. It reports `published` only when the response or a follow-up read confirms publication. If publication cannot be confirmed, inspect the release in Storyblok before retrying: the request may still have taken effect. JSON output contains `status` and `releaseId`. The request sends the release's current name as well as `do_release` using [Storyblok's update-release endpoint](https://www.storyblok.com/docs/api/management/releases/update-a-release); another editor changing the name between the read and write could race this operation. The publishing integration is covered by mocks but has not been verified live.
 
 The [release setup example](../examples/features/setup-releases.yaml) installs the Releases app and creates a release using `release_in_days: 7`; use `release_at` for a fixed date instead. `space setup plan` validates locally, while `space setup apply` performs the installation and creation.
+
+For an explicit immediate publication, see [setup-publish-release.yaml](../examples/features/setup-publish-release.yaml). `releases.publish` accepts a list of `{ ref: <name-or-quoted-id> }` entries and runs after the other setup operations. Publication is not included in the main demo or campaign recipe. It is stopped if an earlier operation failed or if AI translation tasks were queued during that setup, even when app failures are configured to continue.
 
 ## `asset upload`
 

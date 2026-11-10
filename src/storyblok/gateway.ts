@@ -16,11 +16,21 @@ import { CliError } from "../errors.ts";
 
 export interface StoryblokGateway {
   listPipelineBranches(spaceId: number): Promise<StoryblokPipelineBranch[]>;
+  getPipelineBranch(
+    spaceId: number,
+    branchId: number,
+  ): Promise<StoryblokPipelineBranch>;
   createPipelineBranch(
     spaceId: number,
     branch: { name: string; source_id?: number },
   ): Promise<StoryblokPipelineBranch>;
   listReleases(spaceId: number): Promise<StoryblokRelease[]>;
+  getRelease(spaceId: number, releaseId: number): Promise<StoryblokRelease>;
+  publishRelease(
+    spaceId: number,
+    releaseId: number,
+    name: string,
+  ): Promise<StoryblokRelease>;
   createRelease(
     spaceId: number,
     name: string,
@@ -327,6 +337,30 @@ export const createStoryblokGateway = (
   };
 
   return {
+    async getPipelineBranch(spaceId, branchId) {
+      const response = await clientForSpace(spaceId).get<{
+        branch: StoryblokPipelineBranch;
+      }>(`/v1/spaces/${spaceId}/branches/${branchId}`);
+      const branch = response.data.branch;
+      if (
+        !branch ||
+        branch.id !== branchId ||
+        typeof branch.name !== "string" ||
+        !branch.name.trim()
+      )
+        throw new CliError(
+          "Invalid pipeline branch returned by Storyblok.",
+          1,
+          "CONFLICT",
+        );
+      return {
+        id: branch.id,
+        name: branch.name,
+        ...(branch.source_id === undefined
+          ? {}
+          : { source_id: branch.source_id }),
+      };
+    },
     async listPipelineBranches(spaceId) {
       const all: StoryblokPipelineBranch[] = [];
       const seen = new Set<number>();
@@ -379,6 +413,33 @@ export const createStoryblokGateway = (
         name: item.name,
         ...(item.source_id === undefined ? {} : { source_id: item.source_id }),
       };
+    },
+    async getRelease(spaceId, releaseId) {
+      const response = await clientForSpace(spaceId).get<{
+        release: StoryblokRelease;
+      }>(`/v1/spaces/${spaceId}/releases/${releaseId}`);
+      const release = response.data.release;
+      if (
+        !release ||
+        release.id !== releaseId ||
+        typeof release.name !== "string" ||
+        !release.name.trim()
+      )
+        throw new CliError(
+          "Invalid release returned by Storyblok.",
+          1,
+          "CONFLICT",
+        );
+      return release;
+    },
+    async publishRelease(spaceId, releaseId, name) {
+      const response = await clientForSpace(spaceId).put<{
+        release: StoryblokRelease;
+      }>(`/v1/spaces/${spaceId}/releases/${releaseId}`, {
+        headers: { "Content-Type": "application/json" },
+        body: { do_release: true, release: { name } },
+      });
+      return response.data.release;
     },
     async listReleases(spaceId) {
       const all: StoryblokRelease[] = [];

@@ -39,6 +39,7 @@ function formatProgress(progress: BlueprintProgress): string {
     tags: "Assigning tags",
     experiments: "Configuring experiments",
     releases: "Configuring releases",
+    "publish-releases": "Publishing releases",
     pipelines: "Configuring pipeline stages",
   };
   return labels[progress.stage];

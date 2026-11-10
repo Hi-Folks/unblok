@@ -133,3 +133,174 @@ test("passes a valid schedule, skips matching schedules, and refuses changes to 
     createRelease(gateway, { ...input, releaseAt: "2027-02-20T15:30Z" }),
   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
 });
+
+test("retrieves releases by ID or unique exact name and rejects ambiguous data", async () => {
+  const { getRelease } = await import("./releases.ts");
+  let releases = [{ id: 5, name: "Campaign" }];
+  let listCalls = 0;
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases_only" },
+    ],
+    listReleases: async () => {
+      listCalls++;
+      return releases;
+    },
+    getRelease: async (_space: number, id: number) => ({
+      id,
+      name: "Campaign",
+      release_at: "2027-01-01 10:00",
+    }),
+  };
+  expect(
+    await getRelease(gateway as never, { spaceId: 42, reference: "5" }),
+  ).toMatchObject({ id: 5, name: "Campaign" });
+  expect(listCalls).toBe(0);
+  expect(
+    await getRelease(gateway as never, { spaceId: 42, reference: "Campaign" }),
+  ).toMatchObject({ id: 5 });
+  expect(listCalls).toBe(1);
+  releases = [];
+  await expect(
+    getRelease(gateway as never, { spaceId: 42, reference: "Campaign" }),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  releases = [
+    { id: 5, name: "Campaign" },
+    { id: 6, name: "Campaign" },
+  ];
+  await expect(
+    getRelease(gateway as never, { spaceId: 42, reference: "Campaign" }),
+  ).rejects.toMatchObject({ code: "AMBIGUOUS" });
+  await expect(
+    getRelease(gateway as never, { spaceId: 42, reference: "0" }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    getRelease(
+      {
+        ...gateway,
+        getRelease: async () => {
+          throw new ClientError("Forbidden", {
+            status: 403,
+            statusText: "Forbidden",
+            data: {},
+          });
+        },
+      } as never,
+      { spaceId: 42, reference: "5" },
+    ),
+  ).rejects.toMatchObject({ code: "PERMISSION_DENIED" });
+  releases = [{ id: 5, name: "Campaign" }];
+  await expect(
+    getRelease(
+      {
+        ...gateway,
+        getRelease: async () => ({ id: 5, name: "Renamed" }),
+      } as never,
+      { spaceId: 42, reference: "Campaign" },
+    ),
+  ).rejects.toMatchObject({ code: "CONFLICT" });
+});
+
+test("publishes a verified release once and skips an already published release", async () => {
+  const { publishRelease } = await import("./releases.ts");
+  let released = false;
+  let writes = 0;
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases_only" },
+    ],
+    listReleases: async () => [{ id: 5, name: "Campaign" }],
+    getRelease: async () => ({ id: 5, name: "Campaign", released }),
+    publishRelease: async () => {
+      writes++;
+      released = true;
+      return { id: 5, name: "Campaign", released };
+    },
+  };
+  expect(
+    await publishRelease(gateway as never, {
+      spaceId: 42,
+      reference: "Campaign",
+    }),
+  ).toEqual({ status: "published", releaseId: 5 });
+  expect(
+    await publishRelease(gateway as never, { spaceId: 42, reference: "5" }),
+  ).toEqual({ status: "unchanged", releaseId: 5 });
+  expect(writes).toBe(1);
+});
+
+test("does not publish with unknown state and reports unconfirmed publication", async () => {
+  const { publishRelease } = await import("./releases.ts");
+  let writes = 0;
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases" },
+    ],
+    listReleases: async () => [],
+    getRelease: async () => ({ id: 5, name: "Campaign" }),
+    publishRelease: async () => {
+      writes++;
+      return { id: 5, name: "Campaign" };
+    },
+  };
+  await expect(
+    publishRelease(gateway as never, { spaceId: 42, reference: "5" }),
+  ).rejects.toMatchObject({
+    code: "CONFLICT",
+    message: expect.stringContaining("publishing was stopped"),
+  });
+  expect(writes).toBe(0);
+  const unknown = {
+    ...gateway,
+    getRelease: async () => ({ id: 5, name: "Campaign", released: false }),
+  };
+  await expect(
+    publishRelease(unknown as never, { spaceId: 42, reference: "5" }),
+  ).rejects.toMatchObject({
+    code: "CONFLICT",
+    message: expect.stringContaining("before retrying"),
+  });
+  expect(writes).toBe(1);
+});
+
+test("verifies publication through a follow-up read when the response omits status", async () => {
+  const { publishRelease } = await import("./releases.ts");
+  let reads = 0;
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases" },
+    ],
+    listReleases: async () => [],
+    getRelease: async () => ({
+      id: 5,
+      name: "Campaign",
+      released: ++reads > 1,
+    }),
+    publishRelease: async () => ({ id: 5, name: "Campaign" }),
+  };
+  expect(
+    await publishRelease(gateway as never, { spaceId: 42, reference: "5" }),
+  ).toEqual({ status: "published", releaseId: 5 });
+});
+
+test("reports an uncertain publication if the follow-up read fails", async () => {
+  const { publishRelease } = await import("./releases.ts");
+  let reads = 0;
+  const gateway = {
+    listInstalledApps: async () => [
+      { app_id: 1, name: "Releases", slug: "releases" },
+    ],
+    listReleases: async () => [],
+    getRelease: async () => {
+      if (++reads > 1) throw new Error("network failure");
+      return { id: 5, name: "Campaign", released: false };
+    },
+    publishRelease: async () => ({ id: 5, name: "Campaign" }),
+  };
+  await expect(
+    publishRelease(gateway as never, { spaceId: 42, reference: "5" }),
+  ).rejects.toMatchObject({
+    code: "CONFLICT",
+    message: expect.stringContaining("before retrying"),
+  });
+});

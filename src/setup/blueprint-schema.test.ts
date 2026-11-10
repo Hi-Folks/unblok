@@ -62,6 +62,7 @@ describe("blueprint editor schema", () => {
       "setup-experiment",
       "setup-remote-asset",
       "setup-releases",
+      "setup-publish-release",
       "setup-release-stories",
       "setup-pipeline",
       "setup-stories",

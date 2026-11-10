@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Publish an existing release
+releases:
+  publish:
+    # This publishes immediately. Replace with an existing release name or quoted ID.
+    - ref: Demo campaign

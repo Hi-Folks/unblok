@@ -84,3 +84,5 @@ To select all additional space languages at apply time, use `all_languages: true
 Optionally set `review_stage` and `workflow` on an AI translation entry. The stage must exist. Unblok enables language-based stages for that workflow and assigns each accepted language to it immediately, even if its background task has not finished. The operation reports workflow assignment failures without undoing queued translations.
 
 Use `workflow.edit` to reconcile workflow settings before story operations; [the example](../examples/features/setup-workflow-edit.yaml) enables language-based stages. Specify only settings to change. Renaming requires the workflow's numeric ID as a string so repeat runs can resolve it.
+
+Explicit `releases.publish` entries request immediate publication after other setup operations; see [the example](../examples/features/setup-publish-release.yaml). They are skipped if an earlier operation failed, and publication is stopped if the setup queued AI translation tasks. The CLI and library can also publish a release. This operation is not part of the customer demo or campaign recipe.

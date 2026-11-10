@@ -98,17 +98,17 @@ Ready to automate a setup? Follow [your first blueprint](docs/first-blueprint.md
 
 For an automated demo space setup with a confirmation after duplication, see [the demo setup guide](docs/demo-setup.md).
 
-| Guide                                                              | Use it for                                                                   |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| [Getting started](docs/getting-started.md)                         | Requirements, authentication, installation, and the first request.           |
-| [Your first blueprint](docs/first-blueprint.md)                    | Plan and apply a simple YAML setup to an existing space.                     |
-| [Demo experiment](docs/experiments.md)                             | Create and optionally activate an experiment with simulated results.         |
-| [Library API](docs/library.md)                                     | Use story, translation, component, workflow and tag actions from JavaScript. |
-| [Repeatable space setups](docs/space-setups.md)                    | Provisioning workflow, composition, and repeat-run behavior.                 |
-| [Command reference](docs/commands.md)                              | Command syntax, every parameter, examples, and output behavior.              |
-| [Setup blueprints](docs/commands.md#version-1-setup-blueprints)    | YAML sections, examples, and repeatable setup behavior.                      |
-| [Project direction](docs/project-direction.md)                     | Configuration-as-Code goals, design principles, and staged roadmap.          |
-| [Command roadmap](docs/command-roadmap.md)                         | Resource operations planned as building blocks for space setups.             |
+| Guide                                                           | Use it for                                                                   |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [Getting started](docs/getting-started.md)                      | Requirements, authentication, installation, and the first request.           |
+| [Your first blueprint](docs/first-blueprint.md)                 | Plan and apply a simple YAML setup to an existing space.                     |
+| [Demo experiment](docs/experiments.md)                          | Create and optionally activate an experiment with simulated results.         |
+| [Library API](docs/library.md)                                  | Use story, translation, component, workflow and tag actions from JavaScript. |
+| [Repeatable space setups](docs/space-setups.md)                 | Provisioning workflow, composition, and repeat-run behavior.                 |
+| [Command reference](docs/commands.md)                           | Command syntax, every parameter, examples, and output behavior.              |
+| [Setup blueprints](docs/commands.md#version-1-setup-blueprints) | YAML sections, examples, and repeatable setup behavior.                      |
+| [Project direction](docs/project-direction.md)                  | Configuration-as-Code goals, design principles, and staged roadmap.          |
+| [Command roadmap](docs/command-roadmap.md)                      | Resource operations planned as building blocks for space setups.             |
 
 ## Available commands
 
@@ -131,8 +131,8 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `story create` creates a draft from a JSON definition at the root or in an existing folder.
 - `story ai-translate` translates a story's draft into selected languages using Storyblok AI.
 - `story folder create` ensures a nested content folder path exists.
-- `release list` and `release create` manage Storyblok content releases.
-- `pipeline list` and `pipeline create` manage Storyblok Pipeline stages.
+- `release list`, `get`, `create` and `publish` manage Storyblok content releases.
+- `pipeline list`, `get` and `create` manage Storyblok Pipeline stages.
 - `workflow list`, `workflow edit`, `workflow stage`, and `story workflow` inspect and configure workflows and assign stories.
 
 Run any command with `--help` for an inline summary:

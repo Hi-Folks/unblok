@@ -132,8 +132,18 @@
     "releases": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["create"],
+      "anyOf": [{ "required": ["create"] }, { "required": ["publish"] }],
       "properties": {
+        "publish": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ref"],
+            "properties": { "ref": { "$ref": "#/$defs/nonempty" } }
+          }
+        },
         "create": {
           "type": "array",
           "minItems": 1,

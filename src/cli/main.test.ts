@@ -31,6 +31,13 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     text: (message) => stdout.push(message),
   };
   const fallback: StoryblokGateway = {
+    publishRelease: async (_space, id) => ({
+      id,
+      name: "Release",
+      released: true,
+    }),
+    getRelease: async (_space, id) => ({ id, name: "Release" }),
+    getPipelineBranch: async (_space, id) => ({ id, name: "Branch" }),
     updateWorkflow: async () => {},
     createStoryFolder: async () => ({ id: 1 }),
     findStoryFolderBySlug: async () => undefined,
@@ -122,6 +129,79 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("requires confirmation and publishes a release once", async () => {
+    let released = false;
+    let writes = 0;
+    const harness = createHarness({
+      listInstalledApps: async () => [
+        { app_id: 1, name: "Releases", slug: "releases_only" },
+      ],
+      listReleases: async () => [{ id: 5, name: "Campaign" }],
+      getRelease: async () => ({ id: 5, name: "Campaign", released }),
+      publishRelease: async (_space, _id, name) => {
+        expect(name).toBe("Campaign");
+        writes++;
+        released = true;
+        return { id: 5, name, released };
+      },
+    });
+    const args = [
+      "release",
+      "publish",
+      "--ref",
+      "Campaign",
+      "--space-id",
+      "42",
+      "--json",
+    ];
+    expect(await runCli(args, harness.options)).toBe(2);
+    expect(writes).toBe(0);
+    expect(await runCli([...args, "--yes"], harness.options)).toBe(0);
+    expect(await runCli([...args, "--yes"], harness.options)).toBe(0);
+    expect(harness.stdout).toMatchObject([
+      { status: "published", releaseId: 5 },
+      { status: "unchanged", releaseId: 5 },
+    ]);
+    expect(writes).toBe(1);
+  });
+  test("gets a release and pipeline stage with structured output", async () => {
+    const harness = createHarness({
+      listInstalledApps: async () => [
+        { app_id: 1, name: "Releases", slug: "releases_only" },
+        { app_id: 2, name: "Pipelines", slug: "branches" },
+      ],
+      listReleases: async () => [{ id: 5, name: "Campaign" }],
+      getRelease: async (_space, id) => ({
+        id,
+        name: "Campaign",
+        released: false,
+      }),
+      getPipelineBranch: async (_space, id) => ({
+        id,
+        name: "Go Live",
+        source_id: 1,
+      }),
+    });
+    expect(
+      await runCli(
+        ["release", "get", "--ref", "Campaign", "--space-id", "42", "--json"],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(
+      await runCli(
+        ["pipeline", "get", "--ref", "8", "--space-id", "42", "--json"],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout).toEqual([
+      { id: 5, name: "Campaign", released: false },
+      { id: 8, name: "Go Live", source_id: 1 },
+    ]);
+    expect(
+      await runCli(["release", "get", "--space-id", "42"], harness.options),
+    ).toBe(2);
+  });
   test("uses event inputs to translate and review the selected story and language", async () => {
     const calls: unknown[] = [];
     const harness = createHarness({

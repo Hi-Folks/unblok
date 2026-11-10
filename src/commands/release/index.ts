@@ -1,8 +1,11 @@
 import {
   createRelease,
+  getRelease,
   listReleases,
 } from "../../actions/releases/releases.ts";
 import type { Command } from "../../cli/command.ts";
+import { publishReleaseCommand } from "./publish.ts";
+import { resourceGetCommand } from "../resource-get.ts";
 import { dispatch } from "../../cli/dispatch.ts";
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
@@ -126,7 +129,20 @@ export const releaseCommand: Command = {
   async run(args, context) {
     await dispatch(
       "unblok release",
-      [command("list"), command("create")],
+      [
+        command("list"),
+        resourceGetCommand({
+          resource: "release",
+          description: "Get a Storyblok release",
+          lookup: getRelease,
+          render: (release) => ({
+            title: release.name,
+            details: `ID: ${release.id}\nScheduled: ${release.release_at ?? "Not scheduled"}\nReleased: ${release.released === undefined ? "Unknown" : release.released ? "Yes" : "No"}`,
+          }),
+        }),
+        command("create"),
+        publishReleaseCommand,
+      ],
       args,
       context,
     );

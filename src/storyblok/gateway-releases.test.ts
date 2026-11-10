@@ -6,6 +6,32 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
+test("retrieves an individual release through the regional API", async () => {
+  let request: Request | undefined;
+  globalThis.fetch = (async (
+    input: string | Request | URL,
+    init?: RequestInit,
+  ) => {
+    request =
+      input instanceof Request
+        ? new Request(input, init)
+        : new Request(String(input), init);
+    return Response.json({
+      release: { id: 8, name: "Campaign", release_at: "2027-01-01 10:00" },
+    });
+  }) as typeof fetch;
+  const gateway = createStoryblokGateway("test-token", { region: "us" });
+  expect(await gateway.getRelease(42, 8)).toMatchObject({
+    id: 8,
+    name: "Campaign",
+  });
+  expect(new URL(request!.url).pathname).toBe("/v1/spaces/42/releases/8");
+  expect(new URL(request!.url).hostname).toContain("us");
+  await expect(gateway.getRelease(42, 9)).rejects.toMatchObject({
+    code: "CONFLICT",
+  });
+});
+
 test("lists and creates releases with regional Management API requests", async () => {
   const requests: Request[] = [];
   globalThis.fetch = (async (
@@ -62,4 +88,31 @@ test("collects subsequent pages and rejects repeated pages", async () => {
   });
   repeat = true;
   await expect(gateway.listReleases(42)).rejects.toThrow("repeated release");
+});
+
+test("sends the documented release publication request", async () => {
+  let request: Request | undefined;
+  globalThis.fetch = (async (
+    input: string | Request | URL,
+    init?: RequestInit,
+  ) => {
+    request =
+      input instanceof Request
+        ? new Request(input, init)
+        : new Request(String(input), init);
+    return Response.json({
+      release: { id: 5, name: "Campaign", released: true },
+    });
+  }) as typeof fetch;
+  const result = await createStoryblokGateway("test-token", {
+    region: "us",
+  }).publishRelease(42, 5, "Campaign");
+  expect(result).toMatchObject({ id: 5, released: true });
+  expect(request?.method).toBe("PUT");
+  expect(new URL(request!.url).pathname).toBe("/v1/spaces/42/releases/5");
+  expect(new URL(request!.url).hostname).toContain("us");
+  expect(await request!.json()).toEqual({
+    do_release: true,
+    release: { name: "Campaign" },
+  });
 });

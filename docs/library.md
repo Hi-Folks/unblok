@@ -35,10 +35,14 @@ The story list must contain exact, nonempty full slugs. Every slug is resolved b
 
 The gateway is supplied explicitly, so the same operations work with a custom implementation of the exported `WorkflowStoryGateway` type. No action reads credentials, prompts, or writes terminal output. The client factory accepts the token explicitly; do not hard-code or log it.
 
-## List and create Pipeline stages
+## List, inspect and create Pipeline stages
 
 ```ts
-import { listPipelineBranches, ensurePipelineBranch } from "unblok";
+import {
+  listPipelineBranches,
+  getPipelineBranch,
+  ensurePipelineBranch,
+} from "unblok";
 
 const stages = await listPipelineBranches(gateway, { spaceId: 123456 });
 const result = await ensurePipelineBranch(gateway, {
@@ -46,14 +50,20 @@ const result = await ensurePipelineBranch(gateway, {
   name: "Go Live",
 });
 console.log(result.status, result.branch.id); // "created" or "unchanged"
+const stage = await getPipelineBranch(gateway, {
+  spaceId: 123456,
+  reference: "Go Live",
+});
 ```
 
 The Pipelines app (`branches`) must be installed. Names match exactly, with surrounding spaces removed. The optional `source` must identify one stage returned by the API; an existing target with a different or missing source reports `CONFLICT`. If omitted, Unblok leaves source selection to Storyblok and does not verify the source of an existing stage. Missing or ambiguous stages reject with `UnblokError`. It does not change existing stages or deploy content. The CLI and YAML use the same action; concurrent operations and incomplete API pagination can still result in duplicates.
 
-## List and create Storyblok releases
+`getPipelineBranch` accepts a numeric ID as a string or an exact, unique stage name. Numeric-only references are interpreted as IDs. It returns only the ID, name and optional source ID, without URLs. Missing or ambiguous names and API failures reject with `UnblokError`.
+
+## List, inspect and create Storyblok releases
 
 ```ts
-import { listReleases, createRelease } from "unblok";
+import { listReleases, getRelease, createRelease } from "unblok";
 
 const releases = await listReleases(gateway, { spaceId: 123456 });
 const result = await createRelease(gateway, {
@@ -62,11 +72,31 @@ const result = await createRelease(gateway, {
   releaseAt: "2027-10-01 09:00", // Optional; omit for an unscheduled release.
 });
 console.log(result.status, result.release.id); // "created" or "unchanged"
+const release = await getRelease(gateway, {
+  spaceId: 123456,
+  reference: "Summer campaign",
+});
 ```
 
 The Releases app must be installed and enabled. The action checks installed app slugs `releases_only` and `releases`; it cannot confirm whether the app is enabled. Creation checks for an exact, case-sensitive name and returns the existing release as `unchanged`; multiple matches cause an `AMBIGUOUS` error. The optional `releaseAt` is sent unchanged in Storyblok's `YYYY-MM-DD HH:mm` format. Storyblok says it stores schedules in UTC and displays them in the account timezone, but does not specify how the API interprets timezone-free input; verify the time in Storyblok. For an existing name, a requested schedule must exactly match the returned `release_at` string or the action reports a conflict; equivalent times formatted differently may also conflict. It never reschedules an existing release. Requested names are trimmed. Concurrent creations or incomplete API pagination could still produce duplicates. Inputs and API failures reject with `UnblokError`. These functions use the gateway's region selection and do not install the app.
 
+`getRelease` accepts a numeric ID as a string or an exact, unique release name. Numeric-only references are interpreted as IDs. Missing or ambiguous names and API failures reject with `UnblokError`.
+
 Alternatively, use `releaseInDays: 7` instead of `releaseAt`. The integer must be between 1 and 36500. At creation time, Unblok adds that many 24-hour days to the current UTC time, rounds down to the minute, and sends the resulting timezone-free value to Storyblok. An existing release keeps its schedule on reruns; the relative date is calculated only for a new release. Verify the resulting time in Storyblok.
+
+## Publish a Storyblok release
+
+```ts
+import { publishRelease } from "unblok";
+
+const result = await publishRelease(gateway, {
+  spaceId: 123456,
+  reference: "Summer campaign", // Exact name or numeric ID as a string.
+});
+console.log(result.status, result.releaseId); // "published" or "unchanged"
+```
+
+This requests immediate publication. The action checks the release's `released` flag, skips an already published release and refuses to publish if the flag is missing. It reports success only when Storyblok confirms publication. If a request was sent but the result cannot be confirmed, inspect the release before retrying. The API update includes the previously read release name, so concurrent renames can race the request. The CLI and YAML use the same action. It has not yet been verified against a live space.
 
 ## Publish a story
 
