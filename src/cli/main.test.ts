@@ -1842,6 +1842,68 @@ describe("runCli", () => {
     ).toBe(2);
   });
 
+  test("plans the campaign recipe as JSON without credentials or Storyblok access", async () => {
+    const harness = createHarness();
+    harness.options.environment = {};
+    harness.options.createGateway = () => {
+      throw new Error("Planning must not contact Storyblok");
+    };
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    let output = "";
+    let errors = "";
+    stdout.on("data", (chunk) => (output += chunk.toString()));
+    stderr.on("data", (chunk) => (errors += chunk.toString()));
+    harness.options.output = createOutput({ json: true, stdout, stderr });
+
+    expect(
+      await runCli(
+        [
+          "space",
+          "setup",
+          "plan",
+          "--config",
+          "examples/recipes/campaign-launch.yaml",
+          "--input",
+          "campaign_name=Autumn Campaign",
+          "--input",
+          "asset_url=https://example.com/banner.jpg",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(errors).toBe("");
+    const plan = JSON.parse(output);
+    expect(plan).toMatchObject({
+      apiVersion: "unblok/setup-blueprint-plan-v1",
+      summary: { notImplemented: 0 },
+      resolvedBlueprint: {
+        releases: { create: [{ name: "Autumn Campaign", release_in_days: 7 }] },
+        stories: {
+          create: [{ name: "Autumn Campaign", release: "Autumn Campaign" }],
+        },
+        assets: { upload_url: [{ url: "https://example.com/banner.jpg" }] },
+      },
+    });
+    expect(plan.operations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: "releases.create",
+          support: "available",
+        }),
+        expect.objectContaining({
+          path: "stories.create",
+          support: "available",
+        }),
+        expect.objectContaining({
+          path: "assets.upload_url",
+          support: "available",
+        }),
+      ]),
+    );
+  });
+
   test("plans an extended blueprint with shared input overrides", async () => {
     const harness = createHarness();
     harness.options.environment = {};
