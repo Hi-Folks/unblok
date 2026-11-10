@@ -2,9 +2,21 @@
     <img width="800" src="https://repository-images.githubusercontent.com/1449493184/35658be2-58ad-4cca-a1e3-3684857c0703" alt="A developer CLI for managing and automating Storyblok Spaces">
 </p>
 
-<h1 align="center">unblok_</h1>
+<p align=center>
+    <i>
+    <strong>"Unblok"</strong> your Storyblok operations.
+    </i>
+</p>
 
-## Unblock your Storyblok operations.
+<p align=center>
+    <a href="https://www.npmjs.com/package/unblok">
+        <img src="https://img.shields.io/npm/v/unblok?style=for-the-badge&label=Version" alt="Latest Version on NPM"></a>
+    <a href="https://www.npmjs.com/package/unblok"
+    ><img src="https://img.shields.io/npm/d18m/unblok?style=for-the-badge" alt="Total Downloads"></a>
+    <br />
+    <img src="https://img.shields.io/npm/l/unblok?style=for-the-badge" alt="Packagist License">
+    <img src="https://img.shields.io/github/last-commit/hi-folks/unblok?style=for-the-badge" alt="GitHub last commit">
+</p>
 
 `unblok_` provides reusable building blocks for managing Storyblok spaces and content. Use it in three ways:
 
