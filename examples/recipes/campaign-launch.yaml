@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Prepare a campaign launch
+inputs:
+  campaign_name:
+    default: Spring Campaign
+  campaign_slug:
+    default: spring-campaign
+  asset_url:
+    description: Public HTTPS URL of the campaign image
+  review_stage:
+    default: Reviewing
+apps:
+  install:
+    - releases_only
+releases:
+  create:
+    - name: "${{ inputs.campaign_name }}"
+      release_in_days: 7
+assets:
+  upload_url:
+    - name: campaign-image
+      url: "${{ inputs.asset_url }}"
+      target_folder: Campaigns
+stories:
+  create:
+    - name: "${{ inputs.campaign_name }}"
+      slug: "${{ inputs.campaign_slug }}"
+      release: "${{ inputs.campaign_name }}"
+      content:
+        component: default-page
+        body:
+          - component: hero-section
+            eyebrow: "${{ inputs.campaign_name }}"
+            image:
+              asset:
+                _ref: campaign-image
+                alt: "${{ inputs.campaign_name }} image"
+  update_blocks:
+    - story_slug: home
+      component: hero-section
+      release: "${{ inputs.campaign_name }}"
+      fields:
+        eyebrow: "${{ inputs.campaign_name }}"
+workflow:
+  assign:
+    - stories:
+        slugs: [home]
+      workflow: Default
+      stage: "${{ inputs.review_stage }}"
+tags:
+  - stories:
+      slugs: [home]
+    tags:
+      - "${{ inputs.campaign_name }}"

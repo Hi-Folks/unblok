@@ -4,6 +4,7 @@
 
 ### Added
 
+- Add a campaign launch recipe combining a release, asset, landing page, home-page change and editorial organization.
 - Add a local webhook integration example for requesting translation when a story enters a workflow stage.
 - Add an AI translation and editorial review recipe covering the CLI, YAML and library.
 - Support passing an AI translation story ID through YAML inputs and document an event-driven recipe.
