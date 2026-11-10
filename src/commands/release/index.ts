@@ -21,11 +21,11 @@ function command(mode: "list" | "create"): Command {
     usage:
       mode === "list"
         ? "unblok release list [--space-id <id>]"
-        : "unblok release create --name <name> [--release-at <date-time>] [--space-id <id>] --yes",
+        : "unblok release create --name <name> [--release-at <date-time> | --in-days <n>] [--space-id <id>] --yes",
     async run(args, context) {
       if (args.includes("--help") || args.includes("-h")) {
         context.output.text(
-          `Usage: ${this.usage}\n\n${mode === "create" ? "Create a release if the exact name is not already present; --yes is required." : "List releases in the target space."}\n\nOptions:\n  --space-id <id>    Target space; defaults to STORYBLOK_SPACE_ID\n${mode === "create" ? "  --name <name>      Name of the new release\n  --release-at <at>  Optional schedule in YYYY-MM-DD HH:mm format\n  --in-days <n>      Schedule n days from creation, in UTC\n  --yes              Confirm creation\n" : ""}  --json             Emit machine-readable JSON\n  -h, --help         Show command help`,
+          `Usage: ${this.usage}\n\n${mode === "create" ? "Create a release if its exact name is not already present. An existing release is kept; its schedule is not changed. Use either --release-at or --in-days. --yes is required." : "List releases in the target space."} The Releases app must be installed and enabled.\n\nOptions:\n  --space-id <id>    Target space; defaults to STORYBLOK_SPACE_ID\n${mode === "create" ? "  --name <name>      Name of the new release\n  --release-at <at>  Optional schedule in YYYY-MM-DD HH:mm format\n  --in-days <n>      Schedule n whole days from creation, in UTC\n  --yes              Confirm creation\n" : ""}  --json             Emit machine-readable JSON\n  -h, --help         Show command help\n\nExample:\n  ${mode === "create" ? "unblok release create --name 'Campaign' --in-days 7 --space-id YOUR_SPACE_ID --yes" : "unblok release list --space-id YOUR_SPACE_ID --json"}`,
         );
         return;
       }

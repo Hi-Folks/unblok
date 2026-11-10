@@ -195,6 +195,8 @@ The older `space-man/v1` format uses `space plan` and `space apply` and has diff
 
 Interactive terminals use Clack for concise progress and status feedback. Commands produce human-readable summaries by default; add `--json` when output will be consumed by another program. Errors are written to stderr and return a non-zero exit code.
 
+Use `unblok <command> --help` to discover options and examples for the installed version. Help is plain text, including when `--json` is also passed.
+
 With `--json`, errors on stderr are JSON objects with an `error` containing `code`, `message`, `exitCode`, and, when available, the API HTTP `status`. For example, invalid command options use `INVALID_INPUT` and exit code `2`. Some failures also produce a JSON report on stdout with partial results; inspect both streams before retrying. Unclassified failures use `UNKNOWN`. Error messages may change, so automation should use the code and structured report instead of matching message text.
 
 Blueprint schema and input validation errors also include an `issues` array on the error, with a `path` and `message` for each issue. For example, an unknown `setup.releases.create[0].release_in_day` can suggest `release_in_days`. Paths refer to the resolved blueprint; when using `extends`, they are not source file locations. Other errors may not include `issues`.

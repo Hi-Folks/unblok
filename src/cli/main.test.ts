@@ -130,6 +130,67 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("recipe command help exposes options and side effects without credentials", async () => {
+    const cases = [
+      {
+        args: ["space", "setup", "plan"],
+        expected: ["does not predict changes", "--input", "--json", "Example:"],
+      },
+      {
+        args: ["space", "setup", "apply"],
+        expected: [
+          "each apply can create a new space",
+          "not rolled back",
+          "--continue-after-duplicate",
+          "--json",
+          "Example:",
+        ],
+      },
+      {
+        args: ["story", "ai-translate"],
+        expected: [
+          "background tasks",
+          "enables language-based stages",
+          "requires --review-stage",
+          "--json",
+          "Example:",
+        ],
+      },
+      {
+        args: ["release", "list"],
+        expected: ["Releases app", "--json", "Example:"],
+      },
+      {
+        args: ["release", "create"],
+        expected: [
+          "--release-at <date-time> | --in-days <n>",
+          "schedule is not changed",
+          "--json",
+          "Example:",
+        ],
+      },
+      { args: ["release", "get"], expected: ["exact name", "--json"] },
+      {
+        args: ["release", "publish"],
+        expected: ["immediately", "--yes", "--json", "Example:"],
+      },
+    ];
+    for (const item of cases) {
+      const harness = createHarness();
+      harness.options.environment = {};
+      harness.options.createGateway = () => {
+        throw new Error("Help must not contact Storyblok");
+      };
+      expect(
+        await runCli([...item.args, "--help", "--json"], harness.options),
+      ).toBe(0);
+      expect(harness.stderr).toEqual([]);
+      expect(harness.stdout).toHaveLength(1);
+      for (const phrase of item.expected)
+        expect(harness.stdout[0]).toContain(phrase);
+    }
+  });
+
   test("explains incompatible translation options before making requests", async () => {
     const cases = [
       {

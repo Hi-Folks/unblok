@@ -100,7 +100,7 @@ const plan: Command = {
   async run(args, context) {
     if (args.includes("--help") || args.includes("-h")) {
       context.output.text(
-        `Usage: ${this.usage}\n\nValidate and resolve a version 1 blueprint locally. No Storyblok state is read or changed.\n\nOptions:\n  --config <path>       YAML or JSON blueprint\n  --input <name=value>  Override an input (repeatable)\n  --json                Emit machine-readable output\n  -h, --help            Show command help`,
+        `Usage: ${this.usage}\n\nValidate and resolve a version 1 blueprint locally and list its operations. No Storyblok state is read or changed; the plan does not predict changes or check all runtime dependencies.\n\nOptions:\n  --config <path>       YAML or JSON blueprint\n  --input <name=value>  Override an input (repeatable)\n  --json                Emit machine-readable output\n  -h, --help            Show command help\n\nExample:\n  unblok space setup plan --config setup.yaml --input 'campaign_name=Autumn' --json`,
       );
       return;
     }
@@ -143,7 +143,7 @@ const apply: Command = {
   async run(args, context) {
     if (args.includes("--help") || args.includes("-h")) {
       context.output.text(
-        `Usage: ${this.usage}\n\nCreate a space from space.duplicate_from, or use --space-id to select an existing space. Supports languages, preview, demo mode, apps, component fields, assets, stories, workflows and tags; unsupported sections are rejected before changes.\n\nOptions:\n  --config <path>             YAML or JSON blueprint\n  --space-id <id>             Apply to an existing space\n  --input <name=value>        Override a declared input (repeatable)\n  --continue-after-duplicate  Skip the post-duplication confirmation (required in noninteractive mode)\n  --yes                       Authorize changes\n  --json                      Emit machine-readable output\n  -h, --help                  Show command help`,
+        `Usage: ${this.usage}\n\nApply a version 1 blueprint to an existing space or duplicate a new space from space.duplicate_from. Without --space-id, each apply can create a new space. Operations may partially succeed; changes are not rolled back. Repeat behavior depends on the operation. Run 'unblok space setup plan --help' to review a blueprint locally.\n\nOptions:\n  --config <path>             YAML or JSON blueprint\n  --space-id <id>             Apply to an existing space\n  --input <name=value>        Override a declared input (repeatable)\n  --continue-after-duplicate  Skip the post-duplication confirmation (required in noninteractive mode)\n  --yes                       Authorize changes\n  --json                      Emit machine-readable report\n  -h, --help                  Show command help\n\nExample:\n  unblok space setup apply --config setup.yaml --space-id YOUR_SPACE_ID --yes --json`,
       );
       return;
     }

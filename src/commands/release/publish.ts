@@ -11,7 +11,7 @@ export const publishReleaseCommand: Command = {
   async run(args, context) {
     if (args.includes("--help") || args.includes("-h")) {
       context.output.text(
-        `Usage: ${this.usage}\n\nPublish a release immediately by ID or unique exact name. Already published releases are unchanged. --yes is required. Use --json for a structured result.`,
+        `Usage: ${this.usage}\n\nPublish a release immediately by ID or unique exact name. Already published releases are unchanged. The Releases app must be installed and enabled.\n\n  --ref <id-or-name>  Release ID or unique exact name\n  --space-id <id>     Target space; defaults to STORYBLOK_SPACE_ID\n  --yes               Confirm immediate publication\n  --json              Emit a machine-readable result\n  -h, --help          Show command help\n\nExample:\n  unblok release publish --ref 'Campaign' --space-id YOUR_SPACE_ID --yes --json`,
       );
       return;
     }
