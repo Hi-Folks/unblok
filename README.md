@@ -79,19 +79,27 @@ AI still needs the right instructions and permissions, and Storyblok state or AP
 
 The [Unblok skill](skills/unblok/SKILL.md) helps agents choose between the CLI, YAML blueprints, and the JavaScript library. It includes focused guidance for translation and campaign recipes. Install the CLI separately and configure your Storyblok token as described below; installing the skill does not install Unblok or grant access to a space.
 
-To add the skill to a project, copy the complete `skills/unblok` directory from an Unblok checkout into the location for your agent:
+To get the skill, clone the repository if you don't already have a checkout:
+
+```bash
+git clone https://github.com/Hi-Folks/unblok.git ~/unblok-skill-source
+```
+
+Then, from the project where you use your agent, copy the complete skill directory to the appropriate location. These examples assume `~/unblok-skill-source` is your checkout; replace it if you use another path. If the destination already contains an `unblok` skill, review it before copying so you don't overwrite local changes.
 
 ```bash
 # Codex
 mkdir -p .agents/skills
-cp -R /path/to/unblok/skills/unblok .agents/skills/
+cp -R ~/unblok-skill-source/skills/unblok .agents/skills/
 
 # Claude Code
 mkdir -p .claude/skills
-cp -R /path/to/unblok/skills/unblok .claude/skills/
+cp -R ~/unblok-skill-source/skills/unblok .claude/skills/
 ```
 
-Run these commands from your project and replace `/path/to/unblok` with the checkout path. Copy it to either or both locations according to the agents you use, and restart the agent if needed for it to discover the skill. The skill references documentation from the repository's main branch, so check your installed Unblok version and command help for supported options.
+Copy it to either or both locations according to the agents you use, and restart the agent if needed for it to discover the skill. You can ask your agent to use the Unblok skill when working on a Storyblok task. Project-local copies do not update automatically: to update one later, update your checkout, review any local changes and replace the existing skill directory with the updated copy.
+
+The checkout and its documentation may describe a newer version than the installed CLI. Check `unblok --version` and the relevant command's `--help` for supported options. The examples above use a Unix-like shell; on Windows, copy the directory to the same project-relative location using your preferred shell or file manager.
 
 ## Scope
 
