@@ -6,6 +6,7 @@ import { storyGetCommand, storyBlockUpdateCommand } from "./content.ts";
 import { storyPublishCommand } from "./publish.ts";
 import { storyCreateCommand } from "./create.ts";
 import { storyFolderCommand } from "./folder.ts";
+import { storyAiTranslateCommand } from "./ai-translate.ts";
 
 export const storyCommand: Command = {
   name: "story",
@@ -17,6 +18,7 @@ export const storyCommand: Command = {
       [
         storyGetCommand,
         storyCreateCommand,
+        storyAiTranslateCommand,
         storyFolderCommand,
         storyBlockUpdateCommand,
         storyPublishCommand,

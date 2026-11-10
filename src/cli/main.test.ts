@@ -31,6 +31,7 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     text: (message) => stdout.push(message),
   };
   const fallback: StoryblokGateway = {
+    updateWorkflow: async () => {},
     createStoryFolder: async () => ({ id: 1 }),
     findStoryFolderBySlug: async () => undefined,
     listPipelineBranches: async () => [],
@@ -53,6 +54,7 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     createWorkflowStage: async (_spaceId, stage) => stage as never,
     findStoryBySlug: async () => undefined,
     getStory: async () => ({}) as never,
+    aiTranslateStory: async () => ({}) as never,
     publishStory: async () => ({}),
     activateExperiment: async () => ({}),
     updateStoryContent: async () => ({}) as never,
@@ -120,6 +122,407 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("shows asset names and counts while each upload runs", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-asset-progress-"));
+    try {
+      await writeFile(join(dir, "a.png"), "one");
+      await writeFile(join(dir, "b.png"), "two");
+      const config = join(dir, "setup.yaml");
+      await writeFile(
+        config,
+        "version: 1\nassets:\n  upload_directory:\n    - source: .\n      target_folder: Demo\n      include: ['*.png']\n",
+      );
+      const events: string[] = [];
+      const harness = createHarness({
+        uploadAsset: async (_space, _folder, name) => {
+          events.push(`upload ${name}`);
+        },
+      });
+      harness.options.output = {
+        ...harness.options.output,
+        mode: "human",
+        task: (title) => {
+          events.push(`start: ${title}`);
+          return {
+            message: (message) => events.push(message),
+            success: (message) => events.push(message),
+            error: (message) => events.push(message),
+          };
+        },
+      };
+      expect(
+        await runCli(
+          [
+            "space",
+            "setup",
+            "apply",
+            "--config",
+            config,
+            "--space-id",
+            "42",
+            "--yes",
+          ],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(events).toEqual([
+        "start: Managing assets",
+        "1/2 · a.png",
+        "upload a.png",
+        "2/2 · b.png",
+        "upload b.png",
+        "Managing assets complete",
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+  test("groups setup progress by operation and distinguishes queued translations", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-progress-"));
+    try {
+      const config = join(dir, "setup.yaml");
+      await writeFile(
+        config,
+        "version: 1\nworkflow:\n  edit:\n    - workflow: Default\n      per_language_stages: true\nstories:\n  ai_translate:\n    - story_slug: home\n      languages:\n        - lang: it\n          code: it\n",
+      );
+      let enabled = false;
+      const events: string[] = [];
+      const harness = createHarness({
+        listWorkflows: async () =>
+          [{ id: 5, name: "Default", per_language_stages: enabled }] as never,
+        updateWorkflow: async () => {
+          enabled = true;
+        },
+        findStoryBySlug: async () => ({ id: 7, full_slug: "home" }) as never,
+        getStory: async () =>
+          ({ id: 7, content: { component: "default-page" } }) as never,
+        aiTranslateStory: async () => ({ backgroundTaskId: 123 }),
+      });
+      harness.options.output = {
+        ...harness.options.output,
+        mode: "human",
+        task: (title) => {
+          events.push(`start: ${title}`);
+          return {
+            message: (message) => events.push(message),
+            success: (message) => events.push(message),
+            error: (message) => events.push(message),
+          };
+        },
+      };
+      expect(
+        await runCli(
+          [
+            "space",
+            "setup",
+            "apply",
+            "--config",
+            config,
+            "--space-id",
+            "42",
+            "--yes",
+          ],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(events).toEqual([
+        "start: Configuring workflows",
+        "Default",
+        "Configuring workflows complete",
+        "start: Translating content",
+        "home/it",
+        "Translation requests submitted",
+      ]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+  test("applies AI translation using a story slug in YAML", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-ai-slug-"));
+    try {
+      const config = join(dir, "setup.yaml");
+      await writeFile(
+        config,
+        "version: 1\nstories:\n  ai_translate:\n    - story_slug: home\n      languages:\n        - lang: it\n          code: it\n",
+      );
+      let translatedId: number | undefined;
+      const harness = createHarness({
+        findStoryBySlug: async (_space, slug) =>
+          ({ id: 77, full_slug: slug, is_folder: false }) as never,
+        getStory: async (_space, id) =>
+          ({ id, content: { component: "default-page" } }) as never,
+        aiTranslateStory: async (_space, id) => {
+          translatedId = id;
+          return { backgroundTaskId: 123 };
+        },
+      });
+      expect(
+        await runCli(
+          [
+            "space",
+            "setup",
+            "apply",
+            "--config",
+            config,
+            "--space-id",
+            "42",
+            "--yes",
+            "--json",
+          ],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(translatedId).toBe(77);
+      expect(harness.stdout[0]).toMatchObject({
+        operations: [
+          { operation: "ai-translate-story", key: "home/it", status: "queued" },
+        ],
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+  test("edits workflow settings and skips unchanged values", async () => {
+    let enabled = false;
+    const harness = createHarness({
+      listWorkflows: async () =>
+        [
+          {
+            id: 5,
+            name: "Default",
+            content_types: [],
+            per_language_stages: enabled,
+          },
+        ] as never,
+      updateWorkflow: async (_space, _id, fields) => {
+        expect(fields).toEqual({ per_language_stages: true });
+        enabled = true;
+      },
+    });
+    const args = [
+      "workflow",
+      "edit",
+      "--workflow",
+      "Default",
+      "--per-language-stages",
+      "true",
+      "--space-id",
+      "42",
+      "--yes",
+      "--json",
+    ];
+    expect(await runCli(args, harness.options)).toBe(0);
+    expect(await runCli(args, harness.options)).toBe(0);
+    expect(harness.stdout).toMatchObject([
+      { status: "updated", workflowId: 5 },
+      { status: "unchanged", workflowId: 5 },
+    ]);
+  });
+  test("assigns queued translation to a language-specific review stage", async () => {
+    const assigned: unknown[] = [];
+    const harness = createHarness({
+      listWorkflows: async () =>
+        [{ id: 5, name: "Default", per_language_stages: true }] as never,
+      listWorkflowStages: async () =>
+        [{ id: 8, name: "Review translation", workflow_id: 5 }] as never,
+      getStory: async () =>
+        ({
+          id: 7,
+          content: { component: "default-page" },
+          stages: [],
+        }) as never,
+      aiTranslateStory: async () => ({ backgroundTaskId: 123 }),
+      assignWorkflowStage: async (_space, input) => {
+        assigned.push(input);
+        return { id: 1, workflow_stage_id: 8 };
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "ai-translate",
+          "--id",
+          "7",
+          "--language",
+          "de",
+          "--review-stage",
+          "Review translation",
+          "--workflow",
+          "Default",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(assigned).toEqual([{ storyId: 7, stageId: 8, language: "de" }]);
+    expect(harness.stdout[0]).toMatchObject({
+      results: [{ status: "queued", review: { status: "assigned" } }],
+    });
+  });
+  test("queues all space languages and reports each task ID", async () => {
+    let taskId = 100;
+    const harness = createHarness({
+      listLanguages: async () => [
+        { code: "de", name: "German", aiTranslationCode: "de" },
+        { code: "it", name: "Italian", aiTranslationCode: "it" },
+      ],
+      getStory: async () =>
+        ({ id: 7, content: { component: "default-page" } }) as never,
+      aiTranslateStory: async () => ({ backgroundTaskId: ++taskId }),
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "ai-translate",
+          "--id",
+          "7",
+          "--all-languages",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[0]).toMatchObject({
+      failed: false,
+      results: [
+        { language: { code: "de" }, status: "queued", backgroundTaskId: 101 },
+        { language: { code: "it" }, status: "queued", backgroundTaskId: 102 },
+      ],
+    });
+  });
+  test("reports a queued background translation as accepted", async () => {
+    const harness = createHarness({
+      getStory: async () =>
+        ({ id: 7, content: { component: "default-page" } }) as never,
+      aiTranslateStory: async () => ({ backgroundTaskId: 123 }),
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "ai-translate",
+          "--id",
+          "7",
+          "--language",
+          "de",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[0]).toMatchObject({
+      failed: false,
+      results: [{ status: "queued", backgroundTaskId: 123 }],
+    });
+  });
+  test("translates all configured space languages", async () => {
+    const requested: unknown[] = [];
+    const harness = createHarness({
+      listLanguages: async () => [
+        { code: "pt-br", name: "Portuguese", aiTranslationCode: "pt" },
+      ],
+      getStory: async () =>
+        ({ id: 7, content: { component: "default-page" } }) as never,
+      aiTranslateStory: async (_space, _id, input) => {
+        requested.push(input);
+        return { id: 7, content: { component: "default-page" } } as never;
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "ai-translate",
+          "--id",
+          "7",
+          "--all-languages",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(requested).toEqual([
+      { lang: "pt", code: "pt-br", overwrite: false },
+    ]);
+    expect(
+      await runCli(
+        [
+          "story",
+          "ai-translate",
+          "--id",
+          "7",
+          "--all-languages",
+          "--language",
+          "de",
+          "--space-id",
+          "42",
+          "--yes",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+  });
+  test("translates and saves a story using the shared action", async () => {
+    let saved: unknown;
+    const harness = createHarness({
+      getStory: async () =>
+        ({
+          id: 7,
+          content: { component: "default-page", title: "Hello" },
+        }) as never,
+      aiTranslateStory: async (_space, _id, input) => {
+        expect(input).toEqual({ lang: "de", code: "de", overwrite: false });
+        return {
+          id: 7,
+          content: {
+            component: "default-page",
+            title: "Hello",
+            title__i18n__de: "Hallo",
+          },
+        } as never;
+      },
+      updateStoryContent: async (_space, _id, content) => {
+        saved = content;
+        return {} as never;
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "ai-translate",
+          "--id",
+          "7",
+          "--language",
+          "de",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(saved).toMatchObject({ title__i18n__de: "Hallo" });
+    expect(harness.stdout[0]).toMatchObject({
+      failed: false,
+      results: [{ status: "updated" }],
+    });
+  });
   test("edits a block in a specified release", async () => {
     const dir = await mkdtemp(join(tmpdir(), "unblok-release-edit-"));
     try {
@@ -1319,11 +1722,14 @@ describe("runCli", () => {
     harness.options.output = {
       ...harness.options.output,
       mode: "human",
-      task: () => ({
-        message: (message) => events.push(message),
-        success: () => events.push("complete"),
-        error: () => events.push("failed"),
-      }),
+      task: (title) => {
+        events.push(title);
+        return {
+          message: (message) => events.push(message),
+          success: () => events.push("complete"),
+          error: () => events.push("failed"),
+        };
+      },
     };
     const args = [
       "space",

@@ -247,6 +247,54 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "ai_translate": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "dependentRequired": { "workflow": ["review_stage"] },
+            "allOf": [
+              {
+                "oneOf": [
+                  { "required": ["story_id"] },
+                  { "required": ["story_slug"] }
+                ]
+              },
+              {
+                "oneOf": [
+                  { "required": ["languages"] },
+                  { "required": ["all_languages"] }
+                ]
+              }
+            ],
+            "properties": {
+              "story_id": { "type": "integer", "minimum": 1 },
+              "story_slug": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^/*,]+(?:/[^/*,]+)*$"
+              },
+              "review_stage": { "$ref": "#/$defs/nonempty" },
+              "workflow": { "$ref": "#/$defs/nonempty" },
+              "all_languages": { "const": true },
+              "overwrite": { "type": "boolean" },
+              "languages": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["lang", "code"],
+                  "properties": {
+                    "lang": { "$ref": "#/$defs/nonempty" },
+                    "code": { "$ref": "#/$defs/nonempty" }
+                  }
+                }
+              }
+            }
+          }
+        },
         "ensure_folders": {
           "type": "array",
           "minItems": 1,
@@ -327,6 +375,32 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "edit": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["workflow"],
+            "if": { "required": ["name"] },
+            "then": { "properties": { "workflow": { "pattern": "^[0-9]+$" } } },
+            "anyOf": [
+              { "required": ["name"] },
+              { "required": ["content_types"] },
+              { "required": ["per_language_stages"] }
+            ],
+            "properties": {
+              "workflow": { "$ref": "#/$defs/nonempty" },
+              "name": { "$ref": "#/$defs/nonempty" },
+              "content_types": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/nonempty" }
+              },
+              "per_language_stages": { "type": "boolean" }
+            }
+          }
+        },
         "assign_unstaged": { "type": "boolean" },
         "stage_id": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
         "assign": {

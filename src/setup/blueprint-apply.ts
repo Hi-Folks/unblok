@@ -5,6 +5,14 @@ import { isValidStoryCreationSlug } from "../actions/stories/create-story.ts";
 import { ensureStoryFolder } from "../actions/stories/ensure-folder.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
 import { createRelease, listReleases } from "../actions/releases/releases.ts";
+import {
+  editWorkflow,
+  type EditWorkflowInput,
+} from "../actions/workflows/edit-workflow.ts";
+import {
+  translateStoryWithAi,
+  type AiTranslationLanguage,
+} from "../actions/stories/ai-translate.ts";
 import { ensurePipelineBranch } from "../actions/pipelines/branches.ts";
 import {
   compilePipelineBranches,
@@ -91,10 +99,19 @@ export interface SupportedBlueprint {
   assets: AssetDirectory[];
   remoteAssets: RemoteAsset[];
   stories: StoryCreate[];
+  aiTranslations: Array<{
+    storyId?: number;
+    storySlug?: string;
+    languages: AiTranslationLanguage[];
+    allLanguages: boolean;
+    overwrite: boolean;
+    review?: { stage: string; workflow?: string };
+  }>;
   storyFolders: string[];
   translations: StoryTranslations[];
   storyUpdates: StoryBlockUpdate[];
   workflow: BlueprintWorkflow;
+  workflowEdits: Array<Omit<EditWorkflowInput, "spaceId">>;
   tags: Array<{ slugs: string[]; tags: string[] }>;
 }
 
@@ -309,6 +326,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
   const assets: AssetDirectory[] = [];
   const remoteAssets: RemoteAsset[] = [];
   const stories: StoryCreate[] = [];
+  const aiTranslations: SupportedBlueprint["aiTranslations"] = [];
   const storyFolders: string[] = [];
   const storyUpdates: StoryBlockUpdate[] = [];
   const translations: StoryTranslations[] = [];
@@ -316,14 +334,71 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     assignUnstaged: false,
     assignments: [],
   };
+  const workflowEdits: SupportedBlueprint["workflowEdits"] = [];
   if (value.workflow !== undefined) {
     if (
       !isObject(value.workflow) ||
       Object.keys(value.workflow).some(
-        (key) => !["assign_unstaged", "stage_id", "assign"].includes(key),
+        (key) =>
+          !["assign_unstaged", "stage_id", "assign", "edit"].includes(key),
       )
     )
       throw new CliError("Unsupported workflow options.", 2);
+    if (value.workflow.edit !== undefined) {
+      if (!Array.isArray(value.workflow.edit) || !value.workflow.edit.length)
+        throw new CliError("workflow.edit must be a nonempty array.", 2);
+      for (const item of value.workflow.edit) {
+        if (
+          !isObject(item) ||
+          Object.keys(item).some(
+            (key) =>
+              ![
+                "workflow",
+                "name",
+                "content_types",
+                "per_language_stages",
+              ].includes(key),
+          ) ||
+          typeof item.workflow !== "string" ||
+          !item.workflow.trim() ||
+          item.workflow !== item.workflow.trim() ||
+          (item.name !== undefined &&
+            (typeof item.name !== "string" ||
+              !item.name.trim() ||
+              item.name !== item.name.trim() ||
+              !/^\d+$/.test(item.workflow))) ||
+          (item.per_language_stages !== undefined &&
+            typeof item.per_language_stages !== "boolean") ||
+          (item.content_types !== undefined &&
+            (!Array.isArray(item.content_types) ||
+              item.content_types.some(
+                (value) =>
+                  typeof value !== "string" ||
+                  !value.trim() ||
+                  value !== value.trim(),
+              ) ||
+              new Set(item.content_types).size !==
+                item.content_types.length)) ||
+          (item.name === undefined &&
+            item.content_types === undefined &&
+            item.per_language_stages === undefined)
+        )
+          throw new CliError(
+            "Invalid workflow.edit entry; renaming requires a workflow ID.",
+            2,
+          );
+        workflowEdits.push({
+          workflow: item.workflow,
+          ...(typeof item.name === "string" ? { name: item.name } : {}),
+          ...(Array.isArray(item.content_types)
+            ? { contentTypes: item.content_types as string[] }
+            : {}),
+          ...(typeof item.per_language_stages === "boolean"
+            ? { perLanguageStages: item.per_language_stages }
+            : {}),
+        });
+      }
+    }
     if (
       value.workflow.assign_unstaged !== undefined &&
       typeof value.workflow.assign_unstaged !== "boolean"
@@ -396,10 +471,98 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
             "translated_slugs",
             "update_blocks",
             "ensure_folders",
+            "ai_translate",
           ].includes(key),
       )
     )
       throw new CliError("Unsupported stories options.", 2);
+    if (value.stories.ai_translate !== undefined) {
+      if (
+        !Array.isArray(value.stories.ai_translate) ||
+        !value.stories.ai_translate.length
+      )
+        throw new CliError("stories.ai_translate must be a nonempty array.", 2);
+      for (const item of value.stories.ai_translate) {
+        if (
+          !isObject(item) ||
+          Object.keys(item).some(
+            (key) =>
+              ![
+                "story_id",
+                "story_slug",
+                "languages",
+                "all_languages",
+                "overwrite",
+                "review_stage",
+                "workflow",
+              ].includes(key),
+          ) ||
+          (item.story_id !== undefined
+            ? !Number.isSafeInteger(item.story_id) ||
+              (item.story_id as number) <= 0 ||
+              item.story_slug !== undefined
+            : typeof item.story_slug !== "string" ||
+              item.story_slug !== item.story_slug.trim() ||
+              !isValidStoryCreationSlug(item.story_slug)) ||
+          (item.review_stage !== undefined &&
+            (typeof item.review_stage !== "string" ||
+              !item.review_stage.trim() ||
+              item.review_stage !== item.review_stage.trim())) ||
+          (item.workflow !== undefined &&
+            (typeof item.workflow !== "string" ||
+              !item.workflow.trim() ||
+              item.workflow !== item.workflow.trim() ||
+              item.review_stage === undefined)) ||
+          (item.all_languages !== undefined && item.all_languages !== true) ||
+          (item.all_languages === true
+            ? item.languages !== undefined
+            : !Array.isArray(item.languages) || !item.languages.length) ||
+          (item.overwrite !== undefined && typeof item.overwrite !== "boolean")
+        )
+          throw new CliError("Invalid stories.ai_translate entry.", 2);
+        const languages: AiTranslationLanguage[] = [];
+        for (const language of Array.isArray(item.languages)
+          ? item.languages
+          : []) {
+          if (
+            !isObject(language) ||
+            Object.keys(language).some(
+              (key) => !["lang", "code"].includes(key),
+            ) ||
+            typeof language.lang !== "string" ||
+            !language.lang.trim() ||
+            language.lang !== language.lang.trim() ||
+            typeof language.code !== "string" ||
+            !language.code.trim() ||
+            language.code !== language.code.trim() ||
+            languages.some((other) => other.code === language.code)
+          )
+            throw new CliError(
+              "Invalid or duplicate AI translation language.",
+              2,
+            );
+          languages.push({ lang: language.lang, code: language.code });
+        }
+        aiTranslations.push({
+          ...(typeof item.story_id === "number"
+            ? { storyId: item.story_id }
+            : { storySlug: item.story_slug as string }),
+          languages,
+          allLanguages: item.all_languages === true,
+          overwrite: item.overwrite === true,
+          ...(typeof item.review_stage === "string"
+            ? {
+                review: {
+                  stage: item.review_stage,
+                  ...(typeof item.workflow === "string"
+                    ? { workflow: item.workflow }
+                    : {}),
+                },
+              }
+            : {}),
+        });
+      }
+    }
     if (value.stories.ensure_folders !== undefined) {
       const paths = strings(
         value.stories.ensure_folders,
@@ -818,10 +981,12 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       assets,
       remoteAssets,
       stories,
+      aiTranslations,
       storyFolders,
       translations,
       storyUpdates,
       workflow,
+      workflowEdits,
       tags,
       experiments,
       releases,
@@ -852,10 +1017,12 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     assets,
     remoteAssets,
     stories,
+    aiTranslations,
     storyFolders,
     translations,
     storyUpdates,
     workflow,
+    workflowEdits,
     tags,
     experiments,
     releases,
@@ -871,6 +1038,8 @@ export interface BlueprintProgress {
     | "components"
     | "assets"
     | "stories"
+    | "translate-content"
+    | "workflow-settings"
     | "workflow"
     | "tags"
     | "experiments"
@@ -932,6 +1101,10 @@ export async function applySupportedBlueprint(
         operation: "create-release",
         key: item.name,
       })),
+      ...blueprint.workflowEdits.map((item) => ({
+        operation: "edit-workflow",
+        key: item.workflow,
+      })),
     ],
     blueprint.fields.map((field) => ({
       operation: "ensure-component-field",
@@ -954,6 +1127,19 @@ export async function applySupportedBlueprint(
         operation: "translate-story-slugs",
         key: item.slug,
       })),
+      ...blueprint.aiTranslations.flatMap((item) =>
+        item.allLanguages
+          ? [
+              {
+                operation: "ai-translate-story",
+                key: `${item.storySlug ?? item.storyId}/all`,
+              },
+            ]
+          : item.languages.map((language) => ({
+              operation: "ai-translate-story",
+              key: `${item.storySlug ?? item.storyId}/${language.code}`,
+            })),
+      ),
     ],
     [
       ...(blueprint.workflow.assignUnstaged
@@ -1165,6 +1351,25 @@ export async function applySupportedBlueprint(
       return finish(2);
     }
   }
+  for (const item of blueprint.workflowEdits) {
+    onProgress?.({ stage: "workflow-settings", item: item.workflow });
+    try {
+      const result = await editWorkflow(gateway, { spaceId, ...item });
+      operations.push({
+        operation: "edit-workflow",
+        key: item.workflow,
+        status: result.status,
+      });
+    } catch (error) {
+      operations.push({
+        operation: "edit-workflow",
+        key: item.workflow,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unexpected error",
+      });
+      return finish(2);
+    }
+  }
   for (const [index, field] of blueprint.fields.entries()) {
     const key = `${field.component}.${field.field}`;
     onProgress?.({
@@ -1219,6 +1424,7 @@ export async function applySupportedBlueprint(
       onProgress?.({ stage: "stories" });
     for (const path of blueprint.storyFolders) {
       try {
+        onProgress?.({ stage: "stories", item: path });
         const result = await ensureStoryFolder(gateway, { spaceId, path });
         operations.push({
           operation: "ensure-story-folder",
@@ -1237,7 +1443,113 @@ export async function applySupportedBlueprint(
       operations,
       blueprint.remoteAssets,
       resolveRelease,
+      (item) => onProgress?.({ stage: "stories", item }),
     );
+    if (blueprint.aiTranslations.length)
+      onProgress?.({ stage: "translate-content" });
+    for (const item of blueprint.aiTranslations) {
+      const reference = item.storySlug ?? String(item.storyId);
+      if (item.allLanguages)
+        onProgress?.({ stage: "translate-content", item: `${reference}/all` });
+      let storyId = item.storyId;
+      if (item.storySlug !== undefined) {
+        try {
+          const found = await gateway.findStoryBySlug(spaceId, item.storySlug);
+          if (
+            !found ||
+            found.is_folder ||
+            found.full_slug !== item.storySlug ||
+            !Number.isSafeInteger(found.id) ||
+            found.id <= 0
+          )
+            throw new CliError(
+              `Story '${item.storySlug}' was not found or could not be verified.`,
+              1,
+              "NOT_FOUND",
+            );
+          storyId = found.id;
+        } catch (error) {
+          const firstLanguage = item.allLanguages
+            ? "all"
+            : item.languages[0]?.code;
+          throw new BlueprintOperationError(
+            "ai-translate-story",
+            `${reference}/${firstLanguage}`,
+            error,
+          );
+        }
+      }
+      if (storyId === undefined)
+        throw new CliError(
+          "A story ID or slug is required.",
+          1,
+          "INVALID_INPUT",
+        );
+      if (item.allLanguages) {
+        const key = `${reference}/all`;
+        try {
+          const report = await translateStoryWithAi(gateway, {
+            spaceId,
+            storyId,
+            allLanguages: true,
+            overwrite: item.overwrite,
+            review: item.review,
+          });
+          const details = report.results
+            .map(
+              (result) =>
+                `${result.language.code}: ${result.status}${result.backgroundTaskId ? ` (background task ${result.backgroundTaskId})` : ""}${result.error ? ` (${result.error.message})` : ""}${result.review ? `, review ${result.review.status}${result.review.error ? ` (${result.review.error.message})` : ""}` : ""}`,
+            )
+            .join("; ");
+          operations.push({
+            operation: "ai-translate-story",
+            key,
+            status: report.failed
+              ? "failed"
+              : report.results.some((result) => result.status === "queued")
+                ? "queued"
+                : report.results.some((result) => result.status === "updated")
+                  ? "updated"
+                  : "unchanged",
+            ...(report.failed ? { error: details } : { reason: details }),
+          });
+          if (report.failed) return finish(5);
+        } catch (error) {
+          throw new BlueprintOperationError("ai-translate-story", key, error);
+        }
+        continue;
+      }
+      for (const language of item.languages) {
+        const key = `${reference}/${language.code}`;
+        onProgress?.({ stage: "translate-content", item: key });
+        const report = await translateStoryWithAi(gateway, {
+          spaceId,
+          storyId,
+          languages: [language],
+          overwrite: item.overwrite,
+          review: item.review,
+        });
+        const result = report.results[0]!;
+        operations.push({
+          operation: "ai-translate-story",
+          key,
+          status: result.review?.status === "failed" ? "failed" : result.status,
+          ...(result.error || result.review?.error
+            ? {
+                error:
+                  result.error?.message ??
+                  `Translation ${result.status}${result.backgroundTaskId ? ` (background task ${result.backgroundTaskId})` : ""}; review failed: ${result.review?.error?.message}`,
+              }
+            : {}),
+          ...(result.backgroundTaskId
+            ? {
+                reason: `Background task ${result.backgroundTaskId} started; completion was not checked.`,
+              }
+            : {}),
+        });
+        if (report.failed) return finish(5);
+      }
+    }
   } catch (error) {
     operations.push({
       operation:

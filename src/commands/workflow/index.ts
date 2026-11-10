@@ -1,5 +1,6 @@
 import type { Command } from "../../cli/command.ts";
 import { dispatch } from "../../cli/dispatch.ts";
+import { editWorkflowCommand } from "./edit.ts";
 import { listWorkflowsCommand } from "./list.ts";
 import { workflowStageCommand } from "./stage.ts";
 import { ensureDefaultWorkflowCommand } from "./ensure-default.ts";
@@ -13,6 +14,7 @@ export const workflowCommand: Command = {
       "space-man workflow",
       [
         listWorkflowsCommand,
+        editWorkflowCommand,
         workflowStageCommand,
         ensureDefaultWorkflowCommand,
       ],

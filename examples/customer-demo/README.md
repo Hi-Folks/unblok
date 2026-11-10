@@ -22,11 +22,11 @@ bun run start space setup apply --config examples/customer-demo/setup.yaml \
   --input 'space_name=Customer Demo' --yes
 ```
 
-The command shows the new space and asks whether to continue. Review the AI Translations and Experiments disclaimers and their IDs before applying. The complete setup enables space AI, disables inheritance of organization AI configuration, publishes the experiment variant, starts the experiment, pushes simulated results, creates a `Demo campaign` release scheduled seven days from creation, and creates a `Go Live` Pipeline stage without an explicit source. The Pipeline operation requires the app to be available; verify the stage source in your space. Verify the resulting release time in Storyblok: the UTC calculation is sent in the API's timezone-free format. See the [experiment guide](../../docs/experiments.md) for prerequisites and partial-failure behavior. Override `asset_url`, `frontend_host`, or `review_stage` with additional `--input 'name=value'` options when needed.
+The command shows the new space and asks whether to continue. Review the AI Translations and Experiments disclaimers and their IDs before applying. The complete setup enables space AI, disables inheritance of organization AI configuration, queues an Italian translation of `home` and assigns that language to the configured review stage, publishes the experiment variant, starts the experiment, pushes simulated results, creates a `Demo campaign` release scheduled seven days from creation, and creates a `Go Live` Pipeline stage without an explicit source. The Pipeline operation requires the app to be available; verify the stage source in your space. Verify the resulting release time in Storyblok: the UTC calculation is sent in the API's timezone-free format. See the [experiment guide](../../docs/experiments.md) for prerequisites and partial-failure behavior. Override `asset_url`, `frontend_host`, or `review_stage` with additional `--input 'name=value'` options when needed.
 
 ## Reusable steps
 
-Run a step by itself to test or reuse only that capability. Steps 02–10 accept an existing space with `--space-id YOUR_SPACE_ID --yes`; some need resources from earlier steps or the source space.
+Run a step by itself to test or reuse only that capability. Steps 02–11 accept an existing space with `--space-id YOUR_SPACE_ID --yes`; some need resources from earlier steps or the source space.
 
 | Step                                                      | Purpose and reuse                                                                                                                      |
 | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,6 +40,7 @@ Run a step by itself to test or reuse only that capability. Steps 02–10 accept
 | [08 Tags](steps/08-tags.yaml)                             | Adds tags to selected stories; reuse it to apply the same organization to compatible content.                                          |
 | [09 Space AI](steps/09-space-ai.yaml)                     | Enables space AI with space-specific configuration; reuse independently of any particular AI app.                                      |
 | [10 AI Translations](steps/10-ai-translation.yaml)        | Accepts the specified disclaimer and installs AI Translations; reuse only when that feature and disclaimer are appropriate.            |
+| [11 Translate home](steps/11-translate-home.yaml)         | Enables language-based workflow stages, queues Italian translation of `home`, and assigns its Italian version to review.               |
 | [Experiment](../features/setup-experiment.yaml)           | Creates and activates a demo experiment with a modified hero variant and simulated results.                                            |
 | [Releases](../features/setup-releases.yaml)               | Creates a demo release scheduled seven days from creation; existing releases retain their schedules on rerun.                          |
 | [Release stories](../features/setup-release-stories.yaml) | Creates a story and updates the home hero in the demo release; includes the release recipe.                                            |
@@ -49,4 +50,4 @@ For local images, apply [alternatives/local-assets.yaml](alternatives/local-asse
 
 ## Repeat and recover
 
-Applying the main blueprint without `--space-id` creates a new space each time. To repeat or resume against the same space, pass its ID; matching resources are skipped where supported. A failed run can leave earlier changes in place. Read the report, fix the failure, and rerun with that same ID. See the [setup guide](../../docs/space-setups.md) for repeat-run behavior and composition rules.
+Applying the main blueprint without `--space-id` creates a new space each time. To repeat or resume against the same space, pass its ID; matching resources are skipped where supported. AI translation sends a new request on every apply, including retries, and may incur charges. Queued tasks can overlap; review their results in Storyblok. A failed run can leave earlier changes in place. Read the report, fix the failure, and rerun with that same ID. See the [setup guide](../../docs/space-setups.md) for repeat-run behavior and composition rules.

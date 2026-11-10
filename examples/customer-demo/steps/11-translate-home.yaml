@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../../space-setup.schema.json
+version: 1
+inputs:
+  review_stage:
+    default: Reviewing
+workflow:
+  edit:
+    - workflow: Default
+      per_language_stages: true
+stories:
+  ai_translate:
+    - story_slug: home
+      languages:
+        - lang: it
+          code: it
+      review_stage: "${{ inputs.review_stage }}"
+      workflow: Default
+      overwrite: false

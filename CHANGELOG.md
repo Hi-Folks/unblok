@@ -4,6 +4,11 @@
 
 ### Added
 
+- Allow YAML AI translation to resolve stories by slug and include home translation in the customer demo.
+- Show a separate progress step for each main setup operation, including translation requests.
+- Edit workflow names, content types and language-based stages through the CLI, YAML and library.
+- Translate story content with Storyblok AI through the CLI, YAML and library, with per-language results, draft saves, and an option to use all configured additional languages.
+- Optionally enable language-based workflow stages and move accepted translations to an existing review stage per language.
 - Support creating and editing stories in a selected Storyblok release through the CLI, YAML and library. YAML can refer to a release by name, including one created by the same setup.
 - Add nested content folder creation to the CLI, YAML and library, reusing existing folders on repeat runs.
 - Support creating draft stories inside existing folders through the CLI, YAML and library using a full slug.

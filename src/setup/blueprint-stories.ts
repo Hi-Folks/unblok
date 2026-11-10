@@ -31,9 +31,11 @@ export async function applyStories(
   operations: Array<{ operation: string; key: string; status: string }>,
   references: RemoteAsset[] = [],
   resolveRelease?: (name: string) => Promise<number>,
+  onProgress?: (item: string) => void,
 ): Promise<void> {
   for (const desired of creates) {
     try {
+      onProgress?.(desired.slug);
       let releaseId = desired.releaseId;
       if (desired.release !== undefined) {
         if (!resolveRelease)
@@ -63,6 +65,7 @@ export async function applyStories(
   await checkTranslatedSlugPrerequisites(gateway, spaceId, translations);
   for (const group of translations) {
     try {
+      onProgress?.(group.slug);
       const result = await reconcileTranslatedSlugs(gateway, spaceId, group);
       operations.push({
         operation: "translate-story-slugs",

@@ -122,10 +122,11 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `story tags plan` and `story tags assign` add tags to stories by full slug.
 - `story publish` publishes the current draft of a story by full slug.
 - `story create` creates a draft from a JSON definition at the root or in an existing folder.
+- `story ai-translate` translates a story's draft into selected languages using Storyblok AI.
 - `story folder create` ensures a nested content folder path exists.
 - `release list` and `release create` manage Storyblok content releases.
 - `pipeline list` and `pipeline create` manage Storyblok Pipeline stages.
-- `workflow list`, `workflow stage`, and `story workflow` inspect stages and assign stories.
+- `workflow list`, `workflow edit`, `workflow stage`, and `story workflow` inspect and configure workflows and assign stories.
 
 Run any command with `--help` for an inline summary:
 

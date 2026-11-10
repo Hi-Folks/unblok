@@ -198,7 +198,7 @@ describe("blueprint editor schema", () => {
         }),
       ).map((file) => `examples/customer-demo/steps/${file}`),
     ];
-    expect(files).toHaveLength(12);
+    expect(files).toHaveLength(13);
     for (const path of files)
       expect(validate(await loadDocument(path, "Setup"))).toBe(true);
     const awaited = await loadBlueprint("examples/customer-demo/setup.yaml");
@@ -211,6 +211,17 @@ describe("blueprint editor schema", () => {
       inheritOrgConfiguration: false,
     });
     expect(compiled.aiTranslationDisclaimerId).toBe(35);
+    expect(compiled.workflowEdits).toContainEqual({
+      workflow: "Default",
+      perLanguageStages: true,
+    });
+    expect(compiled.aiTranslations).toContainEqual({
+      storySlug: "home",
+      languages: [{ lang: "it", code: "it" }],
+      allLanguages: false,
+      overwrite: false,
+      review: { stage: "Reviewing", workflow: "Default" },
+    });
     expect(compiled.releases).toEqual([
       { name: "Demo campaign", releaseInDays: 7 },
     ]);

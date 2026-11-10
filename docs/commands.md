@@ -480,3 +480,39 @@ done
 | `-h`, `--help` | Show help without making an API request.         |
 
 Errors are written to stderr. Invalid usage returns exit code `2`; configuration and API failures return exit code `1`.
+
+## `story ai-translate`
+
+Storyblok can return a background task instead of a completed translation. Unblok queues each requested language, reports its task ID, and does not wait for completion. A queued task is not proof that translation succeeded. Background tasks for the same story can overlap and may interfere; check each language in Storyblok afterward.
+
+Translate a story's content using Storyblok AI and save it as a draft:
+
+```bash
+unblok story ai-translate --id 789012 --language de --language fr --space-id 123456 --yes
+```
+
+Use `--language en:en-us` when the AI language code and configured space language identifier differ. Set `--overwrite` only when existing translations should be replaced. The command reports each language and returns a nonzero exit code if any fail. Use `--json` for automation. Translation requests run again on retries, even when the returned content is unchanged. AI translation may incur usage charges.
+
+Alternatively, use `--all-languages` in place of `--language` to select all additional languages configured in the space. Each must have an AI translation code; if any mapping is missing, no translation is attempted. An empty list also stops the command. The default language is not included.
+
+Add `--review-stage 'Review translation' --workflow Default` to enable language-based stages on that workflow and assign each accepted language to its existing review stage. The assignment occurs immediately after Storyblok accepts the translation request: the background task can still be running or fail later. The report separates the translation task from the language's review assignment. If a review assignment fails, the already queued task is not undone; the command returns a nonzero exit code. The review stage must already exist; the workflow option disambiguates its name. The workflow update and language-scoped assignment are based on observed Storyblok UI requests and have not yet been tested live through Unblok.
+
+The YAML equivalent is [setup-ai-translation-story.yaml](../examples/features/setup-ai-translation-story.yaml); replace its story ID and language codes. Use `story_slug` instead of `story_id` to resolve an exact full story slug in the target space at apply time. YAML stops on the first failed language and reports remaining operations as not run. This operation does not trigger automatically on workflow changes or publish the story. Background-task completion is not monitored.
+
+For the space's configured additional languages, use `all_languages: true` instead of `languages` in a YAML entry. YAML reports queued tasks together for that story and continues without waiting for them to finish; later setup operations must not assume translations are complete.
+
+The same entry can specify `review_stage: Review translation` and `workflow: Default` to enable language-based workflow stages and assign each accepted language to review. The stage must already exist.
+
+## `workflow edit`
+
+Update selected fields of an existing workflow:
+
+```bash
+unblok workflow edit --workflow Default --per-language-stages true --space-id 123456 --yes
+unblok workflow edit --workflow 789012 --name "Editorial" --space-id 123456 --yes
+unblok workflow edit --workflow Editorial --content-types article-page,default-page --space-id 123456 --yes
+```
+
+The workflow is selected by exact name or numeric ID. Renaming requires the ID so the same command can be repeated after the name changes. Only supplied fields are updated; `--content-types` replaces the list, and `--content-types=` clears it. Use `--per-language-stages false` to disable language-based stages. The operation checks the current state and verifies the update; matching settings return `unchanged`. `--yes` is required, and `--json` returns the result. Changes made by another editor between reading and updating can race this operation.
+
+The [workflow edit recipe](../examples/features/setup-workflow-edit.yaml) provides the same operation in YAML. The standalone operation and `story ai-translate --review-stage` use the same workflow edit action. Workflow updates and language mode have not yet been verified live through Unblok.

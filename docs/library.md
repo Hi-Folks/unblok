@@ -251,3 +251,38 @@ try {
 Import `UnblokError` from `unblok` for the `instanceof` check. Its `code` is one of `INVALID_INPUT`, `NOT_FOUND`, `AMBIGUOUS`, `CONFLICT`, `UNAUTHORIZED`, `PERMISSION_DENIED`, `RATE_LIMITED`, `API_ERROR`, or `UNKNOWN`. A Storyblok HTTP failure also includes `status` when available. The original exception is available as `cause` on rejected `UnblokError` instances; it may contain sensitive API details, so handle it carefully. Per-story failures contain a serializable `{ code, message, status? }` object and do not expose the original exception. Unknown errors are classified as `UNKNOWN`; codes are not guessed from error-message text. A rate-limit code alone does not guarantee that retrying a write is safe.
 
 The workflow action also accepts `onOperation`. If that callback throws, the promise rejects and concurrent assignments may already have completed or still be in progress, so callbacks should handle their own errors. Its callback receives the same structured per-story errors as the final report.
+
+## Translate story content with AI
+
+```ts
+import { translateStoryWithAi } from "unblok";
+
+const report = await translateStoryWithAi(gateway, {
+  spaceId: 123456,
+  storyId: 789012,
+  languages: [
+    { lang: "de", code: "de" },
+    { lang: "fr", code: "fr" },
+  ],
+});
+```
+
+`lang` is Storyblok's AI language code; `code` is the configured space language identifier. `overwrite` defaults to `false`. The result contains `updated`, `unchanged`, `queued`, `failed`, or `not_run` for each language, including classified error information. When Storyblok returns translated content directly, the action checks and saves it before continuing. When it returns a background task, the action reports `queued` and its `backgroundTaskId` without polling, then requests the next language. Queued tasks for the same story can overlap and may interfere; check each resulting translation. A queued status only confirms acceptance, not successful completion. Invalid input rejects with `UnblokError`. A translation request is made on every run and may incur usage charges. For direct responses, the action rejects unrelated content changes and checks for intervening edits before saving; another edit can still occur between the check and update.
+
+Use `allLanguages: true` instead of `languages` to select all additional languages in the space. The gateway must implement `listLanguages`. Every language must have a nonempty AI translation code; missing mappings and empty language lists fail before translation. The default language is excluded.
+
+Pass `review: { stage: "Review translation", workflow: "Default" }` to enable language-based stages on the stage's workflow and assign each accepted language to that existing stage. The workflow reference is optional when the stage is unique. `results[].review` reports `assigned`, `unchanged` or `failed` independently of translation; a failed review assignment makes the report fail but does not undo a queued task. Assignment happens immediately after the request is accepted, while the task may still be running. Custom gateways need the workflow methods in `TranslationReviewGateway`. This behavior uses captured Storyblok UI payloads and has not yet been tested live through Unblok.
+
+## Edit a workflow
+
+```ts
+import { editWorkflow } from "unblok";
+
+const result = await editWorkflow(gateway, {
+  spaceId: 123456,
+  workflow: "Default",
+  perLanguageStages: true,
+});
+```
+
+The optional fields are `name`, `contentTypes` and `perLanguageStages`. Only supplied fields are updated; `contentTypes` replaces the entire list. Renaming requires a numeric workflow ID as a string to keep retries safe. The result has `updated` or `unchanged` and the workflow ID; validation, missing data and unverifiable updates reject with `UnblokError`. Concurrent edits may race the update. This API uses the same action as the CLI, YAML and translation review setup.

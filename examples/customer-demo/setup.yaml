@@ -11,6 +11,7 @@ extends:
   - steps/08-tags.yaml
   - steps/09-space-ai.yaml
   - steps/10-ai-translation.yaml
+  - steps/11-translate-home.yaml
   - ../features/setup-experiment.yaml
   - ../features/setup-release-stories.yaml
   - ../features/setup-pipeline.yaml

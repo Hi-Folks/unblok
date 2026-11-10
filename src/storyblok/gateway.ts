@@ -63,6 +63,11 @@ export interface StoryblokGateway {
     storyId: number,
     releaseId?: number,
   ): Promise<Story>;
+  aiTranslateStory(
+    spaceId: number,
+    storyId: number,
+    input: { lang: string; code: string; overwrite: boolean },
+  ): Promise<Story | { backgroundTaskId: number }>;
   publishStory(spaceId: number, storyId: number): Promise<unknown>;
   activateExperiment(spaceId: number, experimentId: number): Promise<unknown>;
   updateStoryContent(
@@ -127,6 +132,15 @@ export interface StoryblokGateway {
     spaceId: number,
     input: WorkflowStageAssignmentInput,
   ): Promise<WorkflowStageChange>;
+  updateWorkflow(
+    spaceId: number,
+    workflowId: number,
+    fields: {
+      name?: string;
+      content_types?: string[];
+      per_language_stages?: boolean;
+    },
+  ): Promise<void>;
   createComponent(
     spaceId: number,
     component: ComponentCreate,
@@ -208,6 +222,7 @@ export interface WorkflowStageAssignmentInput {
   comment?: string;
   dueDate?: string;
   notify?: boolean;
+  language?: string;
   releaseId?: number;
   roleIds?: number[];
   stageId: number;
@@ -579,6 +594,32 @@ export const createStoryblokGateway = (
         throw new Error(`Story ${storyId} was not returned by Storyblok.`);
       return response.data.story;
     },
+    async aiTranslateStory(spaceId, storyId, input) {
+      const response = await clientForSpace(spaceId).put<{
+        story?: Story;
+        background_task_id?: number;
+      }>(`/v1/spaces/${spaceId}/stories/${storyId}/ai_translate`, {
+        headers: { "Content-Type": "application/json" },
+        body: input,
+      });
+      if (response.data?.background_task_id !== undefined) {
+        const id = response.data.background_task_id;
+        if (!Number.isSafeInteger(id) || id <= 0)
+          throw new CliError(
+            "Storyblok returned an invalid background task ID.",
+            1,
+            "CONFLICT",
+          );
+        return { backgroundTaskId: id };
+      }
+      if (!response.data?.story)
+        throw new CliError(
+          "Storyblok did not return a story or a background task ID.",
+          1,
+          "CONFLICT",
+        );
+      return response.data.story;
+    },
     async publishStory(spaceId, storyId) {
       return (
         await clientForSpace(spaceId).get(
@@ -768,12 +809,22 @@ export const createStoryblokGateway = (
             : {}),
           workflow_stage_change: {
             ...(input.dueDate ? { due_date: input.dueDate } : {}),
+            ...(input.language ? { language: input.language } : {}),
             story_id: input.storyId,
             workflow_stage_id: input.stageId,
           },
         },
       });
       return response.data.workflow_stage_change;
+    },
+    async updateWorkflow(spaceId, workflowId, fields) {
+      await clientForSpace(spaceId).put(
+        `/v1/spaces/${spaceId}/workflows/${workflowId}`,
+        {
+          headers: { "Content-Type": "application/json" },
+          body: { workflow: fields },
+        },
+      );
     },
     async createComponent(spaceId, component) {
       const response = await clientForSpace(spaceId).components.create({
@@ -817,17 +868,19 @@ export const createStoryblokGateway = (
     },
     async listLanguages(spaceId) {
       const response = await clientForSpace(spaceId).spaces.get();
-      return response.data.space.languages.flatMap((language) =>
-        language.code && language.name
-          ? [
-              {
-                aiTranslationCode: language.ai_translation_code,
-                code: language.code,
-                name: language.name,
-              },
-            ]
-          : [],
-      );
+      return response.data.space.languages.map((language) => {
+        if (!language.code || !language.name)
+          throw new CliError(
+            "Storyblok returned a space language without a code or name.",
+            1,
+            "CONFLICT",
+          );
+        return {
+          aiTranslationCode: language.ai_translation_code,
+          code: language.code,
+          name: language.name,
+        };
+      });
     },
     async listComponents(spaceId, options = {}) {
       const response = await clientForSpace(spaceId).components.list({

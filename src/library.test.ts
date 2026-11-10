@@ -2,6 +2,8 @@ import { expect, test, setSystemTime } from "bun:test";
 import { ClientError } from "@storyblok/management-api-client";
 import {
   UnblokError,
+  editWorkflow,
+  translateStoryWithAi,
   ensureTranslatedSlugs,
   ensureStoryCreated,
   ensureStoryFolder,
@@ -18,6 +20,57 @@ import {
   assignStoryWorkflow,
   planStoryWorkflow,
 } from "./library.ts";
+
+test("public library edits workflow settings", async () => {
+  let enabled = false;
+  const gateway = {
+    listWorkflows: async () => [
+      { id: 5, name: "Default", per_language_stages: enabled },
+    ],
+    updateWorkflow: async () => {
+      enabled = true;
+    },
+  };
+  expect(
+    await editWorkflow(gateway as never, {
+      spaceId: 42,
+      workflow: "Default",
+      perLanguageStages: true,
+    }),
+  ).toEqual({ status: "updated", workflowId: 5 });
+});
+
+test("public library translates and saves story content", async () => {
+  let saved: unknown;
+  const gateway = {
+    getStory: async () => ({
+      id: 7,
+      content: { component: "default-page", title: "Hello" },
+    }),
+    aiTranslateStory: async () => ({
+      id: 7,
+      content: {
+        component: "default-page",
+        title: "Hello",
+        title__i18n__de: "Hallo",
+      },
+    }),
+    updateStoryContent: async (
+      _space: number,
+      _id: number,
+      content: unknown,
+    ) => {
+      saved = content;
+    },
+  };
+  const result = await translateStoryWithAi(gateway as never, {
+    spaceId: 42,
+    storyId: 7,
+    languages: [{ lang: "de", code: "de" }],
+  });
+  expect(result.results[0]?.status).toBe("updated");
+  expect(saved).toMatchObject({ title__i18n__de: "Hallo" });
+});
 
 import type {
   StoryTagGateway,

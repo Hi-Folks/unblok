@@ -1,4 +1,9 @@
 /** Public Bun/TypeScript library entry point. */
+export { editWorkflow } from "./actions/workflows/edit-workflow.ts";
+export type {
+  EditWorkflowGateway,
+  EditWorkflowInput,
+} from "./actions/workflows/edit-workflow.ts";
 export { createStoryblokGateway } from "./storyblok/gateway.ts";
 export { UnblokError } from "./actions/action-error.ts";
 export type {
@@ -27,6 +32,17 @@ export type {
   CreateReleaseResult,
 } from "./actions/releases/releases.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
+export { translateStoryWithAi } from "./actions/stories/ai-translate.ts";
+export type {
+  TranslationReviewOptions,
+  TranslationReviewGateway,
+} from "./actions/stories/translation-review.ts";
+export type {
+  AiTranslationGateway,
+  AiTranslationLanguage,
+  AiTranslationResult,
+  TranslateStoryInput,
+} from "./actions/stories/ai-translate.ts";
 export { ensureStoryFolder } from "./actions/stories/ensure-folder.ts";
 export type {
   StoryFolderGateway,

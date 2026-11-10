@@ -31,24 +31,28 @@ function formatProgress(progress: BlueprintProgress): string {
     "ai-translation": "Enabling AI Translations",
     apps: "Installing apps",
     components: "Configuring components",
-    assets: "Uploading assets",
+    assets: "Managing assets",
     stories: "Configuring stories",
+    "translate-content": "Translating content",
+    "workflow-settings": "Configuring workflows",
     workflow: "Assigning workflow stages",
     tags: "Assigning tags",
     experiments: "Configuring experiments",
     releases: "Configuring releases",
     pipelines: "Configuring pipeline stages",
   };
+  return labels[progress.stage];
+}
+
+function formatProgressDetail(progress: BlueprintProgress): string | undefined {
+  if (!progress.current && !progress.item) return undefined;
   const count =
     progress.current && progress.total
-      ? ` ${progress.current}/${progress.total}`
+      ? `${progress.current}/${progress.total}`
       : progress.current
-        ? ` (${progress.current} processed)`
-        : progress.total
-          ? ` (${progress.total})`
-          : "";
-  const item = progress.item ? ` · ${progress.item}` : "";
-  return `${progress.failed ? "Failed: " : ""}${labels[progress.stage]}${count}${item}`;
+        ? `${progress.current} processed`
+        : "";
+  return `${progress.failed ? "Failed: " : ""}${[count, progress.item].filter(Boolean).join(" · ")}`;
 }
 
 function parseArgs(args: string[]): {
@@ -341,10 +345,30 @@ const apply: Command = {
         );
       }
     }
-    const progress =
-      context.output.mode === "human"
-        ? context.output.task("Applying space setup")
-        : undefined;
+    let progress: ReturnType<typeof context.output.task> | undefined;
+    let activeStage: BlueprintProgress["stage"] | undefined;
+    let activeLabel = "";
+    let stageFailed = false;
+    const successMessage = () =>
+      activeStage === "translate-content"
+        ? "Translation requests submitted"
+        : `${activeLabel} complete`;
+    const showProgress = (event: BlueprintProgress) => {
+      if (context.output.mode !== "human") return;
+      if (event.stage !== activeStage) {
+        if (progress) {
+          if (stageFailed) progress.error(`${activeLabel} failed`);
+          else progress.success(successMessage());
+        }
+        activeStage = event.stage;
+        activeLabel = formatProgress(event);
+        stageFailed = false;
+        progress = context.output.task(activeLabel);
+      }
+      stageFailed ||= event.failed === true;
+      const detail = formatProgressDetail(event);
+      if (detail) progress?.message(detail);
+    };
     let report: Awaited<ReturnType<typeof applySupportedBlueprint>>;
     try {
       report = await applySupportedBlueprint(
@@ -352,14 +376,18 @@ const apply: Command = {
         spaceId,
         blueprint,
         assets,
-        (event) => progress?.message(formatProgress(event)),
+        showProgress,
       );
     } catch (error) {
       progress?.error("Setup stopped unexpectedly");
       throw error;
     }
-    if (report.failed) progress?.error("Setup completed with failures");
-    else progress?.success("Setup operations complete");
+    const lastOperation = report.operations.findLast(
+      (item) => item.status !== "not_run",
+    );
+    if (stageFailed || lastOperation?.status === "failed")
+      progress?.error(`${activeLabel} failed`);
+    else progress?.success(successMessage());
     if (context.output.mode === "json") context.output.data(report);
     else
       context.output.summary(

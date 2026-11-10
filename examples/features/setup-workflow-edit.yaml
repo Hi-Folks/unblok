@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Enable language-based workflow stages
+workflow:
+  edit:
+    - workflow: Default
+      per_language_stages: true

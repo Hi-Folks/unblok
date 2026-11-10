@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Translate a story with AI
+stories:
+  ai_translate:
+    # Replace with an existing story ID and languages configured in your space.
+    - story_id: 123456
+      languages:
+        - lang: de
+          code: de
+        - lang: fr
+          code: fr
+      overwrite: false
+      # Optional: the stage must already exist in the named workflow.
+      # review_stage: Review translation
+      # workflow: Default
+    # Alternatively use all_languages: true instead of languages.

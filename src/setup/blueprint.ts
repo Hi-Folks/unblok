@@ -107,6 +107,10 @@ export function planBlueprint(value: unknown): BlueprintPlan {
       },
     },
     stories: {
+      ai_translate: {
+        operation: "translate story content with AI",
+        support: "available",
+      },
       ensure_folders: {
         operation: "create content folders",
         support: "available",
@@ -122,6 +126,7 @@ export function planBlueprint(value: unknown): BlueprintPlan {
       create: { operation: "create stories", support: "available" },
     },
     workflow: {
+      edit: { operation: "update workflow settings", support: "available" },
       assign_unstaged: {
         operation: "assign unstaged stories",
         support: "available",
