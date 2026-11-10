@@ -156,6 +156,6 @@ Replace the numeric placeholders with your own IDs and supply the token through 
 
 A possible next step is to let an editor move a story to a `Translating` stage and use that change to invoke Unblok. Storyblok emits a [`stage.changed` webhook](https://www.storyblok.com/docs/concepts/webhooks) containing the story, space, workflow and stage information. An external receiver or automation service can verify the webhook, filter for the intended workflow and stage, and invoke the CLI or library with the story ID—for example, through a GitHub Actions workflow.
 
-The webhook receiver and GitHub Actions dispatch are separate integrations; Unblok provides the reusable content operation they can invoke.
+The webhook receiver and GitHub Actions dispatch are separate integrations; Unblok provides the reusable content operation they can invoke. Try the [local webhook example](../../examples/integrations/workflow-translation/README.md) to connect a Storyblok workflow-stage change to this recipe.
 
 For operation details, background-task behavior and repeat runs, see the [command reference](../commands.md#story-ai-translate) and [library guide](../library.md#translate-story-content-with-ai).

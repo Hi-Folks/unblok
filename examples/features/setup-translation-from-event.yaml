@@ -5,9 +5,15 @@ inputs:
     description: Story ID supplied by the automation
   language:
     description: Target language code, such as de or it
+  workflow:
+    description: Workflow containing the review stage
+    default: Default
+  review_stage:
+    description: Existing review stage for the translated language
+    default: Reviewing
 workflow:
   edit:
-    - workflow: Default
+    - workflow: "${{ inputs.workflow }}"
       per_language_stages: true
 stories:
   ai_translate:
@@ -15,6 +21,6 @@ stories:
       languages:
         - lang: "${{ inputs.language }}"
           code: "${{ inputs.language }}"
-      review_stage: Reviewing
-      workflow: Default
+      review_stage: "${{ inputs.review_stage }}"
+      workflow: "${{ inputs.workflow }}"
       overwrite: false
