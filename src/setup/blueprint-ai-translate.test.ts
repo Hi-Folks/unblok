@@ -235,3 +235,26 @@ test("rejects missing or conflicting story selectors", () => {
     expect(() => compileSupportedBlueprint(blueprint)).toThrow();
   }
 });
+
+test("event recipe resolves string inputs to a numeric story ID and language", async () => {
+  const document = await loadBlueprint(
+    "examples/features/setup-translation-from-event.yaml",
+  );
+  const blueprint = compileSupportedBlueprint(
+    resolveBlueprint(document, { story_id: "123456", language: "de" }),
+  );
+  expect(blueprint.aiTranslations).toMatchObject([
+    {
+      storyId: 123456,
+      languages: [{ lang: "de", code: "de" }],
+      review: { stage: "Reviewing", workflow: "Default" },
+    },
+  ]);
+  for (const story_id of ["0", "1.5", "-1", "9007199254740992"]) {
+    expect(() =>
+      compileSupportedBlueprint(
+        resolveBlueprint(document, { story_id, language: "de" }),
+      ),
+    ).toThrow();
+  }
+});

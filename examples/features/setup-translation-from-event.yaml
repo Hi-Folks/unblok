@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+inputs:
+  story_id:
+    description: Story ID supplied by the automation
+  language:
+    description: Target language code, such as de or it
+workflow:
+  edit:
+    - workflow: Default
+      per_language_stages: true
+stories:
+  ai_translate:
+    - story_id: "${{ inputs.story_id }}"
+      languages:
+        - lang: "${{ inputs.language }}"
+          code: "${{ inputs.language }}"
+      review_stage: Reviewing
+      workflow: Default
+      overwrite: false

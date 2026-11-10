@@ -81,6 +81,21 @@ describe("blueprint editor schema", () => {
     }
   });
 
+  test("event translation example supports editor schema and string inputs", async () => {
+    const path = "examples/features/setup-translation-from-event.yaml";
+    const validate = new Ajv2020({ allErrors: true, strict: false }).compile(
+      schema,
+    );
+    expect(validate(await loadDocument(path, "Setup"))).toBe(true);
+    const resolved = resolveBlueprint(await loadBlueprint(path), {
+      story_id: "123",
+      language: "de",
+    });
+    expect(compileSupportedBlueprint(resolved).aiTranslations[0]?.storyId).toBe(
+      123,
+    );
+  });
+
   test("rejects unsupported sections and invalid component fields through the shared schema", () => {
     expect(() =>
       resolveBlueprint({ version: 1, ai: { enabled: true } }),

@@ -498,8 +498,9 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
               ].includes(key),
           ) ||
           (item.story_id !== undefined
-            ? !Number.isSafeInteger(item.story_id) ||
-              (item.story_id as number) <= 0 ||
+            ? !/^[0-9]+$/.test(String(item.story_id)) ||
+              !Number.isSafeInteger(Number(item.story_id)) ||
+              Number(item.story_id) <= 0 ||
               item.story_slug !== undefined
             : typeof item.story_slug !== "string" ||
               item.story_slug !== item.story_slug.trim() ||
@@ -544,8 +545,8 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
           languages.push({ lang: language.lang, code: language.code });
         }
         aiTranslations.push({
-          ...(typeof item.story_id === "number"
-            ? { storyId: item.story_id }
+          ...(item.story_id !== undefined
+            ? { storyId: Number(item.story_id) }
             : { storySlug: item.story_slug as string }),
           languages,
           allLanguages: item.all_languages === true,

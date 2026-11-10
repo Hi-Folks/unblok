@@ -122,6 +122,49 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("uses event inputs to translate and review the selected story and language", async () => {
+    const calls: unknown[] = [];
+    const harness = createHarness({
+      listWorkflows: async () =>
+        [{ id: 5, name: "Default", per_language_stages: true }] as never,
+      listWorkflowStages: async () =>
+        [{ id: 8, name: "Reviewing", workflow_id: 5 }] as never,
+      getStory: async (_space, id) =>
+        ({ id, content: { component: "default-page" }, stages: [] }) as never,
+      aiTranslateStory: async (_space, id, input) => {
+        calls.push({ id, input });
+        return { backgroundTaskId: 123 };
+      },
+      assignWorkflowStage: async (_space, input) => {
+        calls.push(input);
+        return { id: 1, workflow_stage_id: 8 };
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "space",
+          "setup",
+          "apply",
+          "--config",
+          "examples/features/setup-translation-from-event.yaml",
+          "--space-id",
+          "42",
+          "--input",
+          "story_id=777",
+          "--input",
+          "language=de",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(calls).toEqual([
+      { id: 777, input: { lang: "de", code: "de", overwrite: false } },
+      { storyId: 777, stageId: 8, language: "de" },
+    ]);
+  });
   test("shows asset names and counts while each upload runs", async () => {
     const dir = await mkdtemp(join(tmpdir(), "unblok-asset-progress-"));
     try {

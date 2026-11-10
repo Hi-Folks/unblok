@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add an AI translation and editorial review recipe covering the CLI, YAML and library.
+- Support passing an AI translation story ID through YAML inputs and document an event-driven recipe.
 - Allow YAML AI translation to resolve stories by slug and include home translation in the customer demo.
 - Show a separate progress step for each main setup operation, including translation requests.
 - Edit workflow names, content types and language-based stages through the CLI, YAML and library.

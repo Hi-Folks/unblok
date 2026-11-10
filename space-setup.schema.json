@@ -269,7 +269,15 @@
               }
             ],
             "properties": {
-              "story_id": { "type": "integer", "minimum": 1 },
+              "story_id": {
+                "oneOf": [
+                  { "$ref": "#/$defs/id" },
+                  {
+                    "type": "string",
+                    "pattern": "^\\$\\{\\{\\s*inputs\\.[a-zA-Z_][a-zA-Z0-9_]*\\s*\\}\\}$"
+                  }
+                ]
+              },
               "story_slug": {
                 "type": "string",
                 "minLength": 1,

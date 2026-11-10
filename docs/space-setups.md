@@ -77,6 +77,8 @@ App slugs in `apps.install` are looked up for the target space's region. To over
 
 Story content can be translated with AI using `stories.ai_translate`; see [the example](../examples/features/setup-ai-translation-story.yaml). Specify an existing story by `story_id` or exact `story_slug` and provide each AI `lang` and space language `code`. `overwrite` defaults to false. YAML stops after a failed language. Storyblok may queue a background task. Unblok reports its ID without waiting for completion and continues the setup; later operations must not assume translation has finished. Applying again makes new AI requests, which may incur usage charges. This does not set up a workflow trigger.
 
+`story_id` accepts a positive numeric ID or numeric string, so it can be supplied using a blueprint input. See the [event-input recipe](../examples/features/setup-translation-from-event.yaml).
+
 To select all additional space languages at apply time, use `all_languages: true` instead of `languages`. Each language needs an AI translation code. All selected languages are queued without waiting. Background tasks for the same story can overlap and may interfere; check the translations afterward.
 
 Optionally set `review_stage` and `workflow` on an AI translation entry. The stage must exist. Unblok enables language-based stages for that workflow and assigns each accepted language to it immediately, even if its background task has not finished. The operation reports workflow assignment failures without undoing queued translations.
