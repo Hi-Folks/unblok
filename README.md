@@ -48,9 +48,12 @@ unblok space setup apply --config setup.yaml --space-id YOUR_SPACE_ID --yes
 
 The plan validates the blueprint locally and shows its operations; it does not inspect the space or predict changes. Applying requires a token and performs the operations against Storyblok. Repeat behavior depends on the resource and existing state; see [repeatable space setups](docs/space-setups.md) for details.
 
-For a content operations example, see the [AI translation and review recipe](docs/recipes/ai-translation-review.md): request translations for a story and assign its language versions to an editorial review stage. It also explains how an external automation could connect the operation to a Storyblok workflow change.
+## Recipes
 
-For a launch workflow, see the [campaign launch recipe](docs/recipes/campaign-launch.md): prepare a release with a landing page, campaign image and home-page change for editorial review.
+Recipes show how to use Unblok for common, real-world Storyblok workflows. Each recipe brings together the steps and API calls needed to achieve an outcome, so you can adapt it to your team and reuse it in a script, a YAML setup or an integration.
+
+- [AI translation and review](docs/recipes/ai-translation-review.md): request translations for a story and move its language versions into an editorial review workflow.
+- [Campaign launch](docs/recipes/campaign-launch.md): prepare a release with a landing page, campaign image and home-page change for the team to review.
 
 ## Built for people and AI assistants
 
@@ -100,8 +103,6 @@ For an automated demo space setup with a confirmation after duplication, see [th
 | [Getting started](docs/getting-started.md)                         | Requirements, authentication, installation, and the first request.           |
 | [Your first blueprint](docs/first-blueprint.md)                    | Plan and apply a simple YAML setup to an existing space.                     |
 | [Demo experiment](docs/experiments.md)                             | Create and optionally activate an experiment with simulated results.         |
-| [AI translation and review](docs/recipes/ai-translation-review.md) | Queue story translations and prepare language versions for editorial review. |
-| [Campaign launch](docs/recipes/campaign-launch.md)                 | Prepare a campaign release, landing page and home-page change.               |
 | [Library API](docs/library.md)                                     | Use story, translation, component, workflow and tag actions from JavaScript. |
 | [Repeatable space setups](docs/space-setups.md)                    | Provisioning workflow, composition, and repeat-run behavior.                 |
 | [Command reference](docs/commands.md)                              | Command syntax, every parameter, examples, and output behavior.              |
