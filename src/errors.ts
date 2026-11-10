@@ -20,6 +20,22 @@ export class CliError extends Error {
   }
 }
 
+export interface ValidationIssue {
+  path: string;
+  message: string;
+}
+
+export class BlueprintValidationError extends CliError {
+  constructor(readonly issues: ValidationIssue[]) {
+    super(
+      issues.map((issue) => `${issue.path}: ${issue.message}`).join("; "),
+      2,
+      "INVALID_INPUT",
+    );
+    this.name = "BlueprintValidationError";
+  }
+}
+
 export function formatError(error: unknown): string {
   const apiError =
     error instanceof ClientError

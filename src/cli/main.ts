@@ -13,7 +13,7 @@ import {
   getStoryblokRegion,
   type Environment,
 } from "../config/environment.ts";
-import { CliError, formatError } from "../errors.ts";
+import { BlueprintValidationError, CliError, formatError } from "../errors.ts";
 import { createOutput, type Output } from "../output.ts";
 import {
   createStoryblokGateway,
@@ -89,6 +89,9 @@ export async function runCli(
       code,
       exitCode,
       ...(classified.status === undefined ? {} : { status: classified.status }),
+      ...(error instanceof BlueprintValidationError
+        ? { issues: error.issues }
+        : {}),
     });
     return exitCode;
   }

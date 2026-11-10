@@ -11,7 +11,7 @@ import {
 } from "@clack/prompts";
 import type { Writable } from "node:stream";
 import { styleText } from "node:util";
-import { CliError } from "./errors.ts";
+import { CliError, type ValidationIssue } from "./errors.ts";
 import type { UnblokErrorCode } from "./actions/action-error.ts";
 
 export type OutputMode = "human" | "json";
@@ -40,7 +40,12 @@ export interface Output {
   ): Promise<string | null>;
   error(
     message: string,
-    details?: { code: UnblokErrorCode; exitCode: number; status?: number },
+    details?: {
+      code: UnblokErrorCode;
+      exitCode: number;
+      status?: number;
+      issues?: ValidationIssue[];
+    },
   ): void;
   info(message: string): void;
   note(title: string, message: string): void;
@@ -143,6 +148,9 @@ export function createOutput(options: OutputOptions = {}): Output {
               ...(details?.status === undefined
                 ? {}
                 : { status: details.status }),
+              ...(details?.issues === undefined
+                ? {}
+                : { issues: details.issues }),
               exitCode: details?.exitCode ?? 1,
             },
           }),

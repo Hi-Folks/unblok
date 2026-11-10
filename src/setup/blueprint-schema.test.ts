@@ -7,6 +7,65 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { loadBlueprint } from "./blueprint-loader.ts";
 
 describe("blueprint editor schema", () => {
+  test("reports useful locations, typo suggestions, missing fields, and conflicting fields", () => {
+    try {
+      resolveBlueprint({
+        version: 1,
+        releases: { create: [{ name: "Campaign", release_in_day: 7 }] },
+        stories: {
+          create: [
+            { slug: "first", content: { component: "default-page" } },
+            {
+              name: "Second",
+              slug: "second",
+              content: { component: "default-page" },
+              release: "Campaign",
+              release_id: 9,
+            },
+          ],
+        },
+      });
+      throw new Error("Expected validation failure");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain(
+        "setup.releases.create[0].release_in_day: unknown property. Did you mean 'release_in_days'?",
+      );
+      expect(error).toMatchObject({
+        code: "INVALID_INPUT",
+        issues: expect.arrayContaining([
+          {
+            path: "setup.releases.create[0].release_in_day",
+            message: "unknown property. Did you mean 'release_in_days'?",
+          },
+          {
+            path: "setup.stories.create[0].name",
+            message: "required property is missing.",
+          },
+          {
+            path: "setup.stories.create[1]",
+            message: "cannot use 'release' and 'release_id' together.",
+          },
+        ]),
+      });
+    }
+  });
+
+  test("reports missing blueprint input as a structured issue", () => {
+    try {
+      resolveBlueprint({ version: 1, inputs: { campaign_name: {} } });
+      throw new Error("Expected validation failure");
+    } catch (error) {
+      expect(error).toMatchObject({
+        issues: [
+          {
+            path: "inputs.campaign_name",
+            message: "requires a value (provide --input name=value).",
+          },
+        ],
+      });
+    }
+  });
   test("uses local definitions and exposes only executable sections", () => {
     expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(schema.additionalProperties).toBe(false);

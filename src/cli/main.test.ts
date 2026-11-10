@@ -130,6 +130,124 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("explains incompatible translation options before making requests", async () => {
+    const cases = [
+      {
+        args: [
+          "--id",
+          "7",
+          "--language",
+          "de",
+          "--workflow",
+          "Default",
+          "--yes",
+        ],
+        message: "--workflow' requires '--review-stage",
+      },
+      {
+        args: ["--id", "7", "--language", "de", "--all-languages", "--yes"],
+        message: "either '--all-languages' or '--language'",
+      },
+      { args: ["--id", "7", "--language", "de"], message: "require '--yes'" },
+    ];
+    for (const item of cases) {
+      const harness = createHarness();
+      let requests = 0;
+      harness.options.createGateway = () => {
+        requests++;
+        throw new Error("Unexpected request");
+      };
+      expect(
+        await runCli(
+          ["story", "ai-translate", ...item.args, "--json"],
+          harness.options,
+        ),
+      ).toBe(2);
+      expect(harness.stderr[0]).toContain(item.message);
+      expect(requests).toBe(0);
+    }
+  });
+
+  test("does not present a queued translation as finished in progress output", async () => {
+    const harness = createHarness({
+      getStory: async () =>
+        ({ id: 7, content: { component: "default-page" } }) as never,
+      aiTranslateStory: async () => ({ backgroundTaskId: 123 }),
+    });
+    let completed = "";
+    harness.options.output.activity = async (
+      _message,
+      successMessage,
+      operation,
+    ) => {
+      const result = await operation();
+      completed = successMessage;
+      return result;
+    };
+    expect(
+      await runCli(
+        [
+          "story",
+          "ai-translate",
+          "--id",
+          "7",
+          "--language",
+          "de",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(completed).toBe("Translation requests processed");
+    expect(harness.stdout[0]).toMatchObject({
+      results: [{ status: "queued", backgroundTaskId: 123 }],
+    });
+  });
+
+  test("reports blueprint validation issues for plan and apply before contacting Storyblok", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-invalid-blueprint-"));
+    try {
+      const file = join(dir, "setup.yaml");
+      await writeFile(
+        file,
+        "version: 1\nreleases:\n  create:\n    - name: Campaign\n      release_in_day: 7\n",
+      );
+      for (const command of ["plan", "apply"]) {
+        const harness = createHarness();
+        let requests = 0;
+        harness.options.createGateway = () => {
+          requests++;
+          throw new Error("Unexpected request");
+        };
+        const stdout = new PassThrough();
+        const stderr = new PassThrough();
+        let output = "";
+        let errors = "";
+        stdout.on("data", (chunk) => (output += chunk.toString()));
+        stderr.on("data", (chunk) => (errors += chunk.toString()));
+        harness.options.output = createOutput({ json: true, stdout, stderr });
+        const args = ["space", "setup", command, "--config", file, "--json"];
+        if (command === "apply") args.push("--space-id", "42", "--yes");
+        expect(await runCli(args, harness.options)).toBe(2);
+        expect(requests).toBe(0);
+        expect(output).toBe("");
+        expect(JSON.parse(errors).error).toMatchObject({
+          code: "INVALID_INPUT",
+          issues: [
+            {
+              path: "setup.releases.create[0].release_in_day",
+              message: "unknown property. Did you mean 'release_in_days'?",
+            },
+          ],
+        });
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   test("writes structured JSON for invalid input and API authentication errors", async () => {
     for (const apiFailure of [false, true]) {
       const harness = createHarness({

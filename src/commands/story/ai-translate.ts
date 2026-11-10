@@ -6,7 +6,7 @@ import { CliError } from "../../errors.ts";
 
 export const storyAiTranslateCommand: Command = {
   name: "ai-translate",
-  description: "Translate and save a story with Storyblok AI",
+  description: "Request story translations with Storyblok AI",
   usage:
     "unblok story ai-translate --id <id> (--language <lang[:code]>... | --all-languages) [--review-stage <name-or-id>] [--workflow <name-or-id>] [--overwrite] [--space-id <id>] --yes",
   async run(args, context) {
@@ -81,17 +81,23 @@ export const storyAiTranslateCommand: Command = {
         spaceIdOption = value;
       }
     }
-    if (
-      !id ||
-      (!allLanguages && !languages.length) ||
-      (allLanguages && languages.length > 0) ||
-      !yes ||
-      (workflow !== undefined && reviewStage === undefined)
-    )
+    if (!id) throw new CliError("Option '--id <id>' is required.", 2);
+    if (allLanguages && languages.length > 0)
       throw new CliError(
-        "Provide --id, either --all-languages or at least one --language, and --yes.",
+        "Use either '--all-languages' or '--language', not both.",
         2,
       );
+    if (!allLanguages && !languages.length)
+      throw new CliError(
+        "Provide '--all-languages' or at least one '--language <lang[:code]>'.",
+        2,
+      );
+    if (workflow !== undefined && reviewStage === undefined)
+      throw new CliError(
+        "Option '--workflow' requires '--review-stage <name-or-id>'.",
+        2,
+      );
+    if (!yes) throw new CliError("Translation requests require '--yes'.", 2);
     const spaceId = resolveSpaceId({
       environment: context.environment,
       option: spaceIdOption,
@@ -100,8 +106,8 @@ export const storyAiTranslateCommand: Command = {
       getStoryblokToken(context.environment),
     );
     const report = await context.output.activity(
-      "Translating story",
-      "Translation finished",
+      "Processing translation requests",
+      "Translation requests processed",
       () =>
         translateStoryWithAi(gateway, {
           spaceId,
