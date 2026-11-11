@@ -46,6 +46,18 @@ export type {
 } from "./actions/releases/releases.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
 export { listStories } from "./actions/stories/library-list.ts";
+export {
+  listStoryVersions,
+  compareStoryVersions,
+  compareStoryToPreviousVersion,
+} from "./actions/stories/versions.ts";
+export type {
+  ListStoryVersionsInput,
+  CompareStoryVersionsInput,
+  StoryVersionsGateway,
+  StoryVersionChange,
+} from "./actions/stories/versions.ts";
+export type { StoryblokStoryVersion } from "./storyblok/gateway.ts";
 export { compareStoryLanguages } from "./actions/stories/compare-languages.ts";
 export type {
   CompareLanguagesGateway,

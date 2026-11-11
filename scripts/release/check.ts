@@ -253,6 +253,15 @@ try {
       ],
       temp,
     );
+    await run(
+      [
+        runtime,
+        "--input-type=module",
+        "-e",
+        'import { listStoryVersions, compareStoryVersions, compareStoryToPreviousVersion } from "unblok"; const gateway={findStoryBySlug:async()=>({id:7}),getStory:async()=>({id:7,full_slug:"home",content:{title:"New"}}),listStoryVersions:async()=>[{id:1,storyId:7,createdAt:"2026-01-01T00:00:00Z",content:{title:"Old"}},{id:2,storyId:7,createdAt:"2026-01-02T00:00:00Z",content:{title:"New"}}]}; const history=await listStoryVersions(gateway,{spaceId:42,story:"home"}); const comparison=await compareStoryVersions(gateway,{spaceId:42,story:"home",from:1,to:2}); const latest=await compareStoryToPreviousVersion(gateway,{spaceId:42,story:"home"}); if(history.versions.length!==2 || comparison.changes[0].path!=="/title" || latest.from!==1) throw new Error("Story history failed");',
+      ],
+      temp,
+    );
   }
   console.log(
     "Validated packed CLI, YAML plan, blueprint schema and examples, and library under Node and Bun.",

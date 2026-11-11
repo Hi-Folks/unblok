@@ -36,6 +36,7 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     text: (message) => stdout.push(message),
   };
   const fallback: StoryblokGateway = {
+    listStoryVersions: async () => [],
     publishRelease: async (_space, id) => ({
       id,
       name: "Release",
@@ -134,6 +135,131 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("compares current draft to previous saved version without specifying IDs", async () => {
+    const harness = createHarness({
+      findStoryBySlug: async () => ({ id: 7 }) as never,
+      getStory: async () =>
+        ({ id: 7, full_slug: "home", content: { title: "Current" } }) as never,
+      listStoryVersions: async () => [
+        {
+          id: 2,
+          storyId: 7,
+          createdAt: "2026-01-02T00:00:00Z",
+          content: { title: "Current" },
+        },
+        {
+          id: 1,
+          storyId: 7,
+          createdAt: "2026-01-01T00:00:00Z",
+          content: { title: "Before" },
+        },
+      ],
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "compare-versions",
+          "--ref",
+          "home",
+          "--previous",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[0]).toMatchObject({
+      from: 1,
+      to: "current",
+      changes: [{ path: "/title", before: "Before", after: "Current" }],
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "compare-versions",
+          "--ref",
+          "home",
+          "--previous",
+          "--from",
+          "1",
+          "--to",
+          "2",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+  });
+  test("lists and compares story versions with structured output", async () => {
+    const harness = createHarness({
+      findStoryBySlug: async () => ({ id: 7 }) as never,
+      getStory: async () => ({ id: 7, full_slug: "home" }) as never,
+      listStoryVersions: async (_space, _story, options) =>
+        options?.includeContent
+          ? [
+              { id: 1, storyId: 7, content: { title: "Old" } },
+              { id: 2, storyId: 7, content: { title: "New" } },
+            ]
+          : [{ id: 2, storyId: 7, status: "draft" }],
+    });
+    expect(
+      await runCli(
+        ["story", "versions", "--ref", "home", "--space-id", "42", "--json"],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[0]).toMatchObject({
+      apiVersion: "unblok/story-versions-v1",
+      versions: [{ id: 2, status: "draft" }],
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "compare-versions",
+          "--ref",
+          "home",
+          "--from",
+          "1",
+          "--to",
+          "2",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[1]).toMatchObject({
+      apiVersion: "unblok/story-version-comparison-v1",
+      changes: [
+        { path: "/title", type: "changed", before: "Old", after: "New" },
+      ],
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "compare-versions",
+          "--ref",
+          "home",
+          "--from",
+          "0",
+          "--to",
+          "2",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+  });
   test("compares stored story language values using schema in JSON", async () => {
     const harness = createHarness({
       findStoryBySlug: async () => ({ id: 7 }) as never,

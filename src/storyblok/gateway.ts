@@ -15,6 +15,11 @@ import { getRegion } from "@storyblok/region-helper";
 import { CliError } from "../errors.ts";
 
 export interface StoryblokGateway {
+  listStoryVersions(
+    spaceId: number,
+    storyId: number,
+    options?: { includeContent?: boolean; limit?: number },
+  ): Promise<StoryblokStoryVersion[]>;
   listPipelineBranches(spaceId: number): Promise<StoryblokPipelineBranch[]>;
   getPipelineBranch(
     spaceId: number,
@@ -281,6 +286,16 @@ export interface ListStoriesOptions {
   tag?: string;
   published?: boolean;
   storyOnly?: boolean;
+}
+
+export interface StoryblokStoryVersion {
+  id: number;
+  storyId: number;
+  createdAt?: string;
+  status?: string;
+  releaseId?: number;
+  author?: { id?: number; name?: string };
+  content?: unknown;
 }
 
 export interface ListWorkflowStagesOptions {
@@ -962,6 +977,124 @@ export const createStoryblokGateway = (
         query: options.search ? { search: options.search } : undefined,
       });
       return response.data.spaces;
+    },
+    async listStoryVersions(spaceId, storyId, options = {}) {
+      const versions: StoryblokStoryVersion[] = [];
+      if (
+        options.limit !== undefined &&
+        (!Number.isSafeInteger(options.limit) || options.limit <= 0)
+      )
+        throw new CliError(
+          "Version limit must be a positive integer.",
+          1,
+          "INVALID_INPUT",
+        );
+      const seen = new Set<number>();
+      const perPage = Math.min(options.limit ?? 100, 100);
+      for (let page = 1; ; page++) {
+        const response = await clientForSpace(spaceId).get<{
+          story_versions?: Array<{
+            id?: number;
+            story_id?: number;
+            created_at?: string;
+            status?: string;
+            release_id?: number | null;
+            user_id?: number | null;
+            user?: { id?: number; friendly_name?: string | null } | null;
+            content?: unknown;
+          }>;
+        }>(`/v1/spaces/${spaceId}/story_versions`, {
+          query: {
+            by_story_id: storyId,
+            page,
+            per_page: perPage,
+            ...(options.includeContent ? { show_content: true } : {}),
+          },
+        });
+        const batch = response.data.story_versions;
+        if (!Array.isArray(batch))
+          throw new CliError("Storyblok did not return a story versions list.");
+        for (const item of batch) {
+          if (
+            !item ||
+            !Number.isSafeInteger(item.id) ||
+            !item.id ||
+            item.id <= 0 ||
+            item.story_id !== storyId
+          )
+            throw new CliError(
+              "Storyblok returned a version with an invalid ID or story identity.",
+              1,
+              "CONFLICT",
+            );
+          if (seen.has(item.id))
+            throw new CliError(
+              "Storyblok returned a duplicate story version while paging; retry the request.",
+              1,
+              "CONFLICT",
+            );
+          seen.add(item.id);
+          versions.push({
+            id: item.id,
+            storyId,
+            ...(typeof item.created_at === "string"
+              ? { createdAt: item.created_at }
+              : {}),
+            ...(typeof item.status === "string" ? { status: item.status } : {}),
+            ...(typeof item.release_id === "number"
+              ? { releaseId: item.release_id }
+              : {}),
+            ...(typeof item.user?.id === "number" ||
+            typeof item.user_id === "number" ||
+            typeof item.user?.friendly_name === "string"
+              ? {
+                  author: {
+                    ...(typeof item.user?.id === "number"
+                      ? { id: item.user.id }
+                      : typeof item.user_id === "number"
+                        ? { id: item.user_id }
+                        : {}),
+                    ...(typeof item.user?.friendly_name === "string"
+                      ? { name: item.user.friendly_name }
+                      : {}),
+                  },
+                }
+              : {}),
+            ...(options.includeContent && Object.hasOwn(item, "content")
+              ? { content: item.content }
+              : {}),
+          });
+        }
+        if (options.limit !== undefined && versions.length >= options.limit)
+          break;
+        const totalHeader = response.response.headers.get("total");
+        const pageSizeHeader =
+          response.response.headers.get("per-page") ??
+          response.response.headers.get("per_page");
+        const total =
+          totalHeader !== null && /^\d+$/.test(totalHeader)
+            ? Number(totalHeader)
+            : undefined;
+        const actualPageSize =
+          pageSizeHeader !== null && /^\d+$/.test(pageSizeHeader)
+            ? Number(pageSizeHeader)
+            : perPage;
+        if (total !== undefined && Number.isSafeInteger(total)) {
+          if (versions.length >= total) break;
+          if (batch.length === 0)
+            throw new CliError(
+              "Storyblok returned an incomplete story version history while paging; retry the request.",
+              1,
+              "CONFLICT",
+            );
+        } else if (
+          batch.length < (actualPageSize > 0 ? actualPageSize : perPage)
+        )
+          break;
+      }
+      return options.limit === undefined
+        ? versions
+        : versions.slice(0, options.limit);
     },
     async listStories(spaceId, options = {}) {
       const stories: Story[] = [];

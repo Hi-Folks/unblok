@@ -6,6 +6,109 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
+test("follows version pages when Storyblok returns fewer records than requested", async () => {
+  const pages: number[] = [];
+  globalThis.fetch = (async (input: string | Request | URL) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    const page = Number(url.searchParams.get("page"));
+    pages.push(page);
+    return Response.json(
+      {
+        story_versions:
+          page === 1
+            ? [
+                { id: 1, story_id: 7 },
+                { id: 2, story_id: 7 },
+              ]
+            : [{ id: 3, story_id: 7 }],
+      },
+      { headers: { total: "3", "per-page": "2" } },
+    );
+  }) as typeof fetch;
+  const versions = await createStoryblokGateway("test-token").listStoryVersions(
+    42,
+    7,
+  );
+  expect(versions.map((version) => version.id)).toEqual([1, 2, 3]);
+  expect(pages).toEqual([1, 2]);
+});
+
+test("retrieves version pages with optional content and excludes author contact details", async () => {
+  const urls: URL[] = [];
+  globalThis.fetch = (async (input: string | Request | URL) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    urls.push(url);
+    const page = Number(url.searchParams.get("page"));
+    return Response.json({
+      story_versions:
+        page === 1
+          ? Array.from({ length: 100 }, (_, i) => ({
+              id: i + 1,
+              story_id: 7,
+              content: { title: `Version ${i}` },
+              user: {
+                id: 2,
+                friendly_name: "Editor",
+                alt_email: "private@example.test",
+              },
+            }))
+          : [{ id: 101, story_id: 7, content: { title: "Final" } }],
+    });
+  }) as typeof fetch;
+  const result = await createStoryblokGateway("test-token").listStoryVersions(
+    42,
+    7,
+    { includeContent: true },
+  );
+  expect(result).toHaveLength(101);
+  expect(result[0]).toMatchObject({
+    id: 1,
+    storyId: 7,
+    author: { id: 2, name: "Editor" },
+    content: { title: "Version 0" },
+  });
+  expect(JSON.stringify(result)).not.toContain("private@example.test");
+  expect(urls[0]?.pathname).toBe("/v1/spaces/42/story_versions");
+  expect(urls[0]?.searchParams.get("by_story_id")).toBe("7");
+  expect(urls[0]?.searchParams.get("show_content")).toBe("true");
+  expect(urls[0]?.searchParams.get("per_page")).toBe("100");
+  expect(urls[1]?.searchParams.get("page")).toBe("2");
+});
+
+test("limits version metadata without requesting content and rejects mismatched story versions", async () => {
+  let url: URL | undefined;
+  globalThis.fetch = (async (input: string | Request | URL) => {
+    url = new URL(input instanceof Request ? input.url : String(input));
+    return Response.json({
+      story_versions: [{ id: 1, story_id: 7, content: { secret: "hidden" } }],
+    });
+  }) as typeof fetch;
+  const gateway = createStoryblokGateway("test-token");
+  expect(await gateway.listStoryVersions(42, 7, { limit: 1 })).toEqual([
+    { id: 1, storyId: 7 },
+  ]);
+  expect(url?.searchParams.get("per_page")).toBe("1");
+  expect(url?.searchParams.has("show_content")).toBe(false);
+  await expect(gateway.listStoryVersions(42, 8, { limit: 1 })).rejects.toThrow(
+    "story identity",
+  );
+});
+
+test("rejects duplicate versions across pages rather than returning an incomplete history", async () => {
+  globalThis.fetch = (async (input: string | Request | URL) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    return Response.json({
+      story_versions:
+        Number(url.searchParams.get("page")) === 1
+          ? Array.from({ length: 100 }, (_, i) => ({ id: i + 1, story_id: 7 }))
+          : [{ id: 1, story_id: 7 }],
+    });
+  }) as typeof fetch;
+  await expect(
+    createStoryblokGateway("test-token").listStoryVersions(42, 7),
+  ).rejects.toThrow("duplicate story version");
+});
+
 test("lists all pages of stories with the requested Management API filters", async () => {
   const urls: URL[] = [];
   globalThis.fetch = (async (input: string | Request | URL) => {

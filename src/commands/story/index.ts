@@ -9,6 +9,10 @@ import { storyFolderCommand } from "./folder.ts";
 import { storyAiTranslateCommand } from "./ai-translate.ts";
 import { storyListCommand } from "./list.ts";
 import { storyCompareLanguagesCommand } from "./compare-languages.ts";
+import {
+  storyVersionsCommand,
+  storyCompareVersionsCommand,
+} from "./versions.ts";
 
 export const storyCommand: Command = {
   name: "story",
@@ -20,6 +24,8 @@ export const storyCommand: Command = {
       [
         storyListCommand,
         storyCompareLanguagesCommand,
+        storyVersionsCommand,
+        storyCompareVersionsCommand,
         storyGetCommand,
         storyCreateCommand,
         storyAiTranslateCommand,

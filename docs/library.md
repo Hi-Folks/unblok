@@ -348,3 +348,33 @@ const report = await compareStoryLanguages(gateway, {
 ```
 
 The read-only action uses the story and its component schemas to compare fields marked translatable. The result includes JSON Pointer paths, stored default and language values, `present`/`empty`/`missing` statuses and counts. `matchesSource` is included only when both stored values exist; equality does not indicate translation quality, and missing stored values may use a fallback. Languages must be configured in the space. Missing or ambiguous component definitions fail with `UnblokError` instead of returning an incomplete result. This action handles field-level translations, not separate folder-level stories.
+
+## Story version history
+
+```js
+import {
+  listStoryVersions,
+  compareStoryVersions,
+  compareStoryToPreviousVersion,
+} from "unblok";
+
+const history = await listStoryVersions(gateway, {
+  spaceId: YOUR_SPACE_ID,
+  story: "home",
+  limit: 25,
+});
+const comparison = await compareStoryVersions(gateway, {
+  spaceId: YOUR_SPACE_ID,
+  story: "home",
+  from: SOURCE_VERSION_ID,
+  to: TARGET_VERSION_ID,
+});
+const latestChange = await compareStoryToPreviousVersion(gateway, {
+  spaceId: YOUR_SPACE_ID,
+  story: "home",
+});
+```
+
+These read-only actions use the current Storyblok version endpoint. Listing returns metadata in API order without content; comparison fetches paginated history with content and returns added, removed and changed JSON Pointer paths. Arrays are compared by index. Both versions must have available content and belong to the selected story. Versions created on or before August 28, 2024 require the separate legacy endpoint and are not included. Errors use `UnblokError` codes.
+
+`compareStoryToPreviousVersion` compares the current draft to non-release history, including workflow-stage-change snapshots. It uses the preceding entry if the newest content equals the draft, or the newest entry otherwise. The report identifies the chosen version and selection. It fails when it cannot establish an unambiguous timestamp order or access required content. This selection uses content equality, and the draft and history can change between reads.

@@ -24,7 +24,70 @@ import {
   planStoryWorkflow,
   listStories,
   compareStoryLanguages,
+  listStoryVersions,
+  compareStoryVersions,
+  compareStoryToPreviousVersion,
 } from "./library.ts";
+
+test("public library lists and compares story versions", async () => {
+  const gateway = {
+    findStoryBySlug: async () => ({ id: 7 }),
+    getStory: async () => ({ id: 7, full_slug: "home" }),
+    listStoryVersions: async (
+      _space: number,
+      _id: number,
+      options: { includeContent?: boolean },
+    ) =>
+      options.includeContent
+        ? [
+            { id: 1, storyId: 7, content: { title: "Old" } },
+            { id: 2, storyId: 7, content: { title: "New" } },
+          ]
+        : [{ id: 2, storyId: 7 }],
+  };
+  expect(
+    (await listStoryVersions(gateway as never, { spaceId: 42, story: "home" }))
+      .versions,
+  ).toHaveLength(1);
+  expect(
+    (
+      await compareStoryVersions(gateway as never, {
+        spaceId: 42,
+        story: "home",
+        from: 1,
+        to: 2,
+      })
+    ).changes,
+  ).toEqual([{ path: "/title", type: "changed", before: "Old", after: "New" }]);
+});
+
+test("public library compares a current draft with its previous version", async () => {
+  const gateway = {
+    findStoryBySlug: async () => ({ id: 7 }),
+    getStory: async () => ({
+      id: 7,
+      full_slug: "home",
+      content: { title: "New" },
+    }),
+    listStoryVersions: async () => [
+      {
+        id: 1,
+        storyId: 7,
+        createdAt: "2026-01-01T00:00:00Z",
+        content: { title: "Old" },
+      },
+    ],
+  };
+  const report = await compareStoryToPreviousVersion(gateway as never, {
+    spaceId: 42,
+    story: "home",
+  });
+  expect(report).toMatchObject({
+    from: 1,
+    to: "current",
+    changes: [{ path: "/title", before: "Old", after: "New" }],
+  });
+});
 
 test("library compares story language values through the public entry point", async () => {
   const gateway = {

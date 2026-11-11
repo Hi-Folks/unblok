@@ -4,8 +4,15 @@
 
 ### Added
 
+- Compare a current story draft with preceding saved content using `story compare-versions --previous` and the JavaScript library.
+- List story version history and compare version content through the CLI and JavaScript library.
 - Compare stored field-level story translations against default content using the CLI or JavaScript library.
 - List and filter non-folder stories from the CLI and JavaScript library using Management API queries.
+
+### Fixed
+
+- Follow story version pagination headers when Storyblok returns fewer entries than requested, and explain missing previous-history results.
+- Include non-release workflow-stage history snapshots when comparing a draft with its previous version.
 
 ## 0.5.0 - 2026-11-11
 

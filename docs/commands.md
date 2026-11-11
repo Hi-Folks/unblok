@@ -73,6 +73,20 @@ bun run start story folder create --path folder1/subfolder2 --space-id 123456 --
 
 The command creates missing content folders in order and reuses existing folders. Each path segment becomes both the folder name and slug. `--yes` is required. JSON output includes the final `folderId`, overall `status` and paths created. It stops if a story occupies a requested folder path or a folder lookup is ambiguous. If a later segment fails, earlier created folders remain; review the result and rerun. Concurrent operations can still race.
 
+## Story version history
+
+```bash
+unblok story versions --ref home --limit 25 --space-id YOUR_SPACE_ID --json
+unblok story compare-versions --ref home --from VERSION_ID_1 --to VERSION_ID_2 --space-id YOUR_SPACE_ID --json
+unblok story compare-versions --ref home --previous --space-id YOUR_SPACE_ID --json
+```
+
+`story versions` lists version IDs and available date, status, release and author metadata, without fetching content. It returns the first 25 in API order by default; `--limit` selects a different maximum. `story compare-versions` retrieves version content and reports added, removed and changed values as JSON Pointer paths. Arrays are compared by index, so a moved block may produce multiple changes. It compares the story's content only, not its metadata. Both selected versions must belong to the story and have content available. An empty changes list means their stored content matched.
+
+Both commands are read-only and accept a numeric story ID or exact full slug; `--space-id` defaults to `STORYBLOK_SPACE_ID`. The comparison currently pages through the story's history with content enabled to locate the selected IDs, so it can involve multiple API calls and larger responses. The [current Storyblok versions endpoint](https://www.storyblok.com/docs/api/management/stories/get-story-versions-new) covers versions created after August 28, 2024; older history requires the legacy endpoint, which these commands do not query. Behavior is covered by mocked tests and has not yet been verified in a live space.
+
+`--previous` compares the current draft with preceding history content without requiring version IDs. It sorts non-release history by creation timestamp, including workflow-stage-change snapshots. When the newest snapshot matches the current draft, it chooses the preceding entry; otherwise it chooses the newest entry. JSON reports the selected `from` ID, `to: "current"` and the `selection` used. A workflow-only change may have identical content. Missing or tied relevant timestamps and unavailable content produce an error. Because the selection uses stored-content equality rather than a guaranteed current-version identifier, check the selected ID if exact history is important; story content and history are read separately and can change between requests. `--previous` cannot be combined with `--from` or `--to`.
+
 ## `story compare-languages`
 
 ```bash
