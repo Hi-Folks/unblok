@@ -3,7 +3,7 @@ import { dispatch } from "../../cli/dispatch.ts";
 import { loadBlueprint } from "../../setup/blueprint-loader.ts";
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
-import { CliError, formatError } from "../../errors.ts";
+import { CliError } from "../../errors.ts";
 import { planBlueprint } from "../../setup/blueprint.ts";
 import { compileExperiments } from "../../setup/blueprint-experiments.ts";
 import { compileReleases } from "../../setup/blueprint-releases.ts";
@@ -21,9 +21,12 @@ import {
 } from "../../setup/blueprint-target.ts";
 import { prepareAssets } from "../../setup/blueprint-assets.ts";
 import {
+  blueprintFailure,
   finishBlueprintReport,
   formatBlueprintReport,
 } from "../../setup/blueprint-report.ts";
+import blueprintSchema from "../../../space-setup.schema.json";
+import { blueprintExamples } from "../../setup/blueprint-examples.ts";
 
 function formatProgress(progress: BlueprintProgress): string {
   const labels: Record<BlueprintProgress["stage"], string> = {
@@ -127,11 +130,85 @@ const plan: Command = {
   },
 };
 
+const schema: Command = {
+  name: "schema",
+  description: "Print the version 1 blueprint JSON Schema",
+  usage: "unblok space setup schema [--json]",
+  async run(args, context) {
+    if (args.includes("--help") || args.includes("-h")) {
+      context.output.text(
+        `Usage: ${this.usage}\n\nPrint the complete JSON Schema used by this version of Unblok. This runs locally without a token or Storyblok request. Output is JSON with or without --json.\n\nOptions:\n  --json       Emit JSON (the default for this command)\n  -h, --help   Show command help\n\nExample:\n  unblok space setup schema > space-setup.schema.json`,
+      );
+      return;
+    }
+    if (args.length > 0)
+      throw new CliError(`Unknown argument '${args[0]}'.`, 2);
+    context.output.data(blueprintSchema);
+  },
+};
+
+const examples: Command = {
+  name: "examples",
+  description: "List bundled blueprint examples",
+  usage: "unblok space setup examples [--json]",
+  async run(args, context) {
+    if (args.includes("--help") || args.includes("-h")) {
+      context.output.text(
+        `Usage: ${this.usage}\n\nList version-matched examples available locally. Use 'unblok space setup example <name>' to print one as YAML.`,
+      );
+      return;
+    }
+    if (args.length > 0)
+      throw new CliError(`Unknown argument '${args[0]}'.`, 2);
+    const items = blueprintExamples.map(({ name, description }) => ({
+      name,
+      description,
+    }));
+    if (context.output.mode === "json") context.output.data(items);
+    else
+      context.output.text(
+        items.map((item) => `${item.name}: ${item.description}`).join("\n"),
+      );
+  },
+};
+
+const example: Command = {
+  name: "example",
+  description: "Print a bundled blueprint example",
+  usage: "unblok space setup example <name> [--json]",
+  async run(args, context) {
+    if (args.includes("--help") || args.includes("-h")) {
+      context.output.text(
+        `Usage: ${this.usage}\n\nPrint a bundled example as YAML, or use --json for its name, description and YAML content. Run 'unblok space setup examples' to list names. Adapt and plan the example before applying it.`,
+      );
+      return;
+    }
+    if (args.length !== 1)
+      throw new CliError(
+        "Provide one example name; run 'unblok space setup examples' to list names.",
+        2,
+      );
+    const item = blueprintExamples.find((entry) => entry.name === args[0]);
+    if (!item)
+      throw new CliError(
+        `Unknown example '${args[0]}'; run 'unblok space setup examples' to list names.`,
+        2,
+      );
+    if (context.output.mode === "json") context.output.data(item);
+    else context.output.text(item.content);
+  },
+};
+
 export const spaceSetupCommand: Command = {
   name: "setup",
   description: "Inspect version 1 setup blueprints",
   async run(args, context) {
-    await dispatch("unblok space setup", [plan, apply], args, context);
+    await dispatch(
+      "unblok space setup",
+      [plan, apply, schema, examples, example],
+      args,
+      context,
+    );
   },
 };
 
@@ -221,7 +298,7 @@ const apply: Command = {
             operation: "prepare-assets",
             key: "assets",
             status: "failed",
-            error: error instanceof Error ? error.message : "Unexpected error",
+            ...blueprintFailure(error),
           },
         ],
         [{ operation: "apply-setup", key: "all setup operations" }],
@@ -249,7 +326,7 @@ const apply: Command = {
               operation: "duplicate-space",
               key: String(target.duplicate.sourceSpaceId),
               status: "failed",
-              error: formatError(error),
+              ...blueprintFailure(error),
             },
           ],
           [{ operation: "apply-setup", key: "all setup operations" }],
@@ -292,7 +369,7 @@ const apply: Command = {
               operation: "wait-for-duplication",
               key: String(spaceId),
               status: "failed",
-              error: formatError(error),
+              ...blueprintFailure(error),
             },
           ],
           [{ operation: "apply-setup", key: "all setup operations" }],
@@ -330,7 +407,7 @@ const apply: Command = {
               operation: "wait-for-duplication",
               key: String(spaceId),
               status: "failed",
-              error: formatError(error),
+              ...blueprintFailure(error),
             },
           ],
           [{ operation: "apply-setup", key: "all setup operations" }],

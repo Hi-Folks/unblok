@@ -61,6 +61,7 @@ import {
 } from "../actions/apps/ai-translation.ts";
 import {
   BlueprintOperationError,
+  blueprintFailure,
   finishBlueprintReport,
   type BlueprintOperation,
 } from "./blueprint-report.ts";
@@ -1272,7 +1273,7 @@ export async function applySupportedBlueprint(
           : "configure-space",
       key: error instanceof BlueprintOperationError ? error.key : "space",
       status: "failed",
-      error: error instanceof Error ? error.message : "Unexpected error",
+      ...blueprintFailure(error),
     });
     if (
       error instanceof BlueprintOperationError &&
@@ -1295,14 +1296,13 @@ export async function applySupportedBlueprint(
     } catch (error) {
       const last = operations.at(-1);
       if (last?.status === "failed")
-        last.error =
-          error instanceof Error ? error.message : "Unexpected error";
+        Object.assign(last, blueprintFailure(error));
       else
         operations.push({
           operation: "enable-ai-translations",
           key: AI_TRANSLATION_APP_ID,
           status: "failed",
-          error: error instanceof Error ? error.message : "Unexpected error",
+          ...blueprintFailure(error),
         });
       return finish(1);
     }
@@ -1326,7 +1326,7 @@ export async function applySupportedBlueprint(
         operation: "install-app",
         key,
         status: "failed",
-        error: error instanceof Error ? error.message : "Unexpected error",
+        ...blueprintFailure(error),
       });
       onProgress?.({
         stage: "apps",
@@ -1364,7 +1364,7 @@ export async function applySupportedBlueprint(
         operation: "create-release",
         key: release.name,
         status: "failed",
-        error: error instanceof Error ? error.message : "Unexpected error",
+        ...blueprintFailure(error),
       });
       return finish(2);
     }
@@ -1383,7 +1383,7 @@ export async function applySupportedBlueprint(
         operation: "edit-workflow",
         key: item.workflow,
         status: "failed",
-        error: error instanceof Error ? error.message : "Unexpected error",
+        ...blueprintFailure(error),
       });
       return finish(2);
     }
@@ -1408,7 +1408,7 @@ export async function applySupportedBlueprint(
         operation: "ensure-component-field",
         key,
         status: "failed",
-        error: error instanceof Error ? error.message : "Unexpected error",
+        ...blueprintFailure(error),
       });
       return finish(3);
     }
@@ -1429,7 +1429,7 @@ export async function applySupportedBlueprint(
       operation: "upload-asset",
       key: error instanceof BlueprintOperationError ? error.key : "assets",
       status: "failed",
-      error: error instanceof Error ? error.message : "Unexpected error",
+      ...blueprintFailure(error),
     });
     return finish(4);
   }
@@ -1519,6 +1519,26 @@ export async function applySupportedBlueprint(
                 `${result.language.code}: ${result.status}${result.backgroundTaskId ? ` (background task ${result.backgroundTaskId})` : ""}${result.error ? ` (${result.error.message})` : ""}${result.review ? `, review ${result.review.status}${result.review.error ? ` (${result.review.error.message})` : ""}` : ""}`,
             )
             .join("; ");
+          const failures = report.results.flatMap((result) => [
+            ...(result.error
+              ? [
+                  {
+                    language: result.language.code,
+                    phase: "translation" as const,
+                    error: result.error,
+                  },
+                ]
+              : []),
+            ...(result.review?.error
+              ? [
+                  {
+                    language: result.language.code,
+                    phase: "review" as const,
+                    error: result.review.error,
+                  },
+                ]
+              : []),
+          ]);
           operations.push({
             operation: "ai-translate-story",
             key,
@@ -1530,6 +1550,8 @@ export async function applySupportedBlueprint(
                   ? "updated"
                   : "unchanged",
             ...(report.failed ? { error: details } : { reason: details }),
+            ...(failures.length ? { failures } : {}),
+            ...(failures.length === 1 ? { errorInfo: failures[0]!.error } : {}),
           });
           if (report.failed) return finish(5);
         } catch (error) {
@@ -1557,6 +1579,7 @@ export async function applySupportedBlueprint(
                 error:
                   result.error?.message ??
                   `Translation ${result.status}${result.backgroundTaskId ? ` (background task ${result.backgroundTaskId})` : ""}; review failed: ${result.review?.error?.message}`,
+                errorInfo: result.error ?? result.review?.error,
               }
             : {}),
           ...(result.backgroundTaskId
@@ -1576,7 +1599,7 @@ export async function applySupportedBlueprint(
           : "configure-stories",
       key: error instanceof BlueprintOperationError ? error.key : "stories",
       status: "failed",
-      error: error instanceof Error ? error.message : "Unexpected error",
+      ...blueprintFailure(error),
     });
     return finish(5);
   }
@@ -1602,7 +1625,7 @@ export async function applySupportedBlueprint(
       operation: "configure-workflow",
       key: "workflow",
       status: "failed",
-      error: error instanceof Error ? error.message : "Unexpected error",
+      ...blueprintFailure(error),
     });
     return finish(6);
   }
@@ -1613,25 +1636,31 @@ export async function applySupportedBlueprint(
       total: blueprint.tags.length,
     });
     try {
+      const failures = new Map<number, unknown>();
       const report = await assignStoryTags(
         gateway,
         spaceId,
         group.slugs,
         group.tags,
+        { onFailure: (storyId, error) => failures.set(storyId, error) },
       );
       for (const item of report.operations)
         operations.push({
           operation: "assign-tags",
           key: item.slug,
           status: item.status,
-          ...(item.error ? { error: item.error } : {}),
+          ...(failures.has(item.storyId)
+            ? blueprintFailure(failures.get(item.storyId))
+            : item.error
+              ? { error: item.error }
+              : {}),
         });
     } catch (error) {
       operations.push({
         operation: "assign-tags",
         key: group.slugs.join(", "),
         status: "failed",
-        error: error instanceof Error ? error.message : "Unexpected error",
+        ...blueprintFailure(error),
       });
     }
   }
@@ -1661,14 +1690,13 @@ export async function applySupportedBlueprint(
     } catch (error) {
       const last = operations.at(-1);
       if (last?.status === "failed")
-        last.error =
-          error instanceof Error ? error.message : "Unexpected error";
+        Object.assign(last, blueprintFailure(error));
       else
         operations.push({
           operation: "install-experiments",
           key: EXPERIMENTS_APP_ID,
           status: "failed",
-          error: error instanceof Error ? error.message : "Unexpected error",
+          ...blueprintFailure(error),
         });
       return finish(8);
     }
@@ -1777,7 +1805,7 @@ export async function applySupportedBlueprint(
           operation: "update-story-block",
           key,
           status: "failed",
-          error: error instanceof Error ? error.message : "Unexpected error",
+          ...blueprintFailure(error),
         });
         return finish(10);
       }
@@ -1878,7 +1906,7 @@ export async function applySupportedBlueprint(
           operation: "activate-experiment",
           key,
           status: "failed",
-          error: error instanceof Error ? error.message : "Unexpected error",
+          ...blueprintFailure(error),
         });
         return finish(11);
       }
@@ -1915,7 +1943,7 @@ export async function applySupportedBlueprint(
             operation: "push-experiment-results",
             key,
             status: "failed",
-            error: error instanceof Error ? error.message : "Unexpected error",
+            ...blueprintFailure(error),
           });
         return finish(11);
       }
@@ -1949,7 +1977,7 @@ export async function applySupportedBlueprint(
           operation: "update-story-block",
           key,
           status: "failed",
-          error: error instanceof Error ? error.message : "Unexpected error",
+          ...blueprintFailure(error),
         });
         return finish(10);
       }
@@ -1977,7 +2005,7 @@ export async function applySupportedBlueprint(
         operation: "create-pipeline-branch",
         key: branch.name,
         status: "failed",
-        error: error instanceof Error ? error.message : "Unexpected error",
+        ...blueprintFailure(error),
       });
       return finish(13);
     }
@@ -2015,7 +2043,7 @@ export async function applySupportedBlueprint(
         operation: "publish-release",
         key: reference,
         status: "failed",
-        error: error instanceof Error ? error.message : "Unexpected error",
+        ...blueprintFailure(error),
       });
       return finish(14);
     }

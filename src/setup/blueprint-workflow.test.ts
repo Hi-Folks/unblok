@@ -1,7 +1,60 @@
 import { describe, expect, test } from "bun:test";
 import { applyBlueprintWorkflow } from "./blueprint-workflow.ts";
+import { ClientError } from "@storyblok/management-api-client";
+import type { BlueprintOperation } from "./blueprint-report.ts";
 
 describe("blueprint workflow", () => {
+  test("preserves structured errors for failed story assignments", async () => {
+    const story = {
+      id: 1,
+      name: "Home",
+      full_slug: "home",
+      stage: null,
+      is_folder: false,
+    };
+    const gateway = {
+      listWorkflows: async () => [{ id: 5, name: "Default", is_default: true }],
+      listWorkflowStages: async () => [
+        { id: 9, name: "Reviewing", workflow_id: 5 },
+      ],
+      getWorkflowStage: async () => ({
+        id: 9,
+        name: "Reviewing",
+        workflow_id: 5,
+      }),
+      listStories: async () => [story],
+      findStoryBySlug: async () => story,
+      assignWorkflowStage: async () => {
+        throw new ClientError("Forbidden", {
+          status: 403,
+          statusText: "Forbidden",
+          data: {},
+        });
+      },
+    };
+    const operations: BlueprintOperation[] = [];
+    expect(
+      await applyBlueprintWorkflow(
+        gateway as never,
+        42,
+        {
+          assignUnstaged: false,
+          assignments: [
+            { slugs: ["home"], workflow: "Default", stage: "Reviewing" },
+          ],
+        },
+        operations,
+      ),
+    ).toBe(true);
+    expect(operations).toMatchObject([
+      {
+        operation: "assign-workflow",
+        key: "home",
+        status: "failed",
+        errorInfo: { code: "PERMISSION_DENIED", status: 403 },
+      },
+    ]);
+  });
   test("assigns unstaged stories first, then named stories, and skips matches on rerun", async () => {
     const workflows = [{ id: 5, name: "Default", is_default: true }];
     const stages = [

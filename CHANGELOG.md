@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.5.0 - 2026-11-11
+
+### Added
+
+- Install the version-matched Unblok skill for Codex or Claude Code with `unblok skill install --agent <codex|claude>`.
+- Include shared error codes and optional HTTP status for failed YAML operations, with per-language details for all-languages translation failures.
+- List and print version-matched blueprint examples locally with `space setup examples` and `space setup example`.
+- Add `bun run buildexe` to compile a local standalone CLI executable for the current platform.
+- Print the installed CLI's blueprint JSON Schema locally with `space setup schema`.
+- Add an Unblok skill for AI coding agents, with guidance for CLI operations, YAML blueprints, the JavaScript library, translation, and campaign preparation.
+- Include individual blueprint validation issues with paths and messages in JSON errors.
+
+### Changed
+
+- Emit structured CLI errors on stderr in `--json` mode, while keeping partial-result reports on stdout.
+- Make blueprint validation errors more actionable with clearer missing-field and conflicting-field messages and suggestions for similar property names.
+- Clarify setup, release, and AI translation command help, including examples and important side effects.
+- Describe translation requests as processed rather than finished when background tasks may still be running, and report specific invalid option combinations.
+- Document how to install the Unblok skill for Codex and Claude Code.
+
 ## 0.4.0 - 2026-11-10
 
 ### Added

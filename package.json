@@ -27,6 +27,7 @@
     "dev": "bun --hot index.ts",
     "test": "bun test",
     "build": "bun run scripts/release/build.ts",
+    "buildexe": "bun build --compile --no-compile-autoload-dotenv ./index.ts --outfile ./dist/unblok",
     "typecheck": "bun check",
     "quality": "bun fmt --check scripts/release/*.ts && bun run typecheck && bun test",
     "release": "bun run scripts/release/prepare.ts",

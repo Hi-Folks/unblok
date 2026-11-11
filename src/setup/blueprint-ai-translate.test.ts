@@ -1,10 +1,56 @@
 import { expect, test } from "bun:test";
+import { ClientError } from "@storyblok/management-api-client";
 import {
   applySupportedBlueprint,
   compileSupportedBlueprint,
 } from "./blueprint-apply.ts";
 import { loadBlueprint } from "./blueprint-loader.ts";
 import { resolveBlueprint } from "./blueprint-validation.ts";
+
+test("reports structured failures per language when translating all languages", async () => {
+  const blueprint = compileSupportedBlueprint(
+    resolveBlueprint({
+      version: 1,
+      stories: { ai_translate: [{ story_id: 7, all_languages: true }] },
+    }),
+  );
+  const gateway = {
+    listLanguages: async () => [
+      { code: "de", name: "German", aiTranslationCode: "de" },
+      { code: "fr", name: "French", aiTranslationCode: "fr" },
+    ],
+    getStory: async () => ({ id: 7, content: { component: "default-page" } }),
+    aiTranslateStory: async (
+      _space: number,
+      _id: number,
+      input: { code: string },
+    ) => {
+      const status = input.code === "de" ? 403 : 429;
+      throw new ClientError("Failure", {
+        status,
+        statusText: "Failure",
+        data: {},
+      });
+    },
+  };
+  const report = await applySupportedBlueprint(gateway as never, 42, blueprint);
+  expect(report.operations[0]).toMatchObject({
+    status: "failed",
+    failures: [
+      {
+        language: "de",
+        phase: "translation",
+        error: { code: "PERMISSION_DENIED", status: 403 },
+      },
+      {
+        language: "fr",
+        phase: "translation",
+        error: { code: "RATE_LIMITED", status: 429 },
+      },
+    ],
+  });
+  expect(report.operations[0]?.errorInfo).toBeUndefined();
+});
 
 test("loads the example and reports a failed language and remaining work", async () => {
   const blueprint = compileSupportedBlueprint(

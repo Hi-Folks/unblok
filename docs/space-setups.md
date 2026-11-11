@@ -67,11 +67,17 @@ On an existing space, behavior depends on the resource:
 
 These behaviors make many operations repeatable, but do not guarantee that two spaces become identical: source content, existing stories, external files, app availability, and API state can differ. Changes already made are not rolled back on a later failure. The report explains unchanged items, identifies failures, lists later operations that did not run, and summarizes completed, skipped, failed, and not-run counts. Fix the error and rerun with the same space ID; inputs and confirmation flags must be supplied again. `--json` includes the same reasons, `summary`, and recovery guidance. A failure returns a nonzero exit code.
 
+In a JSON apply report, an individual failed operation can include `errorInfo` with `code`, `message`, and an HTTP `status` when available. For example, a permission failure can report `{"code":"PERMISSION_DENIED","message":"Storyblok API request failed (HTTP 403).","status":403}`. The operation's `error` and `reason` remain human-readable strings. Unknown or unclassified errors use `UNKNOWN`; do not infer a more specific code from the message. An all-languages translation operation can include `failures`, each identifying a `language`, `phase` (`translation` or `review`), and structured `error`; multiple failures do not have a single `errorInfo` code. Inspect the entire report before retrying because earlier changes and queued tasks are not rolled back.
+
 In an interactive terminal, apply also shows progress as setup phases run, including individual apps, component fields, assets, and processed workflow stories. Redirected and JSON output do not include live progress.
 
 ## Schema and current boundaries
 
 The local [JSON Schema](../space-setup.schema.json) provides editor completion and is used by the CLI after input resolution. AI Translations and [space AI settings](../examples/customer-demo/steps/09-space-ai.yaml) are separate, opt-in operations. The example enables space AI and disables inheritance of organization AI configuration. Some capabilities have mocked tests but have not yet been verified end to end in a live space. The `version: 1` blueprint format uses `space setup`; the older `space-man/v1` format uses `space plan` and `space apply` and has different capabilities.
+
+To retrieve the complete schema bundled with your installed CLI, run `unblok space setup schema --json`. This is a local, unauthenticated operation; the output is JSON even without `--json`. You can save it with `unblok space setup schema > space-setup.schema.json` and point a YAML editor at that file. The schema includes local `$defs` references, so keep the complete document when using it for validation. Planning remains the way to validate resolved inputs and blueprint operations.
+
+Discover version-matched examples with `unblok space setup examples --json`, then print one with `unblok space setup example campaign-launch` or `unblok space setup example translation-review`. The example command prints YAML by default; add `--json` for an object containing the name, description and YAML content. These commands run locally without a token. Adapt inputs, components and other prerequisites to your space before planning or applying an example.
 
 App slugs in `apps.install` are looked up for the target space's region. To override region inference for all space-scoped requests, set `STORYBLOK_REGION` to `eu`, `us`, `ca`, `ap`, or `cn` before running the setup. Explicit numeric app IDs are used as supplied.
 

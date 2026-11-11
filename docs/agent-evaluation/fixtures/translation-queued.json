@@ -1,0 +1,17 @@
+{
+  "results": [
+    {
+      "language": { "lang": "de", "code": "de" },
+      "status": "queued",
+      "backgroundTaskId": 101,
+      "review": { "status": "assigned" }
+    },
+    {
+      "language": { "lang": "it", "code": "it" },
+      "status": "queued",
+      "backgroundTaskId": 102,
+      "review": { "status": "assigned" }
+    }
+  ],
+  "failed": false
+}

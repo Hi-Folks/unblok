@@ -24,7 +24,7 @@
 - **YAML provisioning:** describe a space setup as configuration and apply it repeatably.
 - **JavaScript and TypeScript library:** call common content operations from your own code, such as assigning a workflow stage to multiple stories.
 
-The library API is in early development. The next release packages it alongside the CLI for Node.js and Bun projects. See the [library guide](docs/library.md).
+The library API is in early development and is packaged alongside the CLI for Node.js and Bun projects. See the [library guide](docs/library.md).
 
 > Early development: commands and interfaces may change while the initial workflow is shaped.
 
@@ -60,6 +60,10 @@ unblok space setup apply --config setup.yaml --space-id YOUR_SPACE_ID --yes
 
 The plan validates the blueprint locally and shows its operations; it does not inspect the space or predict changes. Applying requires a token and performs the operations against Storyblok. Repeat behavior depends on the resource and existing state; see [repeatable space setups](docs/space-setups.md) for details.
 
+Run `unblok space setup schema --json` to print the complete JSON Schema bundled with your installed CLI. It works locally without a token and can be saved for editor completion or inspected by automation.
+
+Run `unblok space setup examples --json` to discover the bundled recipes, then `unblok space setup example campaign-launch` to print an example as YAML. The examples match the installed version; adapt them to your space before applying.
+
 ## Recipes
 
 Recipes show how to use Unblok for common, real-world Storyblok workflows. Each recipe brings together the steps and API calls needed to achieve an outcome, so you can adapt it to your team and reuse it in a script, a YAML setup or an integration.
@@ -75,11 +79,25 @@ That gives people and agents the same predictable commands, validation, and stru
 
 AI still needs the right instructions and permissions, and Storyblok state or API errors can affect results. Review plans and reports, especially before applying changes; a failed setup can leave earlier changes in place.
 
+See the [AI improvements to-do list](docs/ai-improvements.md) for planned work on agent support.
+
 ### Use Unblok with an AI coding agent
 
-The [Unblok skill](skills/unblok/SKILL.md) helps agents choose between the CLI, YAML blueprints, and the JavaScript library. It includes focused guidance for translation and campaign recipes. Install the CLI separately and configure your Storyblok token as described below; installing the skill does not install Unblok or grant access to a space.
+The [Unblok skill](skills/unblok/SKILL.md) helps agents choose between the CLI, YAML blueprints, and the JavaScript library. It includes focused guidance for translation and campaign recipes. You can use `npx` without a global CLI installation. Installing the skill does not grant access to a space; configure a Storyblok token when you want to run space operations.
 
-To get the skill, clone the repository if you don't already have a checkout:
+From your project directory, install the skill for the agent you use:
+
+```bash
+npx unblok@latest skill install --agent codex
+# or
+npx unblok@latest skill install --agent claude
+```
+
+The command downloads the skill from the GitHub tag matching the Unblok version and installs it in `.agents/skills/unblok` for Codex or `.claude/skills/unblok` for Claude Code. It requires network access, but no Storyblok token, and does not change `.env`. On success, it prints the destination and suggests starting a new agent session. You can then ask the agent, for example, “Use the Unblok skill to plan a campaign launch.” Use `--json` for a machine-readable result.
+
+The command stops if a skill already exists at the destination; review and move or remove that directory before reinstalling. It downloads the complete skill before creating the destination and reports missing release files or network errors.
+
+The skill must exist in the matching release tag; the command reports an error if it cannot find it. To install manually from a checkout instead, clone the repository if you don't already have one:
 
 ```bash
 git clone https://github.com/Hi-Folks/unblok.git ~/unblok-skill-source
@@ -107,14 +125,14 @@ The checkout and its documentation may describe a newer version than the install
 
 ## Installation
 
-The next release supports Node.js 22.21.0 or newer. Install the CLI with npm:
+Unblok supports Node.js 22.21.0 or newer. Install the CLI with npm:
 
 ```bash
 npm install -g unblok
 unblok --help
 ```
 
-You can also try `npx unblok --help`. Bun users can run `bunx --bun unblok --help`. The current published version may have different runtime requirements; these instructions describe the upcoming single-package release.
+You can also try `npx unblok --help`. Bun users can run `bunx --bun unblok --help`.
 
 Unblok is an independent open-source project, licensed under the [MIT License](LICENSE), and is not an official Storyblok product. Contributors use Bun for development.
 
@@ -221,7 +239,10 @@ The [alpha release checklist](docs/alpha-release-checklist.md) tracks verificati
 bun test
 bun run typecheck
 bun run build
+bun run buildexe
 bun fmt
 ```
+
+`bun run buildexe` compiles a standalone executable for the current machine at `dist/unblok` (`dist/unblok.exe` on Windows). Run it with `./dist/unblok --help`; it does not require Node.js or Bun at runtime. It reads `.env` from the working directory like the CLI. This local build is separate from the npm release package.
 
 See [AGENTS.md](AGENTS.md) for repository conventions.

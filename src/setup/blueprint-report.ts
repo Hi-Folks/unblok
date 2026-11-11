@@ -1,10 +1,17 @@
 import { formatStatus } from "../reporting.ts";
+import { errorInfo, type UnblokErrorInfo } from "../actions/action-error.ts";
 
 export interface BlueprintOperation {
   operation: string;
   key: string;
   status: string;
   error?: string;
+  errorInfo?: UnblokErrorInfo;
+  failures?: Array<{
+    language: string;
+    phase: "translation" | "review";
+    error: UnblokErrorInfo;
+  }>;
   reason?: string;
 }
 
@@ -14,8 +21,27 @@ export class BlueprintOperationError extends Error {
     readonly key: string,
     cause: unknown,
   ) {
-    super(cause instanceof Error ? cause.message : "Unexpected error");
+    super(cause instanceof Error ? cause.message : "Unexpected error", {
+      cause,
+    });
   }
+}
+
+export function blueprintFailure(error: unknown): {
+  error: string;
+  errorInfo: UnblokErrorInfo;
+} {
+  const source = error instanceof BlueprintOperationError ? error.cause : error;
+  const info = errorInfo(source);
+  return {
+    error:
+      info.status !== undefined
+        ? info.message
+        : error instanceof Error
+          ? error.message
+          : "Unexpected error",
+    errorInfo: info,
+  };
 }
 
 const unchangedReasons: Record<string, string> = {

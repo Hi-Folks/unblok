@@ -1,10 +1,96 @@
 import { describe, expect, test } from "bun:test";
+import { ClientError } from "@storyblok/management-api-client";
 import {
   applySupportedBlueprint,
   compileSupportedBlueprint,
 } from "./blueprint-apply.ts";
 
 describe("blueprint execution", () => {
+  test("classifies wrapped story API failures and preserves partial results", async () => {
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        create: [
+          {
+            name: "First",
+            slug: "first",
+            content: { component: "default-page" },
+          },
+          {
+            name: "Later",
+            slug: "later",
+            content: { component: "default-page" },
+          },
+        ],
+      },
+    });
+    const gateway = {
+      findStoryBySlug: async () => undefined,
+      createStory: async () => {
+        throw new ClientError("sensitive-token", {
+          status: 403,
+          statusText: "Forbidden",
+          data: { message: "sensitive-token" },
+        });
+      },
+    };
+    const report = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(report.operations).toMatchObject([
+      {
+        operation: "create-story",
+        status: "failed",
+        errorInfo: { code: "PERMISSION_DENIED", status: 403 },
+      },
+      { operation: "create-story", status: "not_run" },
+    ]);
+    expect(JSON.stringify(report)).not.toContain("sensitive-token");
+  });
+
+  test("classifies per-story tag failures while continuing independent assignments", async () => {
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      tags: [{ stories: { slugs: ["first", "second"] }, tags: ["campaign"] }],
+    });
+    const gateway = {
+      findStoryBySlug: async (_space: number, slug: string) => ({
+        id: slug === "first" ? 1 : 2,
+        full_slug: slug,
+        tag_list: [],
+      }),
+      getStory: async (_space: number, id: number) => ({
+        id,
+        full_slug: id === 1 ? "first" : "second",
+        tag_list: [],
+      }),
+      updateStoryTags: async (_space: number, id: number) => {
+        if (id === 1)
+          throw new ClientError("Forbidden", {
+            status: 403,
+            statusText: "Forbidden",
+            data: {},
+          });
+      },
+    };
+    const report = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(report.operations).toMatchObject([
+      {
+        operation: "assign-tags",
+        key: "first",
+        status: "failed",
+        errorInfo: { code: "PERMISSION_DENIED", status: 403 },
+      },
+      { operation: "assign-tags", key: "second", status: "updated" },
+    ]);
+    expect(report.failed).toBe(true);
+  });
   test("resolves YAML app slugs separately for each target space", async () => {
     const writes: Array<[number, string]> = [];
     const blueprint = compileSupportedBlueprint({
@@ -441,6 +527,10 @@ describe("blueprint execution", () => {
         key: "new",
         status: "failed",
         error: "Story limit reached",
+        errorInfo: {
+          code: "UNKNOWN",
+          message: "An unexpected error occurred.",
+        },
         reason: "Story limit reached",
       },
       {

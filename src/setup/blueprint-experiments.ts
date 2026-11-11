@@ -5,7 +5,10 @@ import {
 } from "../actions/experiments/experiments.ts";
 import { CliError } from "../errors.ts";
 import type { StoryblokGateway } from "../storyblok/gateway.ts";
-import type { BlueprintOperation } from "./blueprint-report.ts";
+import {
+  blueprintFailure,
+  type BlueprintOperation,
+} from "./blueprint-report.ts";
 
 type Variant = {
   name: string;
@@ -159,7 +162,7 @@ async function record<T>(
       operation,
       key,
       status: "failed",
-      error: error instanceof Error ? error.message : "Unexpected error",
+      ...blueprintFailure(error),
     });
     throw error;
   }

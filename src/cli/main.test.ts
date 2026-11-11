@@ -1,4 +1,4 @@
-import { describe, expect, test, setSystemTime } from "bun:test";
+import { describe, expect, test, setSystemTime, spyOn } from "bun:test";
 import { ClientError } from "@storyblok/management-api-client";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -10,6 +10,10 @@ import type { StoryblokGateway } from "../storyblok/gateway.ts";
 import type { ListSpacesOptions } from "../storyblok/gateway.ts";
 import { runCli } from "./main.ts";
 import { version } from "../../package.json";
+import blueprintSchema from "../../space-setup.schema.json";
+import { parse as parseYaml } from "yaml";
+import { resolveBlueprint } from "../setup/blueprint-validation.ts";
+import { compileSupportedBlueprint } from "../setup/blueprint-apply.ts";
 
 function createHarness(gateway?: Partial<StoryblokGateway>) {
   const stdout: unknown[] = [];
@@ -130,6 +134,203 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("installs the version-matched agent skill with JSON output and no Storyblok token", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-skill-cli-"));
+    const previous = process.cwd();
+    const requests: string[] = [];
+    const fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
+      Object.assign(
+        async (input: string | URL | Request) => {
+          requests.push(String(input));
+          return new Response("skill content");
+        },
+        { preconnect: globalThis.fetch.preconnect },
+      ),
+    );
+    try {
+      process.chdir(dir);
+      const harness = createHarness();
+      harness.options.environment = {};
+      harness.options.createGateway = () => {
+        throw new Error("Must not contact Storyblok");
+      };
+      expect(
+        await runCli(
+          ["skill", "install", "--agent", "codex", "--json"],
+          harness.options,
+        ),
+      ).toBe(0);
+      expect(harness.stdout[0]).toEqual({
+        status: "installed",
+        agent: "codex",
+        version,
+        path: join(".agents", "skills", "unblok"),
+      });
+      expect(requests).toHaveLength(4);
+      expect(
+        requests.every((url) => url.includes(`/v${version}/skills/unblok/`)),
+      ).toBe(true);
+      expect(
+        await runCli(
+          ["skill", "install", "--agent", "codex", "--json"],
+          harness.options,
+        ),
+      ).toBe(1);
+      expect(requests).toHaveLength(4);
+    } finally {
+      process.chdir(previous);
+      fetchSpy.mockRestore();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("returns structured operation errors with a partial YAML apply report", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-report-error-"));
+    try {
+      const file = join(dir, "setup.yaml");
+      await writeFile(
+        file,
+        "version: 1\nstories:\n  create:\n    - name: First\n      slug: first\n      content:\n        component: default-page\n    - name: Later\n      slug: later\n      content:\n        component: default-page\n",
+      );
+      const harness = createHarness({
+        findStoryBySlug: async () => undefined,
+        createStory: async () => {
+          throw new ClientError("secret", {
+            status: 403,
+            statusText: "Forbidden",
+            data: { message: "secret" },
+          });
+        },
+      });
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      let output = "";
+      let errors = "";
+      stdout.on("data", (chunk) => (output += chunk.toString()));
+      stderr.on("data", (chunk) => (errors += chunk.toString()));
+      harness.options.output = createOutput({ json: true, stdout, stderr });
+      expect(
+        await runCli(
+          [
+            "space",
+            "setup",
+            "apply",
+            "--config",
+            file,
+            "--space-id",
+            "42",
+            "--yes",
+            "--json",
+          ],
+          harness.options,
+        ),
+      ).toBe(1);
+      expect(JSON.parse(output)).toMatchObject({
+        failed: true,
+        operations: [
+          {
+            operation: "create-story",
+            key: "first",
+            status: "failed",
+            errorInfo: { code: "PERMISSION_DENIED", status: 403 },
+          },
+          { operation: "create-story", key: "later", status: "not_run" },
+        ],
+      });
+      expect(JSON.parse(errors).error.exitCode).toBe(1);
+      expect(output + errors).not.toContain("secret");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("lists and exports valid bundled recipes without Storyblok access", async () => {
+    const harness = createHarness();
+    harness.options.environment = {};
+    harness.options.createGateway = () => {
+      throw new Error("Examples must not contact Storyblok");
+    };
+    expect(
+      await runCli(["space", "setup", "examples", "--json"], harness.options),
+    ).toBe(0);
+    expect(harness.stdout[0]).toEqual([
+      expect.objectContaining({ name: "campaign-launch" }),
+      expect.objectContaining({ name: "translation-review" }),
+    ]);
+    for (const [name, inputs] of [
+      ["campaign-launch", { asset_url: "https://example.com/banner.jpg" }],
+      ["translation-review", { story_id: "123", language: "de" }],
+    ] as const) {
+      harness.stdout.length = 0;
+      expect(
+        await runCli(
+          ["space", "setup", "example", name, "--json"],
+          harness.options,
+        ),
+      ).toBe(0);
+      const example = harness.stdout[0] as { name: string; content: string };
+      expect(example.name).toBe(name);
+      expect(example.content).not.toContain("yaml-language-server");
+      expect(() =>
+        compileSupportedBlueprint(
+          resolveBlueprint(parseYaml(example.content), inputs),
+        ),
+      ).not.toThrow();
+    }
+    expect(
+      await runCli(
+        ["space", "setup", "example", "missing", "--json"],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(harness.stderr.at(-1)).toContain("space setup examples");
+    const human = createHarness();
+    Object.defineProperty(human.options.output, "mode", { value: "human" });
+    expect(
+      await runCli(
+        ["space", "setup", "example", "campaign-launch"],
+        human.options,
+      ),
+    ).toBe(0);
+    expect(parseYaml(human.stdout[0] as string)).toMatchObject({ version: 1 });
+  });
+
+  test("prints the installed blueprint schema locally as JSON", async () => {
+    for (const args of [[], ["--json"]]) {
+      const harness = createHarness();
+      harness.options.environment = {};
+      harness.options.createGateway = () => {
+        throw new Error("Schema must not contact Storyblok");
+      };
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      let output = "";
+      let errors = "";
+      stdout.on("data", (chunk) => (output += chunk.toString()));
+      stderr.on("data", (chunk) => (errors += chunk.toString()));
+      harness.options.output = createOutput({
+        json: args.length > 0,
+        stdout,
+        stderr,
+      });
+      expect(
+        await runCli(["space", "setup", "schema", ...args], harness.options),
+      ).toBe(0);
+      expect(errors).toBe("");
+      expect(JSON.parse(output)).toEqual(blueprintSchema);
+    }
+    const invalid = createHarness();
+    invalid.options.environment = {};
+    expect(
+      await runCli(
+        ["space", "setup", "schema", "--unknown", "--json"],
+        invalid.options,
+      ),
+    ).toBe(2);
+    expect(invalid.stdout).toEqual([]);
+    expect(invalid.stderr[0]).toContain("Unknown argument '--unknown'");
+  });
+
   test("recipe command help exposes options and side effects without credentials", async () => {
     const cases = [
       {

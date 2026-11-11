@@ -3,6 +3,10 @@ import { CliError } from "../errors.ts";
 import { assignWorkflowStage } from "../actions/stories/workflow-assignment.ts";
 import { ensureDefaultWorkflow } from "../actions/workflows/ensure-default.ts";
 import type { StoryblokGateway } from "../storyblok/gateway.ts";
+import {
+  blueprintFailure,
+  type BlueprintOperation,
+} from "./blueprint-report.ts";
 
 export interface BlueprintWorkflow {
   assignUnstaged: boolean;
@@ -95,12 +99,7 @@ export async function applyBlueprintWorkflow(
   gateway: StoryblokGateway,
   spaceId: number,
   config: BlueprintWorkflow,
-  operations: Array<{
-    operation: string;
-    key: string;
-    status: string;
-    error?: string;
-  }>,
+  operations: BlueprintOperation[],
   onStory?: (slug: string, processed: number, failed: boolean) => void,
 ): Promise<boolean> {
   if (!config.assignUnstaged && !config.assignments.length) return false;
@@ -146,9 +145,13 @@ export async function applyBlueprintWorkflow(
   }
   let failed = false;
   let processed = 0;
+  const failures = new Map<number, unknown>();
   const progress = {
     onOperation: (operation: { fullSlug: string; status: string }) =>
       onStory?.(operation.fullSlug, ++processed, operation.status === "failed"),
+    onFailure: (storyId: number, error: unknown) => {
+      failures.set(storyId, error);
+    },
   };
   const record = (
     operation: string,
@@ -159,7 +162,11 @@ export async function applyBlueprintWorkflow(
         operation,
         key: item.fullSlug,
         status: item.status,
-        ...(item.error ? { error: item.error } : {}),
+        ...(failures.has(item.storyId)
+          ? blueprintFailure(failures.get(item.storyId))
+          : item.error
+            ? { error: item.error }
+            : {}),
       });
     if (report.summary.failed) failed = true;
   };

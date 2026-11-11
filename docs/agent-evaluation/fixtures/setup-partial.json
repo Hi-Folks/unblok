@@ -1,0 +1,35 @@
+{
+  "apiVersion": "unblok/blueprint-apply-v1",
+  "target": { "spaceId": 12345 },
+  "operations": [
+    {
+      "operation": "install-app",
+      "key": "releases_only",
+      "status": "installed"
+    },
+    {
+      "operation": "create-release",
+      "key": "Autumn Campaign",
+      "status": "failed",
+      "error": "Storyblok API request failed (HTTP 403).",
+      "reason": "Storyblok API request failed (HTTP 403).",
+      "errorInfo": {
+        "code": "PERMISSION_DENIED",
+        "message": "Storyblok API request failed (HTTP 403).",
+        "status": 403
+      }
+    },
+    {
+      "operation": "create-story",
+      "key": "autumn-campaign",
+      "status": "not_run",
+      "reason": "Stopped after an earlier failure."
+    }
+  ],
+  "summary": { "completed": 1, "skipped": 0, "failed": 1, "notRun": 1 },
+  "failed": true,
+  "recovery": {
+    "spaceId": 12345,
+    "message": "Fix the failure and rerun with --space-id 12345."
+  }
+}

@@ -172,6 +172,12 @@ try {
     if (!(await run([runtime, cli, "--help"], temp)).includes("Usage: unblok"))
       throw new Error(`${runtime} CLI help failed.`);
     if (
+      !(await run([runtime, cli, "skill", "install", "--help"], temp)).includes(
+        "--agent <codex|claude>",
+      )
+    )
+      throw new Error(`${runtime} skill installer help failed.`);
+    if (
       (await run([runtime, cli, "--version"], temp)) !==
       `unblok ${manifest.version}`
     )
@@ -193,6 +199,33 @@ try {
     ) as { apiVersion?: string };
     if (plan.apiVersion !== "unblok/setup-blueprint-plan-v1")
       throw new Error(`${runtime} YAML plan failed.`);
+    const schema = JSON.parse(
+      await run([runtime, cli, "space", "setup", "schema", "--json"], temp),
+    );
+    const expectedSchema = await Bun.file(
+      resolve("space-setup.schema.json"),
+    ).json();
+    if (JSON.stringify(schema) !== JSON.stringify(expectedSchema))
+      throw new Error(`${runtime} blueprint schema failed.`);
+    for (const [name, source] of [
+      ["campaign-launch", "examples/recipes/campaign-launch.yaml"],
+      [
+        "translation-review",
+        "examples/features/setup-translation-from-event.yaml",
+      ],
+    ]) {
+      const example = JSON.parse(
+        await run(
+          [runtime, cli, "space", "setup", "example", name!, "--json"],
+          temp,
+        ),
+      ) as { name?: string; content?: string };
+      const expected = (await Bun.file(resolve(source!)).text())
+        .replace(/^# yaml-language-server:.*\r?\n/, "")
+        .trimEnd();
+      if (example.name !== name || example.content !== expected)
+        throw new Error(`${runtime} blueprint example '${name}' failed.`);
+    }
     await run(
       [
         runtime,
@@ -204,7 +237,7 @@ try {
     );
   }
   console.log(
-    "Validated packed CLI, YAML plan, and library under Node and Bun.",
+    "Validated packed CLI, YAML plan, blueprint schema and examples, and library under Node and Bun.",
   );
 } finally {
   await rm(temp, { recursive: true, force: true });

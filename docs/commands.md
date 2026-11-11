@@ -15,6 +15,17 @@ The Pipelines app (`branches`) must be installed. Creation requires `--yes` and 
 
 `pipeline get` accepts a numeric ID or an exact, case-sensitive name. A numeric-only reference is interpreted as an ID. Name lookups must match exactly one stage. JSON output contains the ID, name and, when returned, source ID; URLs are not exposed.
 
+## `skill install`
+
+Install the Unblok skill in the current project:
+
+```bash
+unblok skill install --agent codex
+unblok skill install --agent claude --json
+```
+
+The command downloads the skill and references from the GitHub tag matching the installed Unblok version. It installs to `.agents/skills/unblok` for Codex or `.claude/skills/unblok` for Claude Code, and refuses to overwrite an existing destination. A network connection is required; a Storyblok token is not. Start a new agent session after installation. With `--json`, success includes `status`, `agent`, `version` and the project-relative `path`. If the matching tag does not contain the skill or a download fails, the command reports an error. See the [installation guide](../README.md#use-unblok-with-an-ai-coding-agent) for manual installation and updating.
+
 ## Storyblok content releases
 
 ```bash

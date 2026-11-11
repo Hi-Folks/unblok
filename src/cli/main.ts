@@ -8,6 +8,7 @@ import { appCommand } from "../commands/app/index.ts";
 import { assetCommand } from "../commands/asset/index.ts";
 import { releaseCommand } from "../commands/release/index.ts";
 import { pipelineCommand } from "../commands/pipeline/index.ts";
+import { skillCommand } from "../commands/skill/index.ts";
 import {
   getStoryblokRequestsPerSecond,
   getStoryblokRegion,
@@ -20,14 +21,8 @@ import {
   type StoryblokGatewayFactory,
 } from "../storyblok/gateway.ts";
 import { dispatch } from "./dispatch.ts";
-import { version as packageVersion } from "../../package.json";
+import { version } from "../version.ts";
 import { toUnblokError } from "../actions/action-error.ts";
-
-declare const UNBLOK_BUILD_VERSION: string | undefined;
-const version =
-  typeof UNBLOK_BUILD_VERSION === "undefined"
-    ? packageVersion
-    : UNBLOK_BUILD_VERSION;
 
 export interface CliOptions {
   createGateway?: StoryblokGatewayFactory;
@@ -46,6 +41,7 @@ const commands = [
   assetCommand,
   releaseCommand,
   pipelineCommand,
+  skillCommand,
 ];
 
 export async function runCli(

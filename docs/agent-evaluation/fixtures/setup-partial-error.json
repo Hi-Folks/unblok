@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "UNKNOWN",
+    "message": "One or more blueprint operations failed; review the report.",
+    "exitCode": 1
+  }
+}
