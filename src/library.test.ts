@@ -22,7 +22,63 @@ import {
   planStoryTags,
   assignStoryWorkflow,
   planStoryWorkflow,
+  listStories,
 } from "./library.ts";
+
+test("library lists filtered stories with shared validation and errors", async () => {
+  const requests: unknown[] = [];
+  const gateway = {
+    listStories: async (space: number, options: unknown) => {
+      requests.push({ space, options });
+      return [
+        { id: 1, name: "Home", full_slug: "articles/home" },
+        { id: 1, name: "Home", full_slug: "articles/home" },
+      ];
+    },
+  };
+  const stories = await listStories(gateway as never, {
+    spaceId: 42,
+    search: "home",
+    textSearch: "headline",
+    startsWith: "articles/",
+    component: "hero",
+    tag: "campaign",
+    published: false,
+  });
+  expect(stories).toHaveLength(1);
+  expect(requests).toEqual([
+    {
+      space: 42,
+      options: {
+        storyOnly: true,
+        search: "home",
+        textSearch: "headline",
+        startsWith: "articles/",
+        component: "hero",
+        tag: "campaign",
+        published: false,
+      },
+    },
+  ]);
+  await expect(
+    listStories(gateway as never, { spaceId: 0 }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    listStories(gateway as never, { spaceId: 42, tag: " " }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  const denied = {
+    listStories: async () => {
+      throw new ClientError("Forbidden", {
+        status: 403,
+        statusText: "Forbidden",
+        data: {},
+      });
+    },
+  };
+  await expect(
+    listStories(denied as never, { spaceId: 42 }),
+  ).rejects.toMatchObject({ code: "PERMISSION_DENIED", status: 403 });
+});
 
 test("public library publishes a release", async () => {
   const gateway = {

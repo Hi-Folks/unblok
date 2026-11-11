@@ -8,6 +8,17 @@ For the ordered implementation checklist for the full demo YAML, see [Demo space
 
 This is a prioritized backlog, not a promise that every operation will be exposed through all three interfaces. Confirm the use case and API behavior before implementation. A shared action should serve the CLI, YAML runner, and library wherever the operation is exposed.
 
+## Content discovery and analysis
+
+- [x] List stories through the CLI and library using folder prefix, name/slug search, content search, contained block, tag and publication filters.
+- [ ] Extend story queries with explicitly supported content-field filters and other useful Management API selectors, guided by real use cases.
+- [ ] Compare field-level translations, showing corresponding source and translated values and identifying missing translations. Explore folder-level translations separately because they use different stories.
+- [ ] List story version history, including author, time and status, and compare selected versions. Evaluate the current Management API versions endpoint and its older-history boundary before implementation.
+
+These are read-only analysis operations. Keep JSON output useful to scripts and agents, reuse shared actions in the library, and add YAML support when a repeatable setup actually needs the selection or analysis.
+
+## Demo setup backlog
+
 1. **[x] Create a story from the CLI.** `story create` uses the existing story creation action, accepting a JSON definition and an explicit `--yes`. The CLI, library, and YAML create root-level drafts and preserve an existing story with the same slug.
 2. **[x] Manage Storyblok releases.** The CLI and library can list and inspect releases; CLI, library and YAML can create releases with fixed or relative schedules and explicitly publish them. Creation skips an existing exact name and fails when multiple matches exist. [Storyblok create-release API](https://www.storyblok.com/docs/api/management/releases/create-a-release).
 3. **[x] Create a Pipeline branch.** CLI, library, and YAML can create a named stage with an optional source by exact name. The example creates `Go Live` without an explicit source; creation succeeded in one live space, while regional availability requires verification. [Storyblok create-branch API](https://www.storyblok.com/docs/api/management/pipelines/create-a-branch).

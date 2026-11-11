@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 - WIP
+
+### Added
+
+- List and filter non-folder stories from the CLI and JavaScript library using Management API queries.
+
 ## 0.5.0 - 2026-11-11
 
 ### Added

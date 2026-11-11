@@ -6,6 +6,52 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
+test("lists all pages of stories with the requested Management API filters", async () => {
+  const urls: URL[] = [];
+  globalThis.fetch = (async (input: string | Request | URL) => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    urls.push(url);
+    const page = Number(url.searchParams.get("page"));
+    return Response.json({
+      stories:
+        page === 1
+          ? Array.from({ length: 1000 }, (_, i) => ({ id: i + 1 }))
+          : [{ id: 1001 }],
+    });
+  }) as typeof fetch;
+  const stories = await createStoryblokGateway("test-token").listStories(42, {
+    search: "news",
+    textSearch: "hello",
+    startsWith: "articles/",
+    component: "hero",
+    tag: "campaign",
+    published: false,
+    storyOnly: true,
+  });
+  expect(stories).toHaveLength(1001);
+  expect(urls).toHaveLength(2);
+  expect(urls[0]?.pathname).toBe("/v1/spaces/42/stories");
+  for (const [key, value] of Object.entries({
+    search: "news",
+    text_search: "hello",
+    starts_with: "articles/",
+    contain_component: "hero",
+    with_tag: "campaign",
+    is_published: "false",
+    story_only: "true",
+    per_page: "1000",
+  }))
+    expect(urls[0]?.searchParams.get(key)).toBe(value);
+  expect(urls[1]?.searchParams.get("page")).toBe("2");
+});
+
+test("fails instead of reporting an empty list when the API omits stories", async () => {
+  globalThis.fetch = (async () => Response.json({})) as unknown as typeof fetch;
+  await expect(
+    createStoryblokGateway("test-token").listStories(42),
+  ).rejects.toThrow("did not return a stories list");
+});
+
 test("sends the AI translation request through the space gateway", async () => {
   let request: Request | undefined;
   globalThis.fetch = (async (

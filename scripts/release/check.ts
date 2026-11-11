@@ -235,6 +235,15 @@ try {
       ],
       temp,
     );
+    await run(
+      [
+        runtime,
+        "--input-type=module",
+        "-e",
+        'import { listStories } from "unblok"; const calls=[]; const stories=await listStories({listStories:async (space, options)=>{calls.push({space,options}); return [{id:1}]}},{spaceId:42,tag:"campaign"}); if(stories.length!==1 || calls[0].options.tag!=="campaign" || calls[0].options.storyOnly!==true) throw new Error("Story list action failed");',
+      ],
+      temp,
+    );
   }
   console.log(
     "Validated packed CLI, YAML plan, blueprint schema and examples, and library under Node and Bun.",

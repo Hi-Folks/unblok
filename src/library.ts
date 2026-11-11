@@ -45,6 +45,11 @@ export type {
   CreateReleaseResult,
 } from "./actions/releases/releases.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
+export { listStories } from "./actions/stories/library-list.ts";
+export type {
+  ListStoriesInput,
+  StoryListGateway,
+} from "./actions/stories/library-list.ts";
 export { translateStoryWithAi } from "./actions/stories/ai-translate.ts";
 export type {
   TranslationReviewOptions,

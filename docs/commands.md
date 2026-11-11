@@ -73,6 +73,15 @@ bun run start story folder create --path folder1/subfolder2 --space-id 123456 --
 
 The command creates missing content folders in order and reuses existing folders. Each path segment becomes both the folder name and slug. `--yes` is required. JSON output includes the final `folderId`, overall `status` and paths created. It stops if a story occupies a requested folder path or a folder lookup is ambiguous. If a later segment fails, earlier created folders remain; review the result and rerun. Concurrent operations can still race.
 
+## `story list`
+
+```bash
+unblok story list --starts-with articles/ --tag campaign --space-id YOUR_SPACE_ID --json
+unblok story list --text-search "product launch" --published --space-id YOUR_SPACE_ID
+```
+
+Lists non-folder stories via the Management API, following all pages. `--search` matches names and slugs; `--text-search` also searches content. `--starts-with` selects a full-slug prefix, `--component` filters by a contained nestable block, and `--tag` filters by assigned tag. `--published` and `--unpublished` are mutually exclusive. Filters can be combined. `--space-id` defaults to `STORYBLOK_SPACE_ID`. JSON returns the story objects from the list endpoint, which does not include full content; use `story get` to inspect an individual story. The command is read-only. See the [Management API reference](https://www.storyblok.com/docs/api/management/stories/retrieve-multiple-stories) for filter behavior.
+
 ## `story create`
 
 ```bash

@@ -316,3 +316,21 @@ const result = await editWorkflow(gateway, {
 ```
 
 The optional fields are `name`, `contentTypes` and `perLanguageStages`. Only supplied fields are updated; `contentTypes` replaces the entire list. Renaming requires a numeric workflow ID as a string to keep retries safe. The result has `updated` or `unchanged` and the workflow ID; validation, missing data and unverifiable updates reject with `UnblokError`. Concurrent edits may race the update. This API uses the same action as the CLI, YAML and translation review setup.
+
+## List stories
+
+Use `listStories` to retrieve non-folder stories and filter by name or slug, content, full-slug prefix, contained block, tag, and publication status:
+
+```js
+import { createStoryblokGateway, listStories } from "unblok";
+
+const gateway = createStoryblokGateway(process.env.STORYBLOK_TOKEN);
+const stories = await listStories(gateway, {
+  spaceId: YOUR_SPACE_ID,
+  startsWith: "articles/",
+  tag: "campaign",
+  published: true,
+});
+```
+
+The gateway follows all pages and returns Management API story objects without full content. Additional optional filters are `search`, `textSearch` and `component` (a contained nestable block). Invalid inputs and API failures use `UnblokError` codes. Use the CLI's `story get` or a suitable story operation to inspect content.

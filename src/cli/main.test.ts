@@ -134,6 +134,69 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("lists stories with combined filters in JSON and validates conflicts before requests", async () => {
+    const calls: unknown[] = [];
+    const harness = createHarness({
+      listStories: async (space, options) => {
+        calls.push({ space, options });
+        return [{ id: 1, full_slug: "articles/home", name: "Home" }] as never;
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "list",
+          "--space-id",
+          "42",
+          "--starts-with",
+          "articles/",
+          "--tag",
+          "campaign",
+          "--text-search",
+          "hero",
+          "--component",
+          "teaser",
+          "--unpublished",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[0]).toEqual([
+      { id: 1, full_slug: "articles/home", name: "Home" },
+    ]);
+    expect(calls).toEqual([
+      {
+        space: 42,
+        options: {
+          storyOnly: true,
+          startsWith: "articles/",
+          tag: "campaign",
+          textSearch: "hero",
+          component: "teaser",
+          published: false,
+        },
+      },
+    ]);
+    expect(
+      await runCli(
+        ["story", "list", "--published", "--unpublished", "--json"],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(calls).toHaveLength(1);
+    expect(harness.stderr.at(-1)).toContain("only one");
+  });
+
+  test("shows an empty story list in human output", async () => {
+    const harness = createHarness({ listStories: async () => [] });
+    Object.defineProperty(harness.options.output, "mode", { value: "human" });
+    expect(
+      await runCli(["story", "list", "--space-id", "42"], harness.options),
+    ).toBe(0);
+    expect(harness.stdout).toContain("No matching stories found.");
+  });
   test("installs the version-matched agent skill with JSON output and no Storyblok token", async () => {
     const dir = await mkdtemp(join(tmpdir(), "unblok-skill-cli-"));
     const previous = process.cwd();

@@ -7,6 +7,7 @@ import { storyPublishCommand } from "./publish.ts";
 import { storyCreateCommand } from "./create.ts";
 import { storyFolderCommand } from "./folder.ts";
 import { storyAiTranslateCommand } from "./ai-translate.ts";
+import { storyListCommand } from "./list.ts";
 
 export const storyCommand: Command = {
   name: "story",
@@ -16,6 +17,7 @@ export const storyCommand: Command = {
     await dispatch(
       "unblok story",
       [
+        storyListCommand,
         storyGetCommand,
         storyCreateCommand,
         storyAiTranslateCommand,

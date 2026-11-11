@@ -277,6 +277,10 @@ export interface ListStoriesOptions {
   ids?: number[];
   search?: string;
   startsWith?: string;
+  textSearch?: string;
+  tag?: string;
+  published?: boolean;
+  storyOnly?: boolean;
 }
 
 export interface ListWorkflowStagesOptions {
@@ -973,12 +977,22 @@ export const createStoryblokGateway = (
               : {}),
             ...(options.search ? { search: options.search } : {}),
             ...(options.startsWith ? { starts_with: options.startsWith } : {}),
+            ...(options.textSearch ? { text_search: options.textSearch } : {}),
+            ...(options.tag ? { with_tag: options.tag } : {}),
+            ...(options.published === undefined
+              ? {}
+              : { is_published: options.published }),
+            ...(options.storyOnly === undefined
+              ? {}
+              : { story_only: options.storyOnly }),
             show_stage: true,
             page,
             per_page: perPage,
           },
         });
-        const batch = response.data.stories ?? [];
+        const batch = response.data.stories;
+        if (!Array.isArray(batch))
+          throw new CliError("Storyblok did not return a stories list.");
         stories.push(...batch);
         if (batch.length < perPage) break;
       }
