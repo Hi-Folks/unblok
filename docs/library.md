@@ -334,3 +334,17 @@ const stories = await listStories(gateway, {
 ```
 
 The gateway follows all pages and returns Management API story objects without full content. Additional optional filters are `search`, `textSearch` and `component` (a contained nestable block). Invalid inputs and API failures use `UnblokError` codes. Use the CLI's `story get` or a suitable story operation to inspect content.
+
+## Compare story languages
+
+```js
+import { compareStoryLanguages } from "unblok";
+
+const report = await compareStoryLanguages(gateway, {
+  spaceId: YOUR_SPACE_ID,
+  story: "home",
+  languages: ["de", "it"],
+});
+```
+
+The read-only action uses the story and its component schemas to compare fields marked translatable. The result includes JSON Pointer paths, stored default and language values, `present`/`empty`/`missing` statuses and counts. `matchesSource` is included only when both stored values exist; equality does not indicate translation quality, and missing stored values may use a fallback. Languages must be configured in the space. Missing or ambiguous component definitions fail with `UnblokError` instead of returning an incomplete result. This action handles field-level translations, not separate folder-level stories.

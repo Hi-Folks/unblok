@@ -244,6 +244,15 @@ try {
       ],
       temp,
     );
+    await run(
+      [
+        runtime,
+        "--input-type=module",
+        "-e",
+        'import { compareStoryLanguages } from "unblok"; const gateway={findStoryBySlug:async()=>({id:7}),getStory:async()=>({id:7,full_slug:"home",content:{component:"page",title:"Hello",title__i18n__de:"Hallo"}}),listComponents:async()=>[{name:"page",schema:{title:{translatable:true}}}],listLanguages:async()=>[{code:"de"}]}; const result=await compareStoryLanguages(gateway,{spaceId:42,story:"home",languages:["de"]}); if(result.fields[0].translations[0].value!=="Hallo") throw new Error("Story language comparison failed");',
+      ],
+      temp,
+    );
   }
   console.log(
     "Validated packed CLI, YAML plan, blueprint schema and examples, and library under Node and Bun.",

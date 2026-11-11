@@ -8,6 +8,7 @@ import { storyCreateCommand } from "./create.ts";
 import { storyFolderCommand } from "./folder.ts";
 import { storyAiTranslateCommand } from "./ai-translate.ts";
 import { storyListCommand } from "./list.ts";
+import { storyCompareLanguagesCommand } from "./compare-languages.ts";
 
 export const storyCommand: Command = {
   name: "story",
@@ -18,6 +19,7 @@ export const storyCommand: Command = {
       "unblok story",
       [
         storyListCommand,
+        storyCompareLanguagesCommand,
         storyGetCommand,
         storyCreateCommand,
         storyAiTranslateCommand,

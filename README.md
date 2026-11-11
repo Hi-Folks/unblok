@@ -186,6 +186,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `story publish` publishes the current draft of a story by full slug.
 - `story create` creates a draft from a JSON definition at the root or in an existing folder.
 - `story list` finds stories by slug prefix, search, content, contained block, tag and publication status.
+- `story compare-languages` compares stored field-level translations against default story values.
 - `story ai-translate` requests translations of a story's draft into selected languages using Storyblok AI.
 - `story folder create` ensures a nested content folder path exists.
 - `release list`, `get`, `create` and `publish` manage Storyblok content releases.

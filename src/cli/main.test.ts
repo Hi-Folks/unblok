@@ -134,6 +134,85 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("compares stored story language values using schema in JSON", async () => {
+    const harness = createHarness({
+      findStoryBySlug: async () => ({ id: 7 }) as never,
+      getStory: async () =>
+        ({
+          id: 7,
+          full_slug: "home",
+          content: {
+            component: "page",
+            title: "Hello",
+            title__i18n__de: "Hallo",
+          },
+        }) as never,
+      listComponents: async () =>
+        [
+          {
+            name: "page",
+            schema: {
+              title: { type: "text", translatable: true },
+              internal: { type: "text" },
+            },
+          },
+        ] as never,
+      listLanguages: async () => [
+        { code: "de", name: "German" },
+        { code: "it", name: "Italian" },
+      ],
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "compare-languages",
+          "--ref",
+          "home",
+          "--language",
+          "de",
+          "--language",
+          "it",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[0]).toMatchObject({
+      apiVersion: "unblok/story-language-comparison-v1",
+      fields: [
+        {
+          path: "/title",
+          source: { value: "Hello" },
+          translations: [
+            { language: "de", status: "present", value: "Hallo" },
+            { language: "it", status: "missing" },
+          ],
+        },
+      ],
+      summary: { fields: 1, present: 1, missing: 1 },
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "compare-languages",
+          "--ref",
+          "home",
+          "--language",
+          "de",
+          "--language",
+          "de",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+  });
   test("lists stories with combined filters in JSON and validates conflicts before requests", async () => {
     const calls: unknown[] = [];
     const harness = createHarness({

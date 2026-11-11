@@ -73,6 +73,16 @@ bun run start story folder create --path folder1/subfolder2 --space-id 123456 --
 
 The command creates missing content folders in order and reuses existing folders. Each path segment becomes both the folder name and slug. `--yes` is required. JSON output includes the final `folderId`, overall `status` and paths created. It stops if a story occupies a requested folder path or a folder lookup is ambiguous. If a later segment fails, earlier created folders remain; review the result and rerun. Concurrent operations can still race.
 
+## `story compare-languages`
+
+```bash
+unblok story compare-languages --ref home --language de --language it --space-id YOUR_SPACE_ID --json
+```
+
+Compares the story's default and stored field-level values for fields marked translatable in its component schemas. `--ref` is an ID or exact full slug; repeat `--language` for each configured additional language. `--space-id` defaults to `STORYBLOK_SPACE_ID`. The command reads the story, components and space languages; it does not change content.
+
+JSON includes the story identity, requested languages, per-field JSON Pointer paths, component and optional block UID, stored source values, translations and counts. Values are `present`, `empty` (null or a blank string) or `missing` (no stored key). `matchesSource` compares stored values only and is omitted if either key is missing. A missing value may fall back to the default, and an equal value is not proof that translation is needed. Nested blocks are included. Missing or ambiguous component definitions cause an error rather than an incomplete comparison. This does not compare folder-level stories or evaluate translation quality. See [Storyblok field-level translation](https://www.storyblok.com/docs/api/management/stories/internationalization-for-stories).
+
 ## `story list`
 
 ```bash

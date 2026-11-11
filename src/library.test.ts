@@ -23,7 +23,34 @@ import {
   assignStoryWorkflow,
   planStoryWorkflow,
   listStories,
+  compareStoryLanguages,
 } from "./library.ts";
+
+test("library compares story language values through the public entry point", async () => {
+  const gateway = {
+    findStoryBySlug: async () => ({ id: 7 }),
+    getStory: async () => ({
+      id: 7,
+      full_slug: "home",
+      content: { component: "page", title: "Hello", title__i18n__de: "Hello" },
+    }),
+    listComponents: async () => [
+      { name: "page", schema: { title: { translatable: true } } },
+    ],
+    listLanguages: async () => [{ code: "de", name: "German" }],
+  };
+  const report = await compareStoryLanguages(gateway as never, {
+    spaceId: 42,
+    story: "home",
+    languages: ["de"],
+  });
+  expect(report.fields[0]?.translations[0]).toEqual({
+    language: "de",
+    status: "present",
+    value: "Hello",
+    matchesSource: true,
+  });
+});
 
 test("library lists filtered stories with shared validation and errors", async () => {
   const requests: unknown[] = [];

@@ -8,6 +8,8 @@ Inspect the target space before adapting a recipe when its details are missing. 
 
 To discover stories, use `unblok story list --help` for filters such as `--starts-with`, `--search`, `--text-search`, `--component`, `--tag`, and publication state. The list is metadata; retrieve individual stories to inspect content.
 
+Use `unblok story compare-languages --ref <story-id-or-full-slug> --language <space-language-code> --json` to compare stored field-level values for fields marked translatable in the component schema. Repeat `--language` for multiple configured additional languages. Missing stored values may use a fallback; equality does not determine translation quality. This does not compare separate folder-level stories.
+
 Prefer `--json` when the relevant command supports it. Inspect the exit status and both streams: a failure can include a partial-results report on stdout and a JSON error on stderr. Do not claim that a queued background task has completed. Only execute changes the user has authorized, respecting any instructions about who runs commands.
 
 For application or integration code, consult the [library guide](https://github.com/Hi-Folks/unblok/blob/main/docs/library.md) for exports, arguments, errors, and return values. The library takes credentials through application configuration; do not embed or print tokens. Use the installed library's version and types as the final authority.

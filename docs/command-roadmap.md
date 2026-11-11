@@ -12,7 +12,8 @@ This is a prioritized backlog, not a promise that every operation will be expose
 
 - [x] List stories through the CLI and library using folder prefix, name/slug search, content search, contained block, tag and publication filters.
 - [ ] Extend story queries with explicitly supported content-field filters and other useful Management API selectors, guided by real use cases.
-- [ ] Compare field-level translations, showing corresponding source and translated values and identifying missing translations. Explore folder-level translations separately because they use different stories.
+- [x] Compare stored field-level translation values against their default values using component schemas.
+- [ ] Explore folder-level translations separately because they use different stories.
 - [ ] List story version history, including author, time and status, and compare selected versions. Evaluate the current Management API versions endpoint and its older-history boundary before implementation.
 
 These are read-only analysis operations. Keep JSON output useful to scripts and agents, reuse shared actions in the library, and add YAML support when a repeatable setup actually needs the selection or analysis.

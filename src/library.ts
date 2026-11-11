@@ -46,6 +46,14 @@ export type {
 } from "./actions/releases/releases.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
 export { listStories } from "./actions/stories/library-list.ts";
+export { compareStoryLanguages } from "./actions/stories/compare-languages.ts";
+export type {
+  CompareLanguagesGateway,
+  CompareLanguagesInput,
+  CompareLanguagesReport,
+  ComparedField,
+  ComparedValue,
+} from "./actions/stories/compare-languages.ts";
 export type {
   ListStoriesInput,
   StoryListGateway,
