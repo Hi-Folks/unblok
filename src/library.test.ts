@@ -134,6 +134,7 @@ test("library lists filtered stories with shared validation and errors", async (
     component: "hero",
     tag: "campaign",
     published: false,
+    fieldFilters: [{ field: "category", operator: "in", value: "news" }],
   });
   expect(stories).toHaveLength(1);
   expect(requests).toEqual([
@@ -147,6 +148,7 @@ test("library lists filtered stories with shared validation and errors", async (
         component: "hero",
         tag: "campaign",
         published: false,
+        fieldFilters: [{ field: "category", operator: "in", value: "news" }],
       },
     },
   ]);
@@ -156,6 +158,16 @@ test("library lists filtered stories with shared validation and errors", async (
   await expect(
     listStories(gateway as never, { spaceId: 42, tag: " " }),
   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  await expect(
+    listStories(gateway as never, {
+      spaceId: 42,
+      fieldFilters: [
+        { field: "category", operator: "in", value: "news" },
+        { field: "category", operator: "in", value: "events" },
+      ],
+    }),
+  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+  expect(requests).toHaveLength(1);
   const denied = {
     listStories: async () => {
       throw new ClientError("Forbidden", {

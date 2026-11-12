@@ -130,6 +130,11 @@ test("lists all pages of stories with the requested Management API filters", asy
     tag: "campaign",
     published: false,
     storyOnly: true,
+    fieldFilters: [
+      { field: "category", operator: "in", value: "news,events" },
+      { field: "seo.title", operator: "like", value: "*launch*" },
+      { field: "date", operator: "gt_date", value: "2026-11-12 10:30" },
+    ],
   });
   expect(stories).toHaveLength(1001);
   expect(urls).toHaveLength(2);
@@ -143,9 +148,15 @@ test("lists all pages of stories with the requested Management API filters", asy
     is_published: "false",
     story_only: "true",
     per_page: "1000",
+    "filter_query[category][in]": "news,events",
+    "filter_query[seo.title][like]": "*launch*",
+    "filter_query[date][gt_date]": "2026-11-12 10:30",
   }))
     expect(urls[0]?.searchParams.get(key)).toBe(value);
   expect(urls[1]?.searchParams.get("page")).toBe("2");
+  expect(urls[1]?.searchParams.get("filter_query[category][in]")).toBe(
+    "news,events",
+  );
 });
 
 test("fails instead of reporting an empty list when the API omits stories", async () => {
@@ -153,6 +164,33 @@ test("fails instead of reporting an empty list when the API omits stories", asyn
   await expect(
     createStoryblokGateway("test-token").listStories(42),
   ).rejects.toThrow("did not return a stories list");
+});
+
+test("moves a story using the parent folder ID", async () => {
+  let body: unknown,
+    path = "";
+  globalThis.fetch = (async (
+    input: string | Request | URL,
+    init?: RequestInit,
+  ) => {
+    const request =
+      input instanceof Request
+        ? new Request(input, init)
+        : new Request(String(input), init);
+    path = new URL(request.url).pathname;
+    body = await request.json();
+    expect(request.method).toBe("PUT");
+    return Response.json({
+      story: { id: 7, parent_id: 10, full_slug: "global/home" },
+    });
+  }) as typeof fetch;
+  expect(
+    await createStoryblokGateway("test-token").moveStory(42, 7, 10),
+  ).toMatchObject({ parent_id: 10 });
+  expect(path).toBe("/v1/spaces/42/stories/7");
+  expect(body).toEqual({ story: { parent_id: 10 } });
+  await createStoryblokGateway("test-token").moveStory(42, 7, 10, true);
+  expect(body).toEqual({ story: { parent_id: 10, is_folder: true } });
 });
 
 test("sends the AI translation request through the space gateway", async () => {

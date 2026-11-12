@@ -185,7 +185,8 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `story tags plan` and `story tags assign` add tags to stories by full slug.
 - `story publish` publishes the current draft of a story by full slug.
 - `story create` creates a draft from a JSON definition at the root or in an existing folder.
-- `story list` finds stories by slug prefix, search, content, contained block, tag and publication status.
+- `story list` finds stories by slug prefix, search, contained block, tag, publication status and structured [content field filters](docs/commands.md#content-field-filters), such as `--field 'category:in:news,events'`.
+- `story move` moves a story by its full slug into an existing folder path; see [story move](docs/commands.md#story-move).
 - `story compare-languages` compares stored field-level translations against default story values.
 - `story versions` lists story history; `story compare-versions` compares two versions or the current draft with previous saved content using `--previous`.
 - `story ai-translate` requests translations of a story's draft into selected languages using Storyblok AI.

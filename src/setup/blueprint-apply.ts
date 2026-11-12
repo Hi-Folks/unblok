@@ -3,6 +3,8 @@ import { installAppById, installAppBySlug } from "../actions/apps/apps.ts";
 import { assignStoryTags } from "../actions/stories/story-tags.ts";
 import { isValidStoryCreationSlug } from "../actions/stories/create-story.ts";
 import { ensureStoryFolder } from "../actions/stories/ensure-folder.ts";
+import { organizeRoot } from "../actions/stories/organize-root.ts";
+import { configureDimensions } from "../actions/apps/dimensions.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
 import {
   createRelease,
@@ -94,6 +96,7 @@ function strings(value: unknown, path: string): string[] {
 
 export interface SupportedBlueprint {
   apps: Array<{ slug: string } | { id: string }>;
+  dimensionsFolders?: string[];
   configuration: BlueprintConfiguration;
   continueOnAppError: boolean;
   aiTranslationDisclaimerId?: number;
@@ -115,6 +118,7 @@ export interface SupportedBlueprint {
     review?: { stage: string; workflow?: string };
   }>;
   storyFolders: string[];
+  organizeRoot?: { destination: string; keep: string[] };
   translations: StoryTranslations[];
   storyUpdates: StoryBlockUpdate[];
   workflow: BlueprintWorkflow;
@@ -301,6 +305,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     aiTranslationDisclaimerId = Number(value.ai_translation.disclaimer_id);
   }
   let continueOnAppError = false;
+  let dimensionsFolders: string[] | undefined;
   if (value.apps !== undefined) {
     if (!isObject(value.apps)) throw new CliError("apps must be an object.", 2);
     if (
@@ -309,6 +314,24 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     )
       throw new CliError("apps.continue_on_error must be a boolean.", 2);
     continueOnAppError = value.apps.continue_on_error === true;
+    if (value.apps.dimensions !== undefined) {
+      const dimensions = value.apps.dimensions;
+      if (
+        !isObject(dimensions) ||
+        Object.keys(dimensions).some((key) => key !== "folders")
+      )
+        throw new CliError("apps.dimensions requires folders.", 2);
+      dimensionsFolders = strings(
+        dimensions.folders,
+        "apps.dimensions.folders",
+      );
+      if (
+        dimensionsFolders.some(
+          (path) => !isValidStoryCreationSlug(path) || path.includes("/"),
+        )
+      )
+        throw new CliError("Dimensions folders must be root paths.", 2);
+    }
     if (value.apps.install !== undefined) {
       if (!Array.isArray(value.apps.install))
         throw new CliError("apps.install must be an array.", 2);
@@ -339,6 +362,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
   const stories: StoryCreate[] = [];
   const aiTranslations: SupportedBlueprint["aiTranslations"] = [];
   const storyFolders: string[] = [];
+  let rootOrganization: SupportedBlueprint["organizeRoot"];
   const storyUpdates: StoryBlockUpdate[] = [];
   const translations: StoryTranslations[] = [];
   const workflow: BlueprintWorkflow = {
@@ -482,6 +506,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
             "translated_slugs",
             "update_blocks",
             "ensure_folders",
+            "organize_root",
             "ai_translate",
           ].includes(key),
       )
@@ -586,6 +611,35 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
           2,
         );
       storyFolders.push(...paths);
+    }
+    if (value.stories.organize_root !== undefined) {
+      const item = value.stories.organize_root;
+      if (
+        !isObject(item) ||
+        Object.keys(item).some(
+          (key) => !["destination", "keep"].includes(key),
+        ) ||
+        typeof item.destination !== "string" ||
+        item.destination !== item.destination.trim() ||
+        !isValidStoryCreationSlug(item.destination) ||
+        item.destination.includes("/") ||
+        !Array.isArray(item.keep) ||
+        item.keep.some(
+          (value) =>
+            typeof value !== "string" ||
+            value !== value.trim() ||
+            !isValidStoryCreationSlug(value) ||
+            value.includes("/"),
+        )
+      )
+        throw new CliError(
+          "stories.organize_root requires a root destination and an array of root folders to keep.",
+          2,
+        );
+      rootOrganization = {
+        destination: item.destination,
+        keep: [...new Set(item.keep as string[])],
+      };
     }
     if (value.stories.update_blocks !== undefined) {
       if (!Array.isArray(value.stories.update_blocks))
@@ -995,6 +1049,8 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       stories,
       aiTranslations,
       storyFolders,
+      rootOrganization,
+      dimensionsFolders,
       translations,
       storyUpdates,
       workflow,
@@ -1023,6 +1079,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
         ),
     ),
     configuration,
+    ...(dimensionsFolders ? { dimensionsFolders } : {}),
     continueOnAppError,
     aiTranslationDisclaimerId,
     aiSettings,
@@ -1032,6 +1089,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     stories,
     aiTranslations,
     storyFolders,
+    ...(rootOrganization ? { organizeRoot: rootOrganization } : {}),
     translations,
     storyUpdates,
     workflow,
@@ -1134,6 +1192,17 @@ export async function applySupportedBlueprint(
         operation: "ensure-story-folder",
         key,
       })),
+      ...(blueprint.dimensionsFolders
+        ? [{ operation: "configure-dimensions", key: "folders" }]
+        : []),
+      ...(blueprint.organizeRoot
+        ? [
+            {
+              operation: "organize-root",
+              key: blueprint.organizeRoot.destination,
+            },
+          ]
+        : []),
       ...blueprint.stories.map((story) => ({
         operation: "create-story",
         key: story.slug,
@@ -1436,6 +1505,8 @@ export async function applySupportedBlueprint(
   try {
     if (
       blueprint.storyFolders.length ||
+      blueprint.dimensionsFolders ||
+      blueprint.organizeRoot ||
       blueprint.stories.length ||
       blueprint.translations.length
     )
@@ -1451,6 +1522,53 @@ export async function applySupportedBlueprint(
         });
       } catch (error) {
         throw new BlueprintOperationError("ensure-story-folder", path, error);
+      }
+    }
+    if (blueprint.dimensionsFolders) {
+      try {
+        const result = await configureDimensions(gateway, {
+          spaceId,
+          folders: blueprint.dimensionsFolders,
+        });
+        operations.push({
+          operation: "configure-dimensions",
+          key: "folders",
+          status: result.status,
+        });
+      } catch (error) {
+        throw new BlueprintOperationError(
+          "configure-dimensions",
+          "folders",
+          error,
+        );
+      }
+    }
+    if (blueprint.organizeRoot) {
+      const key = blueprint.organizeRoot.destination;
+      try {
+        const moved = await organizeRoot(
+          gateway,
+          { spaceId, ...blueprint.organizeRoot },
+          (entry) => {
+            onProgress?.({
+              stage: "stories",
+              item: `${entry.from} → ${entry.to}`,
+            });
+            operations.push({
+              operation: "move-root-entry",
+              key: entry.from,
+              status: "completed",
+              reason: `Moved to ${entry.to}.`,
+            });
+          },
+        );
+        operations.push({
+          operation: "organize-root",
+          key,
+          status: moved.length ? "completed" : "unchanged",
+        });
+      } catch (error) {
+        throw new BlueprintOperationError("organize-root", key, error);
       }
     }
     await applyStories(

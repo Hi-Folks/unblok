@@ -1,6 +1,10 @@
 import type { Story } from "@storyblok/management-api-client";
 import { CliError } from "../../errors.ts";
 import type { StoryblokGateway } from "../../storyblok/gateway.ts";
+import {
+  type StoryFieldFilter,
+  validateStoryFieldFilters,
+} from "../../storyblok/story-field-filters.ts";
 import { toUnblokError } from "../action-error.ts";
 import { listStories as listMatchingStories } from "./list-stories.ts";
 
@@ -13,6 +17,7 @@ export interface ListStoriesInput {
   component?: string;
   tag?: string;
   published?: boolean;
+  fieldFilters?: readonly StoryFieldFilter[];
 }
 
 /** List non-folder stories using Management API filters. */
@@ -47,8 +52,13 @@ export async function listStories(
         1,
         "INVALID_INPUT",
       );
+    if (input.fieldFilters !== undefined)
+      validateStoryFieldFilters(input.fieldFilters);
     return await listMatchingStories(gateway, input.spaceId, {
       storyOnly: true,
+      ...(input.fieldFilters === undefined
+        ? {}
+        : { fieldFilters: input.fieldFilters }),
       ...(input.search === undefined ? {} : { search: input.search }),
       ...(input.textSearch === undefined
         ? {}

@@ -58,6 +58,10 @@ export type {
   StoryVersionChange,
 } from "./actions/stories/versions.ts";
 export type { StoryblokStoryVersion } from "./storyblok/gateway.ts";
+export type {
+  StoryFieldFilter,
+  StoryFieldOperator,
+} from "./storyblok/story-field-filters.ts";
 export { compareStoryLanguages } from "./actions/stories/compare-languages.ts";
 export type {
   CompareLanguagesGateway,
@@ -82,6 +86,23 @@ export type {
   TranslateStoryInput,
 } from "./actions/stories/ai-translate.ts";
 export { ensureStoryFolder } from "./actions/stories/ensure-folder.ts";
+export { moveStory } from "./actions/stories/move-story.ts";
+export { organizeRoot } from "./actions/stories/organize-root.ts";
+export { configureDimensions } from "./actions/apps/dimensions.ts";
+export type {
+  DimensionsGateway,
+  DimensionsInput,
+} from "./actions/apps/dimensions.ts";
+export type {
+  OrganizeRootGateway,
+  OrganizeRootInput,
+  RootMove,
+} from "./actions/stories/organize-root.ts";
+export type {
+  MoveStoryGateway,
+  MoveStoryInput,
+  MoveStoryResult,
+} from "./actions/stories/move-story.ts";
 export type {
   StoryFolderGateway,
   EnsureStoryFolderInput,

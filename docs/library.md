@@ -317,6 +317,24 @@ const result = await editWorkflow(gateway, {
 
 The optional fields are `name`, `contentTypes` and `perLanguageStages`. Only supplied fields are updated; `contentTypes` replaces the entire list. Renaming requires a numeric workflow ID as a string to keep retries safe. The result has `updated` or `unchanged` and the workflow ID; validation, missing data and unverifiable updates reject with `UnblokError`. Concurrent edits may race the update. This API uses the same action as the CLI, YAML and translation review setup.
 
+## Move a story
+
+Use `configureDimensions(gateway, { spaceId, folders: ["global", "italy"] })` to select existing root folders for Dimensions. This replaces the selection and preserves existing settings for retained folder IDs; new folders receive an empty AI translation code. The operation resolves folder IDs and leaves unrelated space settings untouched.
+
+```js
+import { moveStory } from "unblok";
+
+const result = await moveStory(gateway, {
+  spaceId: YOUR_SPACE_ID,
+  slug: "home",
+  folder: "global",
+});
+```
+
+The action resolves exact paths, checks destination conflicts, and returns `moved` or `unchanged` with the story ID and old and new slugs. The folder must already exist. A successful move changes the full slug; use the returned slug for later operations. After a move, the old source slug no longer identifies the story. Errors use `UnblokError` codes. See [`story move`](commands.md#story-move) for side effects and retry behavior.
+
+For whole-space organization, `organizeRoot(gateway, { spaceId, destination: "global", keep: ["uk", "germany", "italy"] }, onMove)` moves root entries other than the destination and kept paths. The folders must already exist. It checks all destination conflicts before moving and calls `onMove` after each confirmed move, allowing callers to record progress if a later move fails. A subsequent call moves any remaining or newly added root entries. This operation changes paths and its folder-move behavior has not been verified against a live space.
+
 ## List stories
 
 Use `listStories` to retrieve non-folder stories and filter by name or slug, content, full-slug prefix, contained block, tag, and publication status:
@@ -330,10 +348,16 @@ const stories = await listStories(gateway, {
   startsWith: "articles/",
   tag: "campaign",
   published: true,
+  fieldFilters: [
+    { field: "category", operator: "in", value: "news,events" },
+    { field: "featured", operator: "is", value: "true" },
+  ],
 });
 ```
 
 The gateway follows all pages and returns Management API story objects without full content. Additional optional filters are `search`, `textSearch` and `component` (a contained nestable block). Invalid inputs and API failures use `UnblokError` codes. Use the CLI's `story get` or a suitable story operation to inspect content.
+
+`fieldFilters` uses the same content field paths, operators, string values, and AND semantics as the CLI's `--field`; see the [content field filter reference](commands.md#content-field-filters). The exported `StoryFieldFilter` and `StoryFieldOperator` types are available to TypeScript callers. Invalid and duplicate field/operator pairs fail with `INVALID_INPUT` before any request.
 
 ## Compare story languages
 

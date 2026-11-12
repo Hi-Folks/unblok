@@ -11,6 +11,7 @@ This is a prioritized backlog, not a promise that every operation will be expose
 ## Content discovery and analysis
 
 - [x] List stories through the CLI and library using folder prefix, name/slug search, content search, contained block, tag and publication filters.
+- [x] Filter story lists by content fields using Management API operators in the CLI and library.
 - [ ] Extend story queries with explicitly supported content-field filters and other useful Management API selectors, guided by real use cases.
 - [x] Compare stored field-level translation values against their default values using component schemas.
 - [ ] Explore folder-level translations separately because they use different stories.

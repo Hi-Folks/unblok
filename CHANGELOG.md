@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1 - WIP
+
+### Added
+
+- Move a story by full slug into an existing folder with the CLI and JavaScript library.
+- Organize root-level stories and folders into a destination using YAML and the shared library action.
+- Configure Dimensions folder selection in YAML and the JavaScript library.
+- Filter story lists by content fields using repeatable CLI `--field` options and the library's `fieldFilters` input.
+
 ## 0.5.1 - 2026-11-11
 
 ### Added

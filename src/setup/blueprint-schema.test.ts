@@ -7,6 +7,24 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { loadBlueprint } from "./blueprint-loader.ts";
 
 describe("blueprint editor schema", () => {
+  test("country folder example validates and compiles", async () => {
+    const blueprint = await loadBlueprint(
+      "examples/features/setup-country-folders.yaml",
+    );
+    const resolved = resolveBlueprint(blueprint);
+    const compiled = compileSupportedBlueprint(resolved);
+    expect(compiled.apps).toEqual([{ id: "24" }]);
+    expect(compiled.dimensionsFolders).toEqual([
+      "global",
+      "uk",
+      "germany",
+      "italy",
+    ]);
+    expect(compiled.organizeRoot).toEqual({
+      destination: "global",
+      keep: ["uk", "germany", "italy"],
+    });
+  });
   test("reports useful locations, typo suggestions, missing fields, and conflicting fields", () => {
     try {
       resolveBlueprint({

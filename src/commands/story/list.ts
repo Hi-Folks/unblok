@@ -6,6 +6,11 @@ import {
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError } from "../../errors.ts";
+import {
+  parseStoryFieldFilter,
+  validateStoryFieldFilters,
+  type StoryFieldFilter,
+} from "../../storyblok/story-field-filters.ts";
 
 export const storyListCommand: Command = {
   name: "list",
@@ -14,11 +19,12 @@ export const storyListCommand: Command = {
   async run(args, context) {
     if (args.includes("--help") || args.includes("-h")) {
       context.output.text(
-        `Usage: ${this.usage}\n\nList non-folder stories. Results are paginated automatically and do not include full content; use 'story get' for content. Filters can be combined.\n\n  --search <text>       Search name, slug or full slug\n  --text-search <text>  Search story content and names\n  --starts-with <path>  Filter by full-slug prefix\n  --component <name>    Filter by contained nestable block\n  --tag <tag>           Filter by assigned tag\n  --published           Only published stories\n  --unpublished         Only unpublished stories\n  --space-id <id>       Target space; defaults to STORYBLOK_SPACE_ID\n  --json                Emit machine-readable JSON\n  -h, --help            Show command help\n\nExample:\n  unblok story list --starts-with articles/ --tag campaign --space-id YOUR_SPACE_ID --json`,
+        `Usage: ${this.usage}\n\nList non-folder stories. Results are paginated automatically and do not include full content; use 'story get' for content. Filters can be combined.\n\n  --search <text>       Search name, slug or full slug\n  --text-search <text>  Search story content and names\n  --starts-with <path>  Filter by full-slug prefix\n  --component <name>    Filter by contained nestable block\n  --tag <tag>           Filter by assigned tag\n  --field <field:operator:value>  Filter a content field; repeat for AND\n  --published           Only published stories\n  --unpublished         Only unpublished stories\n  --space-id <id>       Target space; defaults to STORYBLOK_SPACE_ID\n  --json                Emit machine-readable JSON\n  -h, --help            Show command help\n\nField operators: is, in, not_in, like, not_like, in_array, all_in_array, gt_int, lt_int, gt_float, lt_float, gt_date, lt_date.\n\nExamples:\n  unblok story list --starts-with articles/ --tag campaign --space-id YOUR_SPACE_ID --json\n  unblok story list --field 'category:in:news,events' --field 'featured:is:true' --space-id YOUR_SPACE_ID --json`,
       );
       return;
     }
     const values = new Map<string, string>();
+    const fieldFilters: StoryFieldFilter[] = [];
     let published: boolean | undefined;
     for (let i = 0; i < args.length; i++) {
       const arg = args[i]!;
@@ -41,6 +47,7 @@ export const storyListCommand: Command = {
           "--starts-with",
           "--component",
           "--tag",
+          "--field",
         ].includes(key)
       )
         throw new CliError(`Unknown argument '${arg}'.`, 2);
@@ -55,10 +62,15 @@ export const storyListCommand: Command = {
           `Option '${key}' requires a nonempty value without surrounding whitespace.`,
           2,
         );
+      if (key === "--field") {
+        fieldFilters.push(parseStoryFieldFilter(value));
+        continue;
+      }
       if (values.has(key))
         throw new CliError(`Option '${key}' can only be provided once.`, 2);
       values.set(key, value);
     }
+    validateStoryFieldFilters(fieldFilters);
     const spaceId = resolveSpaceId({
       environment: context.environment,
       option: values.get("--space-id"),
@@ -66,6 +78,7 @@ export const storyListCommand: Command = {
     const options: ListStoriesInput = {
       spaceId,
       ...(published === undefined ? {} : { published }),
+      ...(fieldFilters.length ? { fieldFilters } : {}),
     };
     const fields = [
       ["--search", "search"],

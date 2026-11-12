@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Prepare country content folders
+apps:
+  install:
+    - id: 24 # Dimensions in the EU region
+  dimensions:
+    folders:
+      - global
+      - uk
+      - germany
+      - italy
+stories:
+  # The shared starting point for content used across markets.
+  ensure_folders:
+    - global
+    - uk
+    - germany
+    - italy
+  organize_root:
+    destination: global
+    keep:
+      - uk
+      - germany
+      - italy

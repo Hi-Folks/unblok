@@ -61,6 +61,7 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     uploadAsset: async () => {},
     readAsset: async () => new Uint8Array(),
     createStory: async () => ({}) as never,
+    moveStory: async () => ({}) as never,
     updateTranslatedSlugs: async () => {},
     acceptSpaceDisclaimer: async () => {},
     deleteSpace: async () => {},
@@ -362,6 +363,9 @@ describe("runCli", () => {
           "hero",
           "--component",
           "teaser",
+          "--field",
+          "category:in:news,events",
+          "--field=scheduled:gt_date:2026-11-12 10:30",
           "--unpublished",
           "--json",
         ],
@@ -381,6 +385,14 @@ describe("runCli", () => {
           textSearch: "hero",
           component: "teaser",
           published: false,
+          fieldFilters: [
+            { field: "category", operator: "in", value: "news,events" },
+            {
+              field: "scheduled",
+              operator: "gt_date",
+              value: "2026-11-12 10:30",
+            },
+          ],
         },
       },
     ]);
@@ -392,6 +404,35 @@ describe("runCli", () => {
     ).toBe(2);
     expect(calls).toHaveLength(1);
     expect(harness.stderr.at(-1)).toContain("only one");
+    for (const filter of [
+      "category:unknown:x",
+      "category:is:maybe",
+      "category:in:",
+      "__or:in:x",
+      "category[in]:in:x",
+    ]) {
+      expect(
+        await runCli(
+          ["story", "list", "--field", filter, "--json"],
+          harness.options,
+        ),
+      ).toBe(2);
+    }
+    expect(
+      await runCli(
+        [
+          "story",
+          "list",
+          "--field",
+          "category:in:a",
+          "--field",
+          "category:in:b",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(calls).toHaveLength(1);
   });
 
   test("shows an empty story list in human output", async () => {
@@ -401,6 +442,62 @@ describe("runCli", () => {
       await runCli(["story", "list", "--space-id", "42"], harness.options),
     ).toBe(0);
     expect(harness.stdout).toContain("No matching stories found.");
+  });
+  test("moves a story by path with confirmation and JSON output", async () => {
+    const writes: unknown[] = [];
+    const harness = createHarness({
+      findStoryBySlug: async (_space, slug) =>
+        slug === "home"
+          ? ({ id: 7, slug: "home", full_slug: "home", parent_id: 0 } as never)
+          : undefined,
+      findStoryFolderBySlug: async (_space, slug) =>
+        slug === "global" ? { id: 10 } : undefined,
+      moveStory: async (space, id, parent) => {
+        writes.push({ space, id, parent });
+        return { id, parent_id: parent, full_slug: "global/home" } as never;
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "move",
+          "--slug",
+          "home",
+          "--folder",
+          "global",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(writes).toHaveLength(0);
+    expect(
+      await runCli(
+        [
+          "story",
+          "move",
+          "--slug",
+          "home",
+          "--folder",
+          "global",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(writes).toEqual([{ space: 42, id: 7, parent: 10 }]);
+    expect(harness.stdout.at(-1)).toEqual({
+      status: "moved",
+      storyId: 7,
+      from: "home",
+      to: "global/home",
+    });
   });
   test("installs the version-matched agent skill with JSON output and no Storyblok token", async () => {
     const dir = await mkdtemp(join(tmpdir(), "unblok-skill-cli-"));

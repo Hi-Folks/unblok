@@ -13,6 +13,10 @@ import {
 } from "@storyblok/management-api-client";
 import { getRegion } from "@storyblok/region-helper";
 import { CliError } from "../errors.ts";
+import {
+  type StoryFieldFilter,
+  validateStoryFieldFilters,
+} from "./story-field-filters.ts";
 
 export interface StoryblokGateway {
   listStoryVersions(
@@ -65,6 +69,12 @@ export interface StoryblokGateway {
     stage: WorkflowStageCreate,
   ): Promise<WorkflowStage>;
   findStoryBySlug(spaceId: number, slug: string): Promise<Story | undefined>;
+  moveStory(
+    spaceId: number,
+    storyId: number,
+    parentId: number,
+    isFolder?: boolean,
+  ): Promise<Story>;
   findStoryFolderBySlug(
     spaceId: number,
     slug: string,
@@ -185,6 +195,12 @@ export interface StoryblokGateway {
       is_demo?: boolean;
       ai_text_generator_disabled?: boolean;
       inherit_org_ai_configuration?: boolean;
+      dimensions_app_folder_ids?: number[];
+      dimensions_app_folders?: Array<{
+        folder_id: number;
+        ai_translation_code: string | null;
+        [key: string]: unknown;
+      }>;
     },
   ): Promise<void>;
   updateLanguages(
@@ -278,6 +294,7 @@ export interface ListComponentsOptions {
 }
 
 export interface ListStoriesOptions {
+  fieldFilters?: readonly StoryFieldFilter[];
   component?: string;
   ids?: number[];
   search?: string;
@@ -607,6 +624,21 @@ export const createStoryblokGateway = (
       if (matches.length > 1)
         throw new Error(`Multiple stories match full slug '${slug}'.`);
       return matches[0];
+    },
+    async moveStory(spaceId, storyId, parentId, isFolder = false) {
+      const response = await clientForSpace(spaceId).put<{ story: Story }>(
+        `/v1/spaces/${spaceId}/stories/${storyId}`,
+        {
+          headers: { "Content-Type": "application/json" },
+          body: {
+            story: {
+              parent_id: parentId,
+              ...(isFolder ? { is_folder: true } : {}),
+            },
+          },
+        },
+      );
+      return response.data.story;
     },
     async findStoryFolderBySlug(spaceId, slug) {
       const matches: Story[] = [];
@@ -1097,6 +1129,14 @@ export const createStoryblokGateway = (
         : versions.slice(0, options.limit);
     },
     async listStories(spaceId, options = {}) {
+      const fieldFilters = options.fieldFilters ?? [];
+      validateStoryFieldFilters(fieldFilters);
+      const fieldQuery = Object.fromEntries(
+        fieldFilters.map(({ field, operator, value }) => [
+          `filter_query[${field}][${operator}]`,
+          value,
+        ]),
+      );
       const stories: Story[] = [];
       const perPage = 1000;
       for (let page = 1; ; page += 1) {
@@ -1104,6 +1144,7 @@ export const createStoryblokGateway = (
           stories?: Story[];
         }>(`/v1/spaces/${spaceId}/stories`, {
           query: {
+            ...fieldQuery,
             ...(options.ids?.length ? { by_ids: options.ids.join(",") } : {}),
             ...(options.component
               ? { contain_component: options.component }

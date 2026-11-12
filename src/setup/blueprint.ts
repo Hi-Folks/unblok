@@ -62,6 +62,10 @@ export function planBlueprint(value: unknown): BlueprintPlan {
         support: "available",
       },
       install: { operation: "install apps", support: "available" },
+      dimensions: {
+        operation: "configure Dimensions folders",
+        support: "available",
+      },
     },
     ai: {
       enabled: { operation: "configure AI", support: "available" },
@@ -114,6 +118,10 @@ export function planBlueprint(value: unknown): BlueprintPlan {
       },
       ensure_folders: {
         operation: "create content folders",
+        support: "available",
+      },
+      organize_root: {
+        operation: "move root content into a folder",
         support: "available",
       },
       update_blocks: {

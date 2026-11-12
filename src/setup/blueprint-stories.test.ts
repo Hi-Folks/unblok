@@ -193,6 +193,148 @@ describe("story setup", () => {
     expect(writes).toBe(1);
   });
 
+  test("organizes root stories and folders, preserving country folders on rerun", async () => {
+    const entries = [
+      {
+        id: 1,
+        slug: "home",
+        full_slug: "home",
+        parent_id: 0,
+        is_folder: false,
+      },
+      {
+        id: 2,
+        slug: "articles",
+        full_slug: "articles",
+        parent_id: 0,
+        is_folder: true,
+      },
+      {
+        id: 3,
+        slug: "global",
+        full_slug: "global",
+        parent_id: 0,
+        is_folder: true,
+      },
+      { id: 4, slug: "uk", full_slug: "uk", parent_id: 0, is_folder: true },
+      {
+        id: 5,
+        slug: "welcome",
+        full_slug: "articles/welcome",
+        parent_id: 2,
+        is_folder: false,
+      },
+    ];
+    const writes: Array<[number, boolean | undefined]> = [];
+    const gateway = {
+      findStoryFolderBySlug: async (_space: number, path: string) => {
+        const entry = entries.find(
+          (item) => item.is_folder && item.full_slug === path,
+        );
+        return entry && { id: entry.id };
+      },
+      findStoryBySlug: async (_space: number, path: string) =>
+        entries.find((item) => !item.is_folder && item.full_slug === path),
+      listStories: async () => entries,
+      moveStory: async (
+        _space: number,
+        id: number,
+        parent: number,
+        isFolder?: boolean,
+      ) => {
+        const entry = entries.find((item) => item.id === id)!;
+        writes.push([id, isFolder]);
+        entry.parent_id = parent;
+        entry.full_slug = `global/${entry.slug}`;
+        return entry;
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        ensure_folders: ["global", "uk"],
+        organize_root: { destination: "global", keep: ["uk"] },
+      },
+    });
+    const first = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(first.summary.failed).toBe(0);
+    expect(writes).toEqual([
+      [1, false],
+      [2, true],
+    ]);
+    expect(first.operations).toMatchObject([
+      { operation: "ensure-story-folder", status: "unchanged" },
+      { operation: "ensure-story-folder", status: "unchanged" },
+      { operation: "move-root-entry", key: "home", status: "completed" },
+      { operation: "move-root-entry", key: "articles", status: "completed" },
+      { operation: "organize-root", status: "completed" },
+    ]);
+    const second = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(second.operations.at(-1)).toMatchObject({
+      operation: "organize-root",
+      status: "unchanged",
+    });
+    expect(writes).toEqual([
+      [1, false],
+      [2, true],
+    ]);
+  });
+
+  test("configures Dimensions after creating folders", async () => {
+    const folders = new Map<string, number>();
+    const updates: unknown[] = [];
+    const gateway = {
+      findStoryFolderBySlug: async (_space: number, path: string) =>
+        folders.has(path) ? { id: folders.get(path)! } : undefined,
+      findStoryBySlug: async () => undefined,
+      createStoryFolder: async (_space: number, input: { slug: string }) => {
+        const id = folders.size + 1;
+        folders.set(input.slug, id);
+        return { id };
+      },
+      getSpace: async () => ({
+        id: 42,
+        dimensions_app_folder_ids: [],
+        dimensions_app_folders: [],
+      }),
+      updateSpaceSettings: async (_space: number, settings: unknown) => {
+        updates.push(settings);
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      apps: { dimensions: { folders: ["global", "italy"] } },
+      stories: { ensure_folders: ["global", "italy"] },
+    });
+    const report = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(report.summary.failed).toBe(0);
+    expect(updates).toEqual([
+      {
+        dimensions_app_folder_ids: [1, 2],
+        dimensions_app_folders: [
+          { folder_id: 1, ai_translation_code: "" },
+          { folder_id: 2, ai_translation_code: "" },
+        ],
+      },
+    ]);
+    expect(report.operations.at(-1)).toMatchObject({
+      operation: "configure-dimensions",
+      status: "updated",
+    });
+  });
+
   test("reports a failed folder before a not-run story", async () => {
     const gateway = {
       findStoryFolderBySlug: async () => undefined,
