@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1 - WIP
+
+### Added
+
+### Changed
+
+- Compare all configured Dimensions folders by default when no explicit folders are selected.
+- 
 ## 0.6.0 - 2026-11-14
 
 ### Added

@@ -404,6 +404,8 @@ const report = await compareStoryDimensions(gateway, {
 
 It follows Storyblok's linked alternates and returns changes or `missing` per requested folder. See [`story compare-dimensions`](commands.md#story-compare-dimensions) for identity checks and comparison semantics.
 
+Omit `folders` to discover every configured Dimensions folder except the source folder. Custom gateways using this default must also provide `getSpace` and `listStories`; callers supplying explicit folders do not need those methods.
+
 ## Compare story languages
 
 ```js

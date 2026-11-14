@@ -3,15 +3,17 @@ import type { StoryblokGateway } from "../../storyblok/gateway.ts";
 import { toUnblokError } from "../action-error.ts";
 import { isValidStoryCreationSlug } from "./create-story.ts";
 import { compareContent, type StoryVersionChange } from "./versions.ts";
+import { listDimensionsFolders } from "../apps/list-dimensions.ts";
 
 export type CompareDimensionsGateway = Pick<
   StoryblokGateway,
   "getStory" | "findStoryBySlug" | "findStoryFolderBySlug"
->;
+> &
+  Partial<Pick<StoryblokGateway, "getSpace" | "listStories">>;
 export interface CompareDimensionsInput {
   spaceId: number;
   story: string;
-  folders: readonly string[];
+  folders?: readonly string[];
 }
 export interface DimensionComparison {
   folder: string;
@@ -25,7 +27,7 @@ export interface CompareDimensionsReport {
   folders: DimensionComparison[];
 }
 
-/** Compare a story with its explicitly linked alternate stories in root folders. */
+/** Compare a story with its linked alternates in selected or configured root folders. */
 export async function compareStoryDimensions(
   gateway: CompareDimensionsGateway,
   input: CompareDimensionsInput,
@@ -38,16 +40,17 @@ export async function compareStoryDimensions(
       typeof input.story !== "string" ||
       input.story !== input.story.trim() ||
       !isValidStoryCreationSlug(input.story) ||
-      !Array.isArray(input.folders) ||
-      !input.folders.length ||
-      input.folders.some(
-        (path) =>
-          typeof path !== "string" ||
-          path !== path.trim() ||
-          !isValidStoryCreationSlug(path) ||
-          path.includes("/"),
-      ) ||
-      new Set(input.folders).size !== input.folders.length
+      (input.folders !== undefined &&
+        (!Array.isArray(input.folders) ||
+          !input.folders.length ||
+          input.folders.some(
+            (path) =>
+              typeof path !== "string" ||
+              path !== path.trim() ||
+              !isValidStoryCreationSlug(path) ||
+              path.includes("/"),
+          ) ||
+          new Set(input.folders).size !== input.folders.length))
     )
       throw new CliError(
         "Provide a positive spaceId, an exact story slug or ID, and unique root folder paths.",
@@ -107,26 +110,56 @@ export async function compareStoryDimensions(
         1,
         "CONFLICT",
       );
+    let configured:
+      Awaited<ReturnType<typeof listDimensionsFolders>> | undefined;
+    if (input.folders === undefined) {
+      if (!gateway.getSpace || !gateway.listStories)
+        throw new CliError(
+          "Listing configured Dimensions folders requires getSpace and listStories gateway methods.",
+          2,
+          "INVALID_INPUT",
+        );
+      configured = await listDimensionsFolders(
+        {
+          getSpace: gateway.getSpace.bind(gateway),
+          listStories: gateway.listStories.bind(gateway),
+        },
+        { spaceId: input.spaceId },
+      );
+    }
+    const containsSource = (folder: string) =>
+      source.full_slug === folder || source.full_slug.startsWith(`${folder}/`);
+    const folders =
+      input.folders ??
+      configured!
+        .map((item) => item.path)
+        .filter((folder) => !containsSource(folder));
+    if (!folders.length)
+      throw new CliError(
+        "No other Dimensions folders are configured for comparison.",
+        1,
+        "NOT_FOUND",
+      );
     const results: DimensionComparison[] = [];
-    for (const folder of input.folders) {
-      if (source.full_slug.startsWith(`${folder}/`))
+    for (const folder of folders) {
+      if (containsSource(folder))
         throw new CliError(
           `Folder '${folder}' contains the source story; choose destination folders.`,
           2,
           "INVALID_INPUT",
         );
-      const targetFolder = await gateway.findStoryFolderBySlug(
-        input.spaceId,
-        folder,
-      );
+      const targetFolder =
+        configured?.find((item) => item.path === folder) ??
+        (await gateway.findStoryFolderBySlug(input.spaceId, folder));
       if (
         !targetFolder ||
         !Number.isSafeInteger(targetFolder.id) ||
         targetFolder.id <= 0
       )
         throw new CliError(`Folder '${folder}' was not found.`, 1, "NOT_FOUND");
-      const matches = alternates.filter((item) =>
-        item.full_slug.startsWith(`${folder}/`),
+      const matches = alternates.filter(
+        (item) =>
+          item.full_slug === folder || item.full_slug.startsWith(`${folder}/`),
       );
       if (matches.length > 1)
         throw new CliError(

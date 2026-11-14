@@ -42,8 +42,6 @@ Story contents can include unpublished or sensitive information; handle JSON out
 ```bash
 unblok story compare-dimensions \
   --ref global/home \
-  --folder germany \
-  --folder italy \
   --space-id YOUR_SPACE_ID
 ```
 
@@ -64,7 +62,7 @@ germany — germany/home
     variant: "https://example.com/german-banner.jpg"
 ```
 
-The example URLs are placeholders. Unblok identifies variants from Storyblok's linked alternates, so their slugs may differ. `not linked` means no linked alternate was returned for that folder; it does not prove that no similarly named story exists. Use `--json` for the versioned report and JSON Pointer paths. This is a read-only comparison of raw draft content, including block IDs; arrays are compared by position, and differences do not assess translation quality.
+The example URLs are placeholders. With no `--folder` options, Unblok checks every configured Dimensions folder except the one containing the source. To focus on specific folders, add `--folder germany --folder italy`. Unblok identifies variants from Storyblok's linked alternates, so their slugs may differ. `not linked` means no linked alternate was returned for that folder; it does not prove that no similarly named story exists. Use `--json` for the versioned report and JSON Pointer paths. This is a read-only comparison of raw draft content, including block IDs; arrays are compared by position, and differences do not assess translation quality.
 
 ## Cherry-pick the global image
 

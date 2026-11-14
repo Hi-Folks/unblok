@@ -72,3 +72,64 @@ test("rejects missing alternate data and ambiguous linked variants", async () =>
     compareStoryDimensions(gateway, { ...input, folders: ["italy/region"] }),
   ).rejects.toMatchObject({ code: "INVALID_INPUT" });
 });
+
+test("defaults to all configured folders except the source, including missing variants", async () => {
+  const gateway: CompareDimensionsGateway = {
+    getSpace: async () =>
+      ({
+        id: 42,
+        dimensions_app_folder_ids: [10, 11, 12],
+        dimensions_app_folders: [],
+      }) as never,
+    listStories: async () =>
+      [
+        { id: 10, is_folder: true, parent_id: 0, full_slug: "global/" },
+        { id: 11, is_folder: true, parent_id: 0, full_slug: "italy/" },
+        { id: 12, is_folder: true, parent_id: 0, full_slug: "germany/" },
+      ] as never,
+    findStoryBySlug: async () => ({ id: 1 }) as never,
+    findStoryFolderBySlug: async () => {
+      throw new Error("configured folders were already resolved");
+    },
+    getStory: async (_space, id) =>
+      id === 1
+        ? ({
+            id,
+            full_slug: "global/home",
+            content: { title: "Hello" },
+            alternates: [{ id: 2, full_slug: "italy/home" }],
+          } as never)
+        : ({
+            id,
+            full_slug: "italy/home",
+            content: { title: "Ciao" },
+          } as never),
+  };
+  const report = await compareStoryDimensions(gateway, {
+    spaceId: 42,
+    story: "global/home",
+  });
+  expect(report.folders).toMatchObject([
+    { folder: "italy", status: "compared" },
+    { folder: "germany", status: "missing" },
+  ]);
+});
+
+test("reports when no other configured folder is available", async () => {
+  const gateway: CompareDimensionsGateway = {
+    getSpace: async () => ({ id: 42, dimensions_app_folder_ids: [] }) as never,
+    listStories: async () => [],
+    findStoryBySlug: async () => ({ id: 1 }) as never,
+    findStoryFolderBySlug: async () => undefined,
+    getStory: async () =>
+      ({
+        id: 1,
+        full_slug: "global/home",
+        content: {},
+        alternates: [],
+      }) as never,
+  };
+  await expect(
+    compareStoryDimensions(gateway, { spaceId: 42, story: "global/home" }),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+});

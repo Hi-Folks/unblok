@@ -513,6 +513,48 @@ describe("runCli", () => {
       ],
     });
   });
+  test("compares all configured Dimensions folders when no folders are specified", async () => {
+    const harness = createHarness({
+      getSpace: async () =>
+        ({
+          id: 42,
+          dimensions_app_folder_ids: [10, 11],
+          dimensions_app_folders: [],
+        }) as never,
+      listStories: async () =>
+        [
+          { id: 10, full_slug: "global", is_folder: true, parent_id: 0 },
+          { id: 11, full_slug: "italy", is_folder: true, parent_id: 0 },
+        ] as never,
+      findStoryBySlug: async () => ({ id: 1 }) as never,
+      getStory: async (_space, id) =>
+        id === 1
+          ? ({
+              id,
+              full_slug: "global/home",
+              content: {},
+              alternates: [{ id: 2, full_slug: "italy/home" }],
+            } as never)
+          : ({ id, full_slug: "italy/home", content: {} } as never),
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "compare-dimensions",
+          "--ref",
+          "global/home",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout.at(-1)).toMatchObject({
+      folders: [{ folder: "italy", status: "compared" }],
+    });
+  });
   test("plans and applies selected block fields with structured output", async () => {
     let writes = 0;
     const stories = [

@@ -10,11 +10,11 @@ export const storyCompareDimensionsCommand: Command = {
   name: "compare-dimensions",
   description: "Compare a story with linked folder variants",
   usage:
-    "unblok story compare-dimensions --ref <id-or-full-slug> --folder <root-folder>... [--space-id <id>] [--json]",
+    "unblok story compare-dimensions --ref <id-or-full-slug> [--folder <root-folder>...] [--space-id <id>] [--json]",
   async run(args, context) {
     if (args.includes("--help") || args.includes("-h")) {
       context.output.text(
-        `Usage: ${this.usage}\n\nCompare draft content with linked alternate stories in the requested root folders. Repeat --folder to inspect multiple variants. Missing means no linked alternate was returned, not that no similarly named story exists. Arrays are compared by position.\n\nExample:\n  unblok story compare-dimensions --ref global/home --folder italy --folder germany --space-id YOUR_SPACE_ID --json`,
+        `Usage: ${this.usage}\n\nCompare draft content with linked alternate stories. By default, inspect every configured Dimensions folder except the source folder. Repeat --folder to select folders explicitly. Missing means no linked alternate was returned, not that no similarly named story exists. Arrays are compared by position.\n\nExamples:\n  unblok story compare-dimensions --ref global/home --space-id YOUR_SPACE_ID\n  unblok story compare-dimensions --ref global/home --folder italy --folder germany --space-id YOUR_SPACE_ID --json`,
       );
       return;
     }
@@ -49,17 +49,13 @@ export const storyCompareDimensionsCommand: Command = {
     if (
       !reference ||
       !isValidStoryCreationSlug(reference) ||
-      !folders.length ||
       folders.some(
         (path) => !isValidStoryCreationSlug(path) || path.includes("/"),
       ) ||
       (/^\d+$/.test(reference) &&
         (!Number.isSafeInteger(Number(reference)) || Number(reference) <= 0))
     )
-      throw new CliError(
-        "Provide '--ref' and at least one root '--folder'.",
-        2,
-      );
+      throw new CliError("Provide '--ref' and valid root folder paths.", 2);
     const spaceId = resolveSpaceId({
       environment: context.environment,
       option: spaceIdOption,
@@ -74,7 +70,7 @@ export const storyCompareDimensionsCommand: Command = {
         compareStoryDimensions(gateway, {
           spaceId,
           story: reference!,
-          folders,
+          ...(folders.length ? { folders } : {}),
         }),
     );
     if (context.output.mode === "json") context.output.data(result);

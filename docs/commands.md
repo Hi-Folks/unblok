@@ -187,10 +187,10 @@ The result contains the resolved source and target. `submitted` means Storyblok 
 
 ```bash
 unblok story compare-dimensions --ref global/home \
-  --folder italy --folder germany --space-id YOUR_SPACE_ID --json
+  --space-id YOUR_SPACE_ID --json
 ```
 
-Read-only comparison of the current draft content of one story with its linked alternate stories in the requested root folders. Repeat `--folder` for each destination. The source is identified by ID or exact full slug; folder paths must exist, be root folders, and not contain the source. The command uses the source story's Storyblok `alternates` rather than matching slugs, so renamed variants remain linked. `missing` means no linked alternate was returned for that folder; an unrelated story with a similar slug may still exist. Missing alternate data and multiple alternates in a folder produce errors rather than incomplete results.
+Read-only comparison of the current draft content of one story with its linked alternate stories. Without `--folder`, Unblok discovers all configured Dimensions folders except the one containing the source. To select particular destinations instead, repeat `--folder`. The source is identified by ID or exact full slug; explicitly selected folder paths must exist, be root folders, and not contain the source. If no other Dimensions folder is configured, the command reports an error. The command uses the source story's Storyblok `alternates` rather than matching slugs, so renamed variants remain linked. `missing` means no linked alternate was returned for that folder; an unrelated story with a similar slug may still exist. Missing alternate data and multiple alternates in a folder produce errors rather than incomplete results.
 
 JSON includes `apiVersion`, source identity and a result for each folder. For compared stories, `changes` contains JSON Pointer paths and `added`, `removed`, or `changed` values. The comparison covers raw stored content, including block IDs; arrays are compared by index, so moved blocks can produce multiple changes. Differences do not measure translation quality. This is folder-level content, distinct from `story compare-languages` for field-level translations. Comparison of linked variants and a changed hero field has been exercised in a test space.
 
