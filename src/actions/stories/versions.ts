@@ -120,7 +120,10 @@ function escapePointer(key: string): string {
   return key.replaceAll("~", "~0").replaceAll("/", "~1");
 }
 
-function compareContent(before: unknown, after: unknown): StoryVersionChange[] {
+export function compareContent(
+  before: unknown,
+  after: unknown,
+): StoryVersionChange[] {
   const changes: StoryVersionChange[] = [];
   const visit = (left: unknown, right: unknown, path: string): void => {
     if (isDeepStrictEqual(left, right)) return;

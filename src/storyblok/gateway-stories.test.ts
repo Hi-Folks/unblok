@@ -193,6 +193,56 @@ test("moves a story using the parent folder ID", async () => {
   expect(body).toEqual({ story: { parent_id: 10, is_folder: true } });
 });
 
+test("duplicates a linked story to a target dimension", async () => {
+  let request: Request | undefined;
+  globalThis.fetch = (async (
+    input: string | Request | URL,
+    init?: RequestInit,
+  ) => {
+    request =
+      input instanceof Request
+        ? new Request(input, init)
+        : new Request(String(input), init);
+    return Response.json({
+      story: { id: 8, full_slug: "italy/home", group_id: "group-1" },
+    });
+  }) as typeof fetch;
+  const story = await createStoryblokGateway(
+    "test-token",
+  ).duplicateStoryToDimension(42, 7, 9, "group-1");
+  expect(story.id).toBe(8);
+  expect(request?.method).toBe("PUT");
+  expect(new URL(request!.url).pathname).toBe(
+    "/v1/spaces/42/stories/7/duplicate",
+  );
+  expect(await request!.json()).toEqual({
+    auto_create_folders: true,
+    target_dimension: 9,
+    story: { group_id: "group-1" },
+    same_path: true,
+  });
+});
+
+test("sends the observed Dimensions merge request", async () => {
+  let request: Request | undefined;
+  globalThis.fetch = (async (
+    input: string | Request | URL,
+    init?: RequestInit,
+  ) => {
+    request =
+      input instanceof Request
+        ? new Request(input, init)
+        : new Request(String(input), init);
+    return Response.json({ accepted: true });
+  }) as typeof fetch;
+  expect(
+    await createStoryblokGateway("test-token").mergeStory(42, 7, 9),
+  ).toEqual({ accepted: true });
+  expect(request?.method).toBe("PUT");
+  expect(new URL(request!.url).pathname).toBe("/v1/spaces/42/stories/7/merge");
+  expect(await request!.json()).toEqual({ merge_with: 9 });
+});
+
 test("sends the AI translation request through the space gateway", async () => {
   let request: Request | undefined;
   globalThis.fetch = (async (

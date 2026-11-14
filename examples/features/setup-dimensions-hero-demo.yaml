@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Update the German hero for a Dimensions comparison
+stories:
+  update_blocks:
+    - story_slug: germany/home
+      component: hero-section
+      fields:
+        eyebrow: Willkommen in Deutschland

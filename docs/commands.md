@@ -122,6 +122,78 @@ Use `--field 'field:operator:value'` to filter fields in a story's content. Repe
 
 Values are passed to Storyblok as strings; colons inside the value are preserved. Use one filter per field and operator, combining values with commas where supported. The Management API combines filters with AND and does not support the Content Delivery API's `__or` grouping or `any_in_array` operator; use `in_array` for matching any array value. See [Storyblok filter queries](https://www.storyblok.com/docs/api/content-delivery/v2/filter-queries) for field-type and operator behavior.
 
+## `dimensions list`
+
+```bash
+unblok dimensions list --space-id YOUR_SPACE_ID --json
+```
+
+Read the configured Dimensions root folders, resolved to paths, IDs and AI translation codes. The JSON object has `apiVersion: "unblok/dimensions-folders-v1"` and a `folders` array. Unresolvable configured IDs fail rather than being omitted.
+
+## `story create-variant`
+
+```bash
+unblok story create-variant --ref global/home --folder italy --space-id YOUR_SPACE_ID --yes --json
+```
+
+Duplicate the source story into one configured Dimensions root folder and link it using the source story's existing `group_id`. The operation requires the source to expose a group ID and valid alternates; it does not assign a new group to the source. An existing linked alternate in the destination is returned unchanged, and multiple linked alternates cause an error. The request matches the Dimensions UI's `auto_create_folders: true` and `same_path: true` options, so Storyblok may create intermediate folders and preserve the source path. The source is not translated or published by this command. The JSON result includes `status`, destination folder and story identity. If the API cannot confirm the created variant, inspect the destination before retrying. The updated request has not yet been verified live.
+
+When Storyblok returns HTTP 422, recognized validation details for non-sensitive fields may be shown; other response details are omitted. Add `--verbose` for safe diagnostics about the failed duplication request and response shape. Diagnostics report selected field names and types, not values, URLs, headers or credentials; they may not explain the rejection. With `--json`, diagnostics appear inside the error object on stderr. Check whether the destination already contains a conflicting story. If the reason remains unclear, inspect the Storyblok UI's duplicate request and response without sharing credentials or sensitive content.
+
+For YAML, use [setup-dimension-variants.yaml](../examples/features/setup-dimension-variants.yaml): `stories.create_variants` contains `{ story, folder }` entries. Folders must already be configured in Dimensions. Operations run after `stories.create` and stop on failure; confirmed earlier operations remain in the report.
+
+## `story update-matching-blocks`
+
+Preview updates to every `hero-section` whose `eyebrow` equals `Welcome`:
+
+```bash
+unblok story update-matching-blocks --ref global/home \
+  --component hero-section --where 'eyebrow=Welcome' \
+  --set 'text=Hello' --space-id YOUR_SPACE_ID --plan
+```
+
+Use `--yes` instead of `--plan` to save the target draft. Repeat `--set` for additional complete string field values. The condition is exact, case-sensitive equality against a direct field on the selected component. The CLI treats condition and replacement values as strings, including empty strings; use YAML or the library for non-string values. It traverses nested content, reports each matching block's JSON Pointer path, UID and changes, and preserves all other fields. `no_matches` means nothing matched, while `unchanged` means matches already had the requested values. Neither writes the story. JSON output provides the same statuses and details for automation.
+
+The component, condition field and updated fields must exist in the schema, and each matched block must have the updated fields and a unique UID. The operation checks common scalar field types and does not replace nested component blocks. A real `hero-section` schema may define `headline` as nested blocks, not text; inspect your schema before selecting fields. Before writing, Unblok re-reads the story and stops if its content changed; a race remains possible between that check and the API write. The save is not published. If the response does not confirm the saved content, inspect the story before retrying.
+
+YAML supports `stories.update_matching_blocks`; see [the example](../examples/features/setup-update-matching-blocks.yaml). YAML plan validates locally, without previewing live matches. CLI, YAML and library behavior have mock test coverage and have not yet been verified live.
+
+## `story sync-block`
+
+Preview a selected field from an existing source block into an existing target block:
+
+```bash
+unblok story sync-block --source global/home --target germany/home \
+  --component hero-section --field image --plan --space-id YOUR_SPACE_ID
+```
+
+Review the before-and-after values, then rerun with `--yes` instead of `--plan` to save the target draft. Repeat `--field` to select more fields. Source and target can be IDs or exact full slugs. Both must contain one matching block of the named component; when there are several, use `--source-uid` and/or `--target-uid` to select them explicitly. Both fields must exist in the component schema and in both blocks. Entire selected values are copied, including nested objects; other target fields and the target block's UID are preserved. No story or block is created, and the target is not published.
+
+The JSON result reports `planned`, `updated`, or `unchanged`, resolved story and block IDs, and before-and-after values. Applying reads the source and target again and stops if their content changed during the operation; another change can still occur between that check and the API write. A separate apply recomputes the plan rather than reusing a previous snapshot. Storyblok validates field values when saving. If Storyblok does not confirm the saved values, inspect the target before retrying. Live behavior has not yet been verified.
+
+YAML supports `stories.sync_blocks`, as shown in [the hero image example](../examples/features/setup-sync-hero-image.yaml). YAML plan validates configuration locally; it does not retrieve live before-and-after values. Apply runs each declared synchronization and stops on failure; prior changes remain. Use the CLI's `--plan` to inspect the actual values first.
+
+## `story merge`
+
+```bash
+unblok story merge --source global/home --target germany/home --space-id YOUR_SPACE_ID --yes --json
+```
+
+Send a Dimensions merge request from the source story into the target. Each reference can be a story ID or an exact full slug; IDs and slugs can be mixed. Both stories are resolved before the request and must be distinct. `--yes` is required. The target is modified according to Storyblok's Dimensions merge rules, including field-level configuration. The API request has been captured from the Storyblok UI but this command has not been verified live.
+
+The result contains the resolved source and target. `submitted` means Storyblok accepted the request; it does not assert the resulting content. If a background task ID is returned, the result is `queued`. Inspect the target before retrying or proceeding with dependent changes. Merge is an explicit action and is not currently available in YAML.
+
+## `story compare-dimensions`
+
+```bash
+unblok story compare-dimensions --ref global/home \
+  --folder italy --folder germany --space-id YOUR_SPACE_ID --json
+```
+
+Read-only comparison of the current draft content of one story with its linked alternate stories in the requested root folders. Repeat `--folder` for each destination. The source is identified by ID or exact full slug; folder paths must exist, be root folders, and not contain the source. The command uses the source story's Storyblok `alternates` rather than matching slugs, so renamed variants remain linked. `missing` means no linked alternate was returned for that folder; an unrelated story with a similar slug may still exist. Missing alternate data and multiple alternates in a folder produce errors rather than incomplete results.
+
+JSON includes `apiVersion`, source identity and a result for each folder. For compared stories, `changes` contains JSON Pointer paths and `added`, `removed`, or `changed` values. The comparison covers raw stored content, including block IDs; arrays are compared by index, so moved blocks can produce multiple changes. Differences do not measure translation quality. This is folder-level content, distinct from `story compare-languages` for field-level translations. Comparison of linked variants and a changed hero field has been exercised in a test space.
+
 ## `story move`
 
 ```bash
@@ -133,6 +205,8 @@ Moves one story selected by its exact current full slug into an existing folder 
 Moving changes the story's full slug, which can affect URLs and integrations that use paths. It does not explicitly publish the story. A repeat using the **new** full slug reports `unchanged` if the story is already in the folder. A repeat using the old slug reports `NOT_FOUND`: the command cannot safely infer which story was previously moved. If the API does not confirm the destination, inspect the story before retrying. Folder moves and bulk restructuring are not supported by this command.
 
 For a YAML setup that organizes root content into country folders, see [the country-folder example](../examples/features/setup-country-folders.yaml). It installs Dimensions using app ID 24 (confirmed for the EU region), creates `global`, `uk`, `germany`, and `italy`, selects those folders through `apps.dimensions.folders`, then moves other root-level stories and folders into `global`. The folder selection replaces the existing selection, while preserving per-folder settings for retained folders; new folders start with an empty AI translation code. Folder paths are resolved at apply time. This configuration has been tested with mocks, so verify it in Storyblok. The `keep` list and destination remain at the root. On every apply it selects the root entries present at that time, so newly added root entries are also moved on a later run. It checks for destination collisions before moving, reports each confirmed move, and stops on the first failure. Plan shows the operation but cannot enumerate entries without contacting the space. Moving a folder is intended to carry its nested content; verify the resulting paths in Storyblok, since this behavior has only been tested with mocks. Full slugs change and can affect paths and integrations.
+
+The country-folder example also uses `stories.copy` to create a root `site-config` from `global/site-config` after the move. Copies run after root organization and before `stories.create`; the source must already exist at that point. When a copy's root target and source already exist, root organization protects that target on subsequent runs. Existing target stories are preserved; copies are independent and are not automatically synchronized. A newly created copy contains the source's current draft content and is saved as a draft; story metadata and publication state are not copied. If the root `site-config` is required by a published site, publish it separately after reviewing it. This behavior has been tested with mocks.
 
 ## `story create`
 

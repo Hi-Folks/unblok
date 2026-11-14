@@ -8,7 +8,7 @@ export function commandHelp(program: string, commands: Command[]): string {
 
   const versionOption =
     program === "unblok" ? "  --version    Show the installed version\n" : "";
-  return `Usage: ${program} <command> [options]\n\nCommands:\n${commandLines}\n\nOptions:\n  --json       Emit machine-readable JSON\n${versionOption}  -h, --help   Show command help\n\nRun '${program} <command> --help' for command details.`;
+  return `Usage: ${program} <command> [options]\n\nCommands:\n${commandLines}\n\nOptions:\n  --json       Emit machine-readable JSON\n  --verbose    Show safe error diagnostics\n${versionOption}  -h, --help   Show command help\n\nRun '${program} <command> --help' for command details.`;
 }
 
 export async function dispatch(

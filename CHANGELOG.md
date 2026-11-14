@@ -1,13 +1,33 @@
 # Changelog
 
-## 0.5.1 - WIP
+## 0.6.0 - 2026-11-14
 
 ### Added
 
+- Preview and update all story blocks matching an exact field condition via the CLI, YAML and JavaScript library.
+- Preview and synchronize selected block fields between stories through the CLI, YAML and JavaScript library.
+- Document the Dimensions comparison and selected-field synchronization workflow with a complete recipe.
+- Bundle a parameterized Dimensions field synchronization recipe for local agent and CLI discovery.
+- Bundle and document a Dimensions country-folder migration recipe.
+- Copy draft story content to an exact target slug using YAML and the JavaScript library.
+- Request a Dimensions merge between stories by ID or full slug through the CLI and JavaScript library.
+- Add `--verbose` for safe error diagnostics, including the Dimensions duplication operation and response shape.
+- List Dimensions folders and create linked story variants through shared actions, the CLI, and YAML setup.
+- Compare linked Dimensions story variants across root folders using the CLI and JavaScript library.
 - Move a story by full slug into an existing folder with the CLI and JavaScript library.
 - Organize root-level stories and folders into a destination using YAML and the shared library action.
 - Configure Dimensions folder selection in YAML and the JavaScript library.
 - Filter story lists by content fields using repeatable CLI `--field` options and the library's `fieldFilters` input.
+
+### Changed
+
+- Present Dimensions comparisons as a labeled summary table with content differences below it.
+- Show labeled, width-aware tables for Dimensions folders, stories, story versions, apps, releases, and pipeline stages.
+
+### Fixed
+
+- Match the Dimensions UI duplication request when creating linked variants.
+- Preserve recognized, non-sensitive Storyblok validation details in shared action errors.
 
 ## 0.5.1 - 2026-11-11
 

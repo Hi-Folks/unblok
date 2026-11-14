@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Synchronize a field between country stories
+inputs:
+  source:
+    default: global/home
+  target:
+    default: germany/home
+  component:
+    default: hero-section
+  field:
+    default: image
+stories:
+  sync_blocks:
+    - source: "${{ inputs.source }}"
+      target: "${{ inputs.target }}"
+      component: "${{ inputs.component }}"
+      fields:
+        - "${{ inputs.field }}"

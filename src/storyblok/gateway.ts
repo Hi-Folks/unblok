@@ -69,6 +69,17 @@ export interface StoryblokGateway {
     stage: WorkflowStageCreate,
   ): Promise<WorkflowStage>;
   findStoryBySlug(spaceId: number, slug: string): Promise<Story | undefined>;
+  mergeStory(
+    spaceId: number,
+    storyId: number,
+    mergeWithId: number,
+  ): Promise<unknown>;
+  duplicateStoryToDimension(
+    spaceId: number,
+    storyId: number,
+    folderId: number,
+    groupId: string,
+  ): Promise<Story>;
   moveStory(
     spaceId: number,
     storyId: number,
@@ -624,6 +635,31 @@ export const createStoryblokGateway = (
       if (matches.length > 1)
         throw new Error(`Multiple stories match full slug '${slug}'.`);
       return matches[0];
+    },
+    async mergeStory(spaceId, storyId, mergeWithId) {
+      const response = await clientForSpace(spaceId).put(
+        `/v1/spaces/${spaceId}/stories/${storyId}/merge`,
+        {
+          headers: { "Content-Type": "application/json" },
+          body: { merge_with: mergeWithId },
+        },
+      );
+      return response.data;
+    },
+    async duplicateStoryToDimension(spaceId, storyId, folderId, groupId) {
+      const response = await clientForSpace(spaceId).put<{ story: Story }>(
+        `/v1/spaces/${spaceId}/stories/${storyId}/duplicate`,
+        {
+          headers: { "Content-Type": "application/json" },
+          body: {
+            auto_create_folders: true,
+            target_dimension: folderId,
+            story: { group_id: groupId },
+            same_path: true,
+          },
+        },
+      );
+      return response.data.story;
     },
     async moveStory(spaceId, storyId, parentId, isFolder = false) {
       const response = await clientForSpace(spaceId).put<{ story: Story }>(

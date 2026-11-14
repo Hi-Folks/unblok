@@ -1,6 +1,7 @@
 import { installAppBySlug } from "../../actions/apps/apps.ts";
 import type { Command } from "../../cli/command.ts";
 import { dispatch } from "../../cli/dispatch.ts";
+import { formatColumns } from "../../cli/columns.ts";
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError } from "../../errors.ts";
@@ -60,9 +61,12 @@ const list: Command = {
     else if (!apps.length) context.output.info("No installed apps found.");
     else
       context.output.text(
-        apps
-          .map((app) => `${app.slug}  ${app.name}  (${app.app_id})`)
-          .join("\n"),
+        formatColumns(
+          ["SLUG", "NAME", "ID"],
+          apps.map((app) => [app.slug, app.name, String(app.app_id)]),
+          context.output.width?.(),
+          { wrapColumn: 1 },
+        ),
       );
   },
 };

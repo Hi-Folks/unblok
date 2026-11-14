@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Synchronize the German hero image
+stories:
+  sync_blocks:
+    - source: global/home
+      target: germany/home
+      component: hero-section
+      fields:
+        - image

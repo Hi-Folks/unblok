@@ -317,9 +317,34 @@ const result = await editWorkflow(gateway, {
 
 The optional fields are `name`, `contentTypes` and `perLanguageStages`. Only supplied fields are updated; `contentTypes` replaces the entire list. Renaming requires a numeric workflow ID as a string to keep retries safe. The result has `updated` or `unchanged` and the workflow ID; validation, missing data and unverifiable updates reject with `UnblokError`. Concurrent edits may race the update. This API uses the same action as the CLI, YAML and translation review setup.
 
-## Move a story
+## Update matching blocks
+
+```js
+import { updateMatchingBlocks } from "unblok";
+
+const report = await updateMatchingBlocks(gateway, {
+  spaceId: YOUR_SPACE_ID,
+  story: "global/home",
+  component: "hero-section",
+  where: { field: "eyebrow", equals: "Welcome" },
+  fields: { text: "Hello" },
+  // apply: true saves the draft; omit it to preview.
+});
+```
+
+The action uses exact equality, traverses nested blocks, and reports each matching UID, path, and changed fields. It returns `planned`, `updated`, `unchanged`, or `no_matches`. See [`story update-matching-blocks`](commands.md#story-update-matching-blocks) for validation and concurrency behavior.
+
+## Synchronize selected block fields
+
+Use `syncBlockFields(gateway, { spaceId, source: "global/home", target: "germany/home", component: "hero-section", fields: ["image"] })` to preview selected block fields. Set `apply: true` to save the target draft. The returned report includes the selected block IDs and changed values; `unchanged` requires no write. Optional `sourceUid` and `targetUid` disambiguate repeated components. See [`story sync-block`](commands.md#story-sync-block) for validation, concurrency and retry behavior.
+
+`copyStory(gateway, { spaceId, source: "global/site-config", target: "site-config" })` creates a draft with the source's current content at the target slug, preserving an existing target. It does not synchronize later changes, copy story-level metadata or publish the copy. The target folder, if any, must already exist.
+
+## Configure Dimensions folders
 
 Use `configureDimensions(gateway, { spaceId, folders: ["global", "italy"] })` to select existing root folders for Dimensions. This replaces the selection and preserves existing settings for retained folder IDs; new folders receive an empty AI translation code. The operation resolves folder IDs and leaves unrelated space settings untouched.
+
+## Move a story
 
 ```js
 import { moveStory } from "unblok";
@@ -358,6 +383,26 @@ const stories = await listStories(gateway, {
 The gateway follows all pages and returns Management API story objects without full content. Additional optional filters are `search`, `textSearch` and `component` (a contained nestable block). Invalid inputs and API failures use `UnblokError` codes. Use the CLI's `story get` or a suitable story operation to inspect content.
 
 `fieldFilters` uses the same content field paths, operators, string values, and AND semantics as the CLI's `--field`; see the [content field filter reference](commands.md#content-field-filters). The exported `StoryFieldFilter` and `StoryFieldOperator` types are available to TypeScript callers. Invalid and duplicate field/operator pairs fail with `INVALID_INPUT` before any request.
+
+## Compare Dimensions stories
+
+List configured folders and create a linked variant with `listDimensionsFolders(gateway, { spaceId })` and `createDimensionVariant(gateway, { spaceId, story: "global/home", folder: "italy" })`. The latter preserves an existing linked variant and requires the source's group ID. See the [command reference](commands.md#story-create-variant) for behavior and API limitations.
+
+To request a Dimensions merge, call `mergeDimensionStory(gateway, { spaceId, source: "global/home", target: "germany/home" })`. Either reference can be an ID string or exact full slug. It returns `submitted` or `queued`; inspect the target to verify the result. See [`story merge`](commands.md#story-merge) for details.
+
+For stories linked across Dimensions folders, use the separate read-only action:
+
+```js
+import { compareStoryDimensions } from "unblok";
+
+const report = await compareStoryDimensions(gateway, {
+  spaceId: YOUR_SPACE_ID,
+  story: "global/home",
+  folders: ["italy", "germany"],
+});
+```
+
+It follows Storyblok's linked alternates and returns changes or `missing` per requested folder. See [`story compare-dimensions`](commands.md#story-compare-dimensions) for identity checks and comparison semantics.
 
 ## Compare story languages
 

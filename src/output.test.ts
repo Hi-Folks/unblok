@@ -36,6 +36,33 @@ describe("createOutput", () => {
       error: { code: "UNKNOWN", message: "Not found", exitCode: 1 },
     });
   });
+  test("renders optional diagnostics on stderr in human and JSON modes", () => {
+    for (const json of [false, true]) {
+      const stdout = new PassThrough(),
+        stderr = new PassThrough();
+      const stdoutValue = capture(stdout),
+        stderrValue = capture(stderr);
+      const output = createOutput({ json, interactive: false, stdout, stderr });
+      output.error("Failed", {
+        code: "API_ERROR",
+        exitCode: 1,
+        status: 422,
+        diagnostics: {
+          operation: "duplicate-story-to-dimension",
+          responseType: "object",
+          fields: [{ name: "error", type: "string" }],
+          otherFieldCount: 0,
+        },
+      });
+      expect(stdoutValue()).toBe("");
+      expect(stderrValue()).toContain("duplicate-story-to-dimension");
+      if (json)
+        expect(JSON.parse(stderrValue()).error.diagnostics.responseType).toBe(
+          "object",
+        );
+      else expect(stderrValue()).toContain("Diagnostics:");
+    }
+  });
 
   test("uses Clack semantics for human messages", () => {
     const stdout = new PassThrough();

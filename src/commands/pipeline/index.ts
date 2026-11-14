@@ -6,6 +6,7 @@ import {
 import type { Command } from "../../cli/command.ts";
 import { resourceGetCommand } from "../resource-get.ts";
 import { dispatch } from "../../cli/dispatch.ts";
+import { formatColumns } from "../../cli/columns.ts";
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError } from "../../errors.ts";
@@ -73,7 +74,12 @@ function command(mode: "list" | "create"): Command {
           context.output.info("No pipeline stages found.");
         else
           context.output.text(
-            result.map((branch) => `${branch.name}  (${branch.id})`).join("\n"),
+            formatColumns(
+              ["NAME", "ID"],
+              result.map((branch) => [branch.name, String(branch.id)]),
+              context.output.width?.(),
+              { wrapColumn: 0 },
+            ),
           );
       } else {
         const result = await context.output.activity(

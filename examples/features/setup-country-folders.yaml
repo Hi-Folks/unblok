@@ -24,3 +24,6 @@ stories:
       - uk
       - germany
       - italy
+  copy:
+    - source: global/site-config
+      target: site-config

@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Create linked Dimensions variants
+# Configure these Dimensions folders and create global/home first.
+stories:
+  create_variants:
+    - story: global/home
+      folder: italy
+    - story: global/home
+      folder: germany

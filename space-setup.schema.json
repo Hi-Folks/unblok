@@ -350,6 +350,81 @@
             }
           }
         },
+        "update_matching_blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["story", "component", "where", "fields"],
+            "properties": {
+              "story": { "$ref": "#/$defs/nonempty" },
+              "component": { "$ref": "#/$defs/nonempty" },
+              "where": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["field", "equals"],
+                "properties": {
+                  "field": { "$ref": "#/$defs/nonempty" },
+                  "equals": {}
+                }
+              },
+              "fields": { "type": "object", "minProperties": 1 }
+            }
+          }
+        },
+        "sync_blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "target", "component", "fields"],
+            "properties": {
+              "source": { "$ref": "#/$defs/nonempty" },
+              "target": { "$ref": "#/$defs/nonempty" },
+              "component": { "$ref": "#/$defs/nonempty" },
+              "source_uid": { "$ref": "#/$defs/nonempty" },
+              "target_uid": { "$ref": "#/$defs/nonempty" },
+              "fields": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/nonempty" }
+              }
+            }
+          }
+        },
+        "copy": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "target"],
+            "properties": {
+              "source": { "$ref": "#/$defs/nonempty" },
+              "target": { "$ref": "#/$defs/nonempty" }
+            }
+          }
+        },
+        "create_variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["story", "folder"],
+            "properties": {
+              "story": { "$ref": "#/$defs/nonempty" },
+              "folder": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^/*,]+$"
+              }
+            }
+          }
+        },
         "ensure_folders": {
           "type": "array",
           "minItems": 1,

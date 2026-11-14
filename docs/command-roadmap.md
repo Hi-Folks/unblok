@@ -14,7 +14,10 @@ This is a prioritized backlog, not a promise that every operation will be expose
 - [x] Filter story lists by content fields using Management API operators in the CLI and library.
 - [ ] Extend story queries with explicitly supported content-field filters and other useful Management API selectors, guided by real use cases.
 - [x] Compare stored field-level translation values against their default values using component schemas.
-- [ ] Explore folder-level translations separately because they use different stories.
+- [x] Compare linked folder-level story variants through the CLI and library; verify behavior against a live Dimensions space.
+- [x] List configured Dimensions folders and create linked story variants; verify duplication in a live space.
+- [x] Preview and synchronize selected fields between existing story blocks through the CLI, library and YAML.
+- [ ] Extend selected-field synchronization to multiple Dimensions variants and support explicit handling for missing variants or blocks.
 - [x] List story version history and compare selected versions through the current Management API endpoint; older history requires its separate legacy endpoint.
 - [ ] Verify story version listing and comparison in a live space and assess whether legacy history is needed.
 

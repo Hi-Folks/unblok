@@ -28,6 +28,8 @@ Use `bun:test` and name files `*.test.ts`. Cover successful behavior, invalid in
 
 Route user-facing messages through `src/output.ts`. Use Clack for concise human feedback, validate before API calls, and handle every interactive cancellation. Reveal complex choices in small steps with clear defaults. Keep `--json` free of prompts, spinners, and decorative text so scripts receive stable data.
 
+For static human-readable tables, use `formatColumns` from `src/cli/columns.ts` with `context.output.width?.()` and an appropriate wrap column. Use clear headers, preserve full values, and support narrow terminals and redirected output. Use `output.style` only when color conveys meaning; respect `NO_COLOR`. Keep JSON output independent of presentation. Do not introduce a second table renderer or interactive table behavior without a concrete need and tests.
+
 ## Commit & Pull Request Guidelines
 
 Git history is unavailable in this checkout. Use concise, imperative subjects such as `Add space lookup command`. Pull requests should explain the change, list validation commands, link issues, and include terminal output for CLI changes.

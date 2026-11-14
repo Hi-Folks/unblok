@@ -7,6 +7,37 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { loadBlueprint } from "./blueprint-loader.ts";
 
 describe("blueprint editor schema", () => {
+  test("rejects the removed story overwrite operation", () => {
+    expect(() =>
+      resolveBlueprint({
+        version: 1,
+        stories: {
+          overwrite: [{ source: "global/home", target: "italy/home" }],
+        },
+      }),
+    ).toThrow();
+  });
+  test("Dimensions recipe resolves the selected story, component, and field inputs", async () => {
+    const blueprint = await loadBlueprint(
+      "examples/recipes/dimensions-sync-field.yaml",
+    );
+    const compiled = compileSupportedBlueprint(
+      resolveBlueprint(blueprint, {
+        source: "global/about",
+        target: "italy/about",
+        component: "hero-section",
+        field: "image",
+      }),
+    );
+    expect(compiled.storySyncBlocks).toEqual([
+      {
+        source: "global/about",
+        target: "italy/about",
+        component: "hero-section",
+        fields: ["image"],
+      },
+    ]);
+  });
   test("country folder example validates and compiles", async () => {
     const blueprint = await loadBlueprint(
       "examples/features/setup-country-folders.yaml",

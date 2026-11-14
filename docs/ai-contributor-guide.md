@@ -19,6 +19,7 @@ Unblok is a Bun/TypeScript CLI for practical Storyblok Management API operations
 
 - Preserve flags, exit codes, and JSON shape; JSON stdout must contain no progress, prompts, or ANSI. Use `src/output.ts`, Clack, and native `styleText` for human output. Separate partial success from success and keep errors actionable.
 - Keep lists readable, preserve meaningful information, and test narrow and non-interactive output when changing rendering. Avoid new presentation dependencies unless justified; inspect and test the library in Bun first. Do not assume an interactive table library works correctly with terminal cleanup or colors.
+- Render static human-readable tables with `formatColumns` in `src/cli/columns.ts`, passing `context.output.width?.()` and choosing a wrap column. Use clear headers and preserve values; narrow terminals fall back to labeled records. Use Clack through `src/output.ts` for progress and feedback, and keep JSON independent of table presentation. Add another renderer or interactive table only for a demonstrated need.
 - Maintain concise command help, `docs/commands.md`, and relevant examples as behavior changes. Keep README focused on purpose and entry points; put detailed instructions in `docs/`. Label placeholders and distinguish mocked tests from live verification.
 
 ## Verification

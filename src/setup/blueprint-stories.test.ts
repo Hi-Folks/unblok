@@ -288,6 +288,106 @@ describe("story setup", () => {
     ]);
   });
 
+  test("moves site config to global, restores a root copy, and keeps both on retry", async () => {
+    const entries = [
+      {
+        id: 1,
+        slug: "site-config",
+        full_slug: "site-config",
+        name: "Site config",
+        parent_id: 0,
+        is_folder: false,
+        content: { component: "site-config" },
+      },
+      {
+        id: 2,
+        slug: "global",
+        full_slug: "global",
+        name: "global",
+        parent_id: 0,
+        is_folder: true,
+        content: {},
+      },
+      {
+        id: 3,
+        slug: "italy",
+        full_slug: "italy",
+        name: "italy",
+        parent_id: 0,
+        is_folder: true,
+        content: {},
+      },
+    ];
+    let moves = 0,
+      copies = 0;
+    const gateway = {
+      findStoryFolderBySlug: async (_space: number, slug: string) => {
+        const folder = entries.find(
+          (item) => item.is_folder && item.full_slug === slug,
+        );
+        return folder && { id: folder.id };
+      },
+      findStoryBySlug: async (_space: number, slug: string) =>
+        entries.find((item) => !item.is_folder && item.full_slug === slug),
+      getStory: async (_space: number, id: number) =>
+        entries.find((item) => item.id === id),
+      listStories: async () => entries,
+      moveStory: async (_space: number, id: number, parent: number) => {
+        const item = entries.find((entry) => entry.id === id)!;
+        moves++;
+        item.parent_id = parent;
+        item.full_slug = `global/${item.slug}`;
+        return item;
+      },
+      createStory: async (
+        _space: number,
+        input: { name: string; slug: string; content: object },
+      ) => {
+        copies++;
+        const item = {
+          id: 4,
+          name: input.name,
+          slug: input.slug,
+          full_slug: input.slug,
+          parent_id: 0,
+          is_folder: false,
+          content: input.content,
+        };
+        entries.push(item);
+        return item;
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        organize_root: { destination: "global", keep: ["italy"] },
+        copy: [{ source: "global/site-config", target: "site-config" }],
+      },
+    });
+    const first = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(first.summary.failed).toBe(0);
+    expect(
+      entries
+        .filter((entry) => !entry.is_folder)
+        .map((entry) => entry.full_slug),
+    ).toEqual(["global/site-config", "site-config"]);
+    const second = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(second.summary.failed).toBe(0);
+    expect([moves, copies]).toEqual([1, 1]);
+    expect(second.operations).toMatchObject([
+      { operation: "organize-root", status: "unchanged" },
+      { operation: "copy-story", status: "unchanged" },
+    ]);
+  });
+
   test("configures Dimensions after creating folders", async () => {
     const folders = new Map<string, number>();
     const updates: unknown[] = [];
@@ -335,6 +435,193 @@ describe("story setup", () => {
     });
   });
 
+  test("creates a Dimensions variant through the shared action and skips it on retry", async () => {
+    let exists = false,
+      writes = 0;
+    const gateway = {
+      getSpace: async () => ({
+        id: 42,
+        dimensions_app_folder_ids: [9],
+        dimensions_app_folders: [],
+      }),
+      listStories: async () => [
+        { id: 9, is_folder: true, full_slug: "italy/", parent_id: 0 },
+      ],
+      findStoryBySlug: async () => ({ id: 1 }),
+      getStory: async () => ({
+        id: 1,
+        full_slug: "global/home",
+        group_id: "group-1",
+        alternates: exists ? [{ id: 2, full_slug: "italy/home" }] : [],
+      }),
+      duplicateStoryToDimension: async () => {
+        writes++;
+        exists = true;
+        return { id: 2, full_slug: "italy/home", group_id: "group-1" };
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: { create_variants: [{ story: "global/home", folder: "italy" }] },
+    });
+    const first = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(first.operations).toMatchObject([
+      { operation: "create-dimension-variant", status: "created" },
+    ]);
+    const second = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(second.operations).toMatchObject([
+      { operation: "create-dimension-variant", status: "unchanged" },
+    ]);
+    expect(writes).toBe(1);
+  });
+  test("syncs only selected block fields via YAML and skips a repeat", async () => {
+    const stories = [
+      {
+        id: 1,
+        full_slug: "global/home",
+        content: {
+          component: "page",
+          _uid: "p1",
+          body: [
+            { component: "hero", _uid: "h1", image: "new", title: "Hello" },
+          ],
+        },
+      },
+      {
+        id: 2,
+        full_slug: "italy/home",
+        content: {
+          component: "page",
+          _uid: "p2",
+          body: [
+            { component: "hero", _uid: "h2", image: "old", title: "Ciao" },
+          ],
+        },
+      },
+    ];
+    let writes = 0;
+    const gateway = {
+      findStoryBySlug: async (_space: number, slug: string) =>
+        stories.find((story) => story.full_slug === slug),
+      getStory: async (_space: number, id: number) =>
+        structuredClone(stories.find((story) => story.id === id)),
+      listComponents: async () => [
+        {
+          name: "hero",
+          schema: { image: { type: "asset" }, title: { type: "text" } },
+        },
+      ],
+      updateStoryContent: async (
+        _space: number,
+        id: number,
+        content: unknown,
+      ) => {
+        writes++;
+        const story = stories.find((item) => item.id === id)!;
+        story.content = content as typeof story.content;
+        return structuredClone(story);
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        sync_blocks: [
+          {
+            source: "global/home",
+            target: "italy/home",
+            component: "hero",
+            fields: ["image"],
+          },
+        ],
+      },
+    });
+    expect(
+      (await applySupportedBlueprint(gateway as never, 42, blueprint))
+        .operations,
+    ).toMatchObject([{ operation: "sync-block-fields", status: "updated" }]);
+    expect(stories[1]?.content.body[0]).toMatchObject({
+      image: "new",
+      title: "Ciao",
+      _uid: "h2",
+    });
+    expect(
+      (await applySupportedBlueprint(gateway as never, 42, blueprint))
+        .operations,
+    ).toMatchObject([{ operation: "sync-block-fields", status: "unchanged" }]);
+    expect(writes).toBe(1);
+  });
+  test("updates all matching blocks through YAML and skips a repeat", async () => {
+    const story = {
+      id: 1,
+      full_slug: "home",
+      content: {
+        component: "page",
+        _uid: "p",
+        body: [
+          { component: "hero", _uid: "a", eyebrow: "Welcome", headline: "Old" },
+          { component: "hero", _uid: "b", eyebrow: "Other", headline: "Keep" },
+        ],
+      },
+    };
+    let writes = 0;
+    const gateway = {
+      findStoryBySlug: async () => ({ id: 1 }),
+      getStory: async () => structuredClone(story),
+      listComponents: async () => [
+        {
+          name: "hero",
+          schema: { eyebrow: { type: "text" }, headline: { type: "text" } },
+        },
+      ],
+      updateStoryContent: async (
+        _space: number,
+        _id: number,
+        content: unknown,
+      ) => {
+        writes++;
+        story.content = content as typeof story.content;
+        return structuredClone(story);
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        update_matching_blocks: [
+          {
+            story: "home",
+            component: "hero",
+            where: { field: "eyebrow", equals: "Welcome" },
+            fields: { headline: "Hello" },
+          },
+        ],
+      },
+    });
+    expect(
+      (await applySupportedBlueprint(gateway as never, 42, blueprint))
+        .operations,
+    ).toMatchObject([
+      { operation: "update-matching-blocks", status: "updated" },
+    ]);
+    expect(story.content.body.map((block) => block.headline)).toEqual([
+      "Hello",
+      "Keep",
+    ]);
+    expect(
+      (await applySupportedBlueprint(gateway as never, 42, blueprint))
+        .operations,
+    ).toMatchObject([
+      { operation: "update-matching-blocks", status: "unchanged" },
+    ]);
+    expect(writes).toBe(1);
+  });
   test("reports a failed folder before a not-run story", async () => {
     const gateway = {
       findStoryFolderBySlug: async () => undefined,

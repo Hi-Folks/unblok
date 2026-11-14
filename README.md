@@ -70,6 +70,8 @@ Recipes show how to use Unblok for common, real-world Storyblok workflows. Each 
 
 - [AI translation and review](docs/recipes/ai-translation-review.md): request translations for a story and move its language versions into an editorial review workflow.
 - [Campaign launch](docs/recipes/campaign-launch.md): prepare a release with a landing page, campaign image and home-page change for the team to review.
+- [Organize a space into Dimensions folders](docs/recipes/dimensions-country-setup.md): prepare global and country folders and configure the Dimensions app.
+- [Compare and synchronize country content](docs/recipes/dimensions-compare-and-sync.md): inspect linked Dimensions variants and cherry-pick selected block fields while preserving local content.
 
 ## Built for people and AI assistants
 
@@ -186,6 +188,11 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `story publish` publishes the current draft of a story by full slug.
 - `story create` creates a draft from a JSON definition at the root or in an existing folder.
 - `story list` finds stories by slug prefix, search, contained block, tag, publication status and structured [content field filters](docs/commands.md#content-field-filters), such as `--field 'category:in:news,events'`.
+- `story compare-dimensions` compares a story with its linked variants in country or language folders.
+- `story merge` requests a Dimensions merge from a source story into a target story.
+- `story sync-block` previews or copies selected fields between existing story blocks, preserving other target fields.
+- `story update-matching-blocks` previews or updates all blocks matching a field condition within a story.
+- `dimensions list` lists configured Dimensions folders; `story create-variant` creates a linked variant in one of them.
 - `story move` moves a story by its full slug into an existing folder path; see [story move](docs/commands.md#story-move).
 - `story compare-languages` compares stored field-level translations against default story values.
 - `story versions` lists story history; `story compare-versions` compares two versions or the current draft with previous saved content using `--previous`.

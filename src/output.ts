@@ -13,6 +13,7 @@ import type { Writable } from "node:stream";
 import { styleText } from "node:util";
 import { CliError, type ValidationIssue } from "./errors.ts";
 import type { UnblokErrorCode } from "./actions/action-error.ts";
+import type { ErrorDiagnostics } from "./cli/diagnostics.ts";
 
 export type OutputMode = "human" | "json";
 
@@ -45,6 +46,7 @@ export interface Output {
       exitCode: number;
       status?: number;
       issues?: ValidationIssue[];
+      diagnostics?: ErrorDiagnostics;
     },
   ): void;
   info(message: string): void;
@@ -151,6 +153,9 @@ export function createOutput(options: OutputOptions = {}): Output {
               ...(details?.issues === undefined
                 ? {}
                 : { issues: details.issues }),
+              ...(details?.diagnostics === undefined
+                ? {}
+                : { diagnostics: details.diagnostics }),
               exitCode: details?.exitCode ?? 1,
             },
           }),
@@ -159,6 +164,11 @@ export function createOutput(options: OutputOptions = {}): Output {
       }
 
       log.error(message, { output: stderr, withGuide: false });
+      if (details?.diagnostics)
+        writeLine(
+          stderr,
+          `Diagnostics: ${JSON.stringify(details.diagnostics)}`,
+        );
     },
     info(message) {
       if (mode === "json") {

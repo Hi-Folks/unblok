@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Update matching hero sections
+stories:
+  update_matching_blocks:
+    - story: global/home
+      component: hero-section
+      where:
+        field: eyebrow
+        equals: Welcome
+      fields:
+        text: Hello from the global team

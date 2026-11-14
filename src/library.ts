@@ -45,6 +45,40 @@ export type {
   CreateReleaseResult,
 } from "./actions/releases/releases.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
+export { syncBlockFields } from "./actions/stories/sync-block-fields.ts";
+export { updateMatchingBlocks } from "./actions/stories/update-matching-blocks.ts";
+export type {
+  UpdateMatchingBlocksGateway,
+  UpdateMatchingBlocksInput,
+  UpdateMatchingBlocksReport,
+} from "./actions/stories/update-matching-blocks.ts";
+export type {
+  SyncBlockGateway,
+  SyncBlockInput,
+  SyncBlockReport,
+} from "./actions/stories/sync-block-fields.ts";
+export { copyStory } from "./actions/stories/copy-story.ts";
+export type {
+  CopyStoryGateway,
+  CopyStoryInput,
+  CopyStoryResult,
+} from "./actions/stories/copy-story.ts";
+export { mergeDimensionStory } from "./actions/stories/merge-dimensions.ts";
+export type {
+  MergeDimensionGateway,
+  MergeDimensionInput,
+  MergeDimensionResult,
+} from "./actions/stories/merge-dimensions.ts";
+export { listDimensionsFolders } from "./actions/apps/list-dimensions.ts";
+export type {
+  DimensionsFolder,
+  ListDimensionsGateway,
+} from "./actions/apps/list-dimensions.ts";
+export { createDimensionVariant } from "./actions/stories/create-dimension-variant.ts";
+export type {
+  CreateDimensionVariantGateway,
+  CreateDimensionVariantInput,
+} from "./actions/stories/create-dimension-variant.ts";
 export { listStories } from "./actions/stories/library-list.ts";
 export {
   listStoryVersions,
@@ -63,6 +97,13 @@ export type {
   StoryFieldOperator,
 } from "./storyblok/story-field-filters.ts";
 export { compareStoryLanguages } from "./actions/stories/compare-languages.ts";
+export { compareStoryDimensions } from "./actions/stories/compare-dimensions.ts";
+export type {
+  CompareDimensionsGateway,
+  CompareDimensionsInput,
+  CompareDimensionsReport,
+  DimensionComparison,
+} from "./actions/stories/compare-dimensions.ts";
 export type {
   CompareLanguagesGateway,
   CompareLanguagesInput,

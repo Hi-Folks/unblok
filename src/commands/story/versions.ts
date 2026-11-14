@@ -7,6 +7,7 @@ import {
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError } from "../../errors.ts";
+import { formatColumns } from "../../cli/columns.ts";
 
 function command(mode: "versions" | "compare-versions"): Command {
   const compare = mode === "compare-versions";
@@ -161,12 +162,17 @@ function command(mode: "versions" | "compare-versions"): Command {
           );
         else
           context.output.text(
-            report.versions
-              .map(
-                (version) =>
-                  `${version.id}  ${version.createdAt ?? "unknown date"}  ${version.status ?? "unknown status"}  ${version.author?.name ?? "unknown author"}`,
-              )
-              .join("\n"),
+            formatColumns(
+              ["ID", "CREATED", "STATUS", "AUTHOR"],
+              report.versions.map((version) => [
+                String(version.id),
+                version.createdAt ?? "—",
+                version.status ?? "—",
+                version.author?.name ?? "—",
+              ]),
+              context.output.width?.(),
+              { wrapColumn: 3 },
+            ),
           );
       }
     },

@@ -7,9 +7,14 @@ import { storyPublishCommand } from "./publish.ts";
 import { storyCreateCommand } from "./create.ts";
 import { storyFolderCommand } from "./folder.ts";
 import { storyMoveCommand } from "./move.ts";
+import { storyCreateVariantCommand } from "./create-variant.ts";
+import { storyMergeCommand } from "./merge.ts";
+import { storySyncBlockCommand } from "./sync-block.ts";
+import { storyUpdateMatchingCommand } from "./update-matching-blocks.ts";
 import { storyAiTranslateCommand } from "./ai-translate.ts";
 import { storyListCommand } from "./list.ts";
 import { storyCompareLanguagesCommand } from "./compare-languages.ts";
+import { storyCompareDimensionsCommand } from "./compare-dimensions.ts";
 import {
   storyVersionsCommand,
   storyCompareVersionsCommand,
@@ -25,10 +30,15 @@ export const storyCommand: Command = {
       [
         storyListCommand,
         storyCompareLanguagesCommand,
+        storyCompareDimensionsCommand,
         storyVersionsCommand,
         storyCompareVersionsCommand,
         storyGetCommand,
         storyCreateCommand,
+        storyCreateVariantCommand,
+        storyMergeCommand,
+        storySyncBlockCommand,
+        storyUpdateMatchingCommand,
         storyAiTranslateCommand,
         storyFolderCommand,
         storyMoveCommand,

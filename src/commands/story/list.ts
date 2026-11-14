@@ -6,6 +6,7 @@ import {
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError } from "../../errors.ts";
+import { formatColumns } from "../../cli/columns.ts";
 import {
   parseStoryFieldFilter,
   validateStoryFieldFilters,
@@ -103,9 +104,16 @@ export const storyListCommand: Command = {
     else if (!stories.length) context.output.info("No matching stories found.");
     else
       context.output.text(
-        stories
-          .map((story) => `${story.id}  ${story.full_slug}  ${story.name}`)
-          .join("\n"),
+        formatColumns(
+          ["ID", "FULL SLUG", "NAME"],
+          stories.map((story) => [
+            String(story.id),
+            story.full_slug,
+            story.name,
+          ]),
+          context.output.width?.(),
+          { wrapColumn: 1 },
+        ),
       );
   },
 };

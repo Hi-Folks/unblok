@@ -4,6 +4,16 @@ import { assignStoryTags } from "../actions/stories/story-tags.ts";
 import { isValidStoryCreationSlug } from "../actions/stories/create-story.ts";
 import { ensureStoryFolder } from "../actions/stories/ensure-folder.ts";
 import { organizeRoot } from "../actions/stories/organize-root.ts";
+import { copyStory } from "../actions/stories/copy-story.ts";
+import {
+  updateMatchingBlocks,
+  type UpdateMatchingBlocksInput,
+} from "../actions/stories/update-matching-blocks.ts";
+import {
+  syncBlockFields,
+  type SyncBlockInput,
+} from "../actions/stories/sync-block-fields.ts";
+import { createDimensionVariant } from "../actions/stories/create-dimension-variant.ts";
 import { configureDimensions } from "../actions/apps/dimensions.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
 import {
@@ -118,6 +128,12 @@ export interface SupportedBlueprint {
     review?: { stage: string; workflow?: string };
   }>;
   storyFolders: string[];
+  storyCopies: Array<{ source: string; target: string }>;
+  storySyncBlocks: Array<Omit<SyncBlockInput, "spaceId" | "apply">>;
+  storyMatchingBlocks: Array<
+    Omit<UpdateMatchingBlocksInput, "spaceId" | "apply">
+  >;
+  storyVariants: Array<{ story: string; folder: string }>;
   organizeRoot?: { destination: string; keep: string[] };
   translations: StoryTranslations[];
   storyUpdates: StoryBlockUpdate[];
@@ -362,6 +378,10 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
   const stories: StoryCreate[] = [];
   const aiTranslations: SupportedBlueprint["aiTranslations"] = [];
   const storyFolders: string[] = [];
+  const storyCopies: SupportedBlueprint["storyCopies"] = [];
+  const storySyncBlocks: SupportedBlueprint["storySyncBlocks"] = [];
+  const storyMatchingBlocks: SupportedBlueprint["storyMatchingBlocks"] = [];
+  const storyVariants: SupportedBlueprint["storyVariants"] = [];
   let rootOrganization: SupportedBlueprint["organizeRoot"];
   const storyUpdates: StoryBlockUpdate[] = [];
   const translations: StoryTranslations[] = [];
@@ -503,6 +523,10 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
         (key) =>
           ![
             "create",
+            "copy",
+            "sync_blocks",
+            "update_matching_blocks",
+            "create_variants",
             "translated_slugs",
             "update_blocks",
             "ensure_folders",
@@ -611,6 +635,202 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
           2,
         );
       storyFolders.push(...paths);
+    }
+    if (value.stories.copy !== undefined) {
+      if (!Array.isArray(value.stories.copy) || !value.stories.copy.length)
+        throw new CliError("stories.copy must be a nonempty array.", 2);
+      for (const item of value.stories.copy) {
+        if (
+          !isObject(item) ||
+          Object.keys(item).some(
+            (key) => !["source", "target"].includes(key),
+          ) ||
+          typeof item.source !== "string" ||
+          item.source !== item.source.trim() ||
+          !isValidStoryCreationSlug(item.source) ||
+          typeof item.target !== "string" ||
+          item.target !== item.target.trim() ||
+          !isValidStoryCreationSlug(item.target) ||
+          item.source === item.target ||
+          storyCopies.some((copy) => copy.target === item.target)
+        )
+          throw new CliError(
+            "stories.copy entries require distinct exact source and target slugs and unique targets.",
+            2,
+          );
+        storyCopies.push({ source: item.source, target: item.target });
+      }
+    }
+    if (value.stories.sync_blocks !== undefined) {
+      if (
+        !Array.isArray(value.stories.sync_blocks) ||
+        !value.stories.sync_blocks.length
+      )
+        throw new CliError("stories.sync_blocks must be a nonempty array.", 2);
+      for (const item of value.stories.sync_blocks) {
+        if (
+          !isObject(item) ||
+          Object.keys(item).some(
+            (key) =>
+              ![
+                "source",
+                "target",
+                "component",
+                "fields",
+                "source_uid",
+                "target_uid",
+              ].includes(key),
+          ) ||
+          typeof item.source !== "string" ||
+          item.source !== item.source.trim() ||
+          !isValidStoryCreationSlug(item.source) ||
+          typeof item.target !== "string" ||
+          item.target !== item.target.trim() ||
+          !isValidStoryCreationSlug(item.target) ||
+          typeof item.component !== "string" ||
+          !item.component.trim() ||
+          item.component !== item.component.trim() ||
+          (item.source_uid !== undefined &&
+            (typeof item.source_uid !== "string" ||
+              !item.source_uid.trim() ||
+              item.source_uid !== item.source_uid.trim())) ||
+          (item.target_uid !== undefined &&
+            (typeof item.target_uid !== "string" ||
+              !item.target_uid.trim() ||
+              item.target_uid !== item.target_uid.trim()))
+        )
+          throw new CliError(
+            "Each stories.sync_blocks entry requires valid source, target, component and fields.",
+            2,
+          );
+        const fields = strings(item.fields, "stories.sync_blocks.fields");
+        if (
+          fields.some((field) =>
+            [
+              "_uid",
+              "component",
+              "__proto__",
+              "constructor",
+              "prototype",
+            ].includes(field),
+          )
+        )
+          throw new CliError(
+            "stories.sync_blocks.fields contains reserved fields.",
+            2,
+          );
+        storySyncBlocks.push({
+          source: item.source,
+          target: item.target,
+          component: item.component,
+          fields,
+          ...(typeof item.source_uid === "string"
+            ? { sourceUid: item.source_uid }
+            : {}),
+          ...(typeof item.target_uid === "string"
+            ? { targetUid: item.target_uid }
+            : {}),
+        });
+      }
+    }
+    if (value.stories.update_matching_blocks !== undefined) {
+      if (
+        !Array.isArray(value.stories.update_matching_blocks) ||
+        !value.stories.update_matching_blocks.length
+      )
+        throw new CliError(
+          "stories.update_matching_blocks must be a nonempty array.",
+          2,
+        );
+      for (const item of value.stories.update_matching_blocks) {
+        if (
+          !isObject(item) ||
+          Object.keys(item).some(
+            (key) => !["story", "component", "where", "fields"].includes(key),
+          ) ||
+          typeof item.story !== "string" ||
+          item.story !== item.story.trim() ||
+          !isValidStoryCreationSlug(item.story) ||
+          typeof item.component !== "string" ||
+          !item.component.trim() ||
+          item.component !== item.component.trim() ||
+          !isObject(item.where) ||
+          Object.keys(item.where).some(
+            (key) => !["field", "equals"].includes(key),
+          ) ||
+          typeof item.where.field !== "string" ||
+          !item.where.field.trim() ||
+          item.where.field !== item.where.field.trim() ||
+          !Object.hasOwn(item.where, "equals") ||
+          item.where.equals === undefined ||
+          !isObject(item.fields) ||
+          !Object.keys(item.fields).length ||
+          Object.keys(item.fields).some(
+            (key) =>
+              !key.trim() ||
+              key !== key.trim() ||
+              [
+                "_uid",
+                "component",
+                "__proto__",
+                "constructor",
+                "prototype",
+              ].includes(key),
+          ) ||
+          [
+            "_uid",
+            "component",
+            "__proto__",
+            "constructor",
+            "prototype",
+          ].includes(item.where.field)
+        )
+          throw new CliError(
+            "Each stories.update_matching_blocks entry requires a story, component, equality condition and fields.",
+            2,
+          );
+        storyMatchingBlocks.push({
+          story: item.story,
+          component: item.component,
+          where: { field: item.where.field, equals: item.where.equals },
+          fields: item.fields,
+        });
+      }
+    }
+    if (value.stories.create_variants !== undefined) {
+      if (
+        !Array.isArray(value.stories.create_variants) ||
+        !value.stories.create_variants.length
+      )
+        throw new CliError(
+          "stories.create_variants must be a nonempty array.",
+          2,
+        );
+      for (const item of value.stories.create_variants) {
+        if (
+          !isObject(item) ||
+          Object.keys(item).some((key) => !["story", "folder"].includes(key)) ||
+          typeof item.story !== "string" ||
+          item.story !== item.story.trim() ||
+          !isValidStoryCreationSlug(item.story) ||
+          typeof item.folder !== "string" ||
+          item.folder !== item.folder.trim() ||
+          !isValidStoryCreationSlug(item.folder) ||
+          item.folder.includes("/")
+        )
+          throw new CliError(
+            "Each stories.create_variants entry requires an exact story reference and root folder.",
+            2,
+          );
+        if (
+          storyVariants.some(
+            (entry) =>
+              entry.story === item.story && entry.folder === item.folder,
+          )
+        )
+          throw new CliError("Duplicate stories.create_variants entry.", 2);
+        storyVariants.push({ story: item.story, folder: item.folder });
+      }
     }
     if (value.stories.organize_root !== undefined) {
       const item = value.stories.organize_root;
@@ -1049,6 +1269,10 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       stories,
       aiTranslations,
       storyFolders,
+      storyCopies,
+      storySyncBlocks,
+      storyMatchingBlocks,
+      storyVariants,
       rootOrganization,
       dimensionsFolders,
       translations,
@@ -1089,6 +1313,10 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     stories,
     aiTranslations,
     storyFolders,
+    storyCopies,
+    storySyncBlocks,
+    storyMatchingBlocks,
+    storyVariants,
     ...(rootOrganization ? { organizeRoot: rootOrganization } : {}),
     translations,
     storyUpdates,
@@ -1203,9 +1431,25 @@ export async function applySupportedBlueprint(
             },
           ]
         : []),
+      ...blueprint.storyCopies.map((item) => ({
+        operation: "copy-story",
+        key: `${item.source} → ${item.target}`,
+      })),
       ...blueprint.stories.map((story) => ({
         operation: "create-story",
         key: story.slug,
+      })),
+      ...blueprint.storyVariants.map((item) => ({
+        operation: "create-dimension-variant",
+        key: `${item.story}/${item.folder}`,
+      })),
+      ...blueprint.storySyncBlocks.map((item) => ({
+        operation: "sync-block-fields",
+        key: `${item.source} → ${item.target}/${item.component}`,
+      })),
+      ...blueprint.storyMatchingBlocks.map((item) => ({
+        operation: "update-matching-blocks",
+        key: `${item.story}/${item.component}`,
       })),
       ...blueprint.translations.map((item) => ({
         operation: "translate-story-slugs",
@@ -1505,9 +1749,13 @@ export async function applySupportedBlueprint(
   try {
     if (
       blueprint.storyFolders.length ||
+      blueprint.storyCopies.length ||
+      blueprint.storySyncBlocks.length ||
+      blueprint.storyMatchingBlocks.length ||
       blueprint.dimensionsFolders ||
       blueprint.organizeRoot ||
       blueprint.stories.length ||
+      blueprint.storyVariants.length ||
       blueprint.translations.length
     )
       onProgress?.({ stage: "stories" });
@@ -1546,9 +1794,17 @@ export async function applySupportedBlueprint(
     if (blueprint.organizeRoot) {
       const key = blueprint.organizeRoot.destination;
       try {
+        const keep = [...blueprint.organizeRoot.keep];
+        for (const copy of blueprint.storyCopies) {
+          if (
+            !copy.target.includes("/") &&
+            (await gateway.findStoryBySlug(spaceId, copy.source))
+          )
+            keep.push(copy.target);
+        }
         const moved = await organizeRoot(
           gateway,
-          { spaceId, ...blueprint.organizeRoot },
+          { spaceId, ...blueprint.organizeRoot, keep },
           (entry) => {
             onProgress?.({
               stage: "stories",
@@ -1571,6 +1827,20 @@ export async function applySupportedBlueprint(
         throw new BlueprintOperationError("organize-root", key, error);
       }
     }
+    for (const item of blueprint.storyCopies) {
+      const key = `${item.source} → ${item.target}`;
+      try {
+        onProgress?.({ stage: "stories", item: key });
+        const result = await copyStory(gateway, { spaceId, ...item });
+        operations.push({
+          operation: "copy-story",
+          key,
+          status: result.status,
+        });
+      } catch (error) {
+        throw new BlueprintOperationError("copy-story", key, error);
+      }
+    }
     await applyStories(
       gateway,
       spaceId,
@@ -1581,6 +1851,68 @@ export async function applySupportedBlueprint(
       resolveRelease,
       (item) => onProgress?.({ stage: "stories", item }),
     );
+    for (const item of blueprint.storyVariants) {
+      const key = `${item.story}/${item.folder}`;
+      try {
+        onProgress?.({ stage: "stories", item: key });
+        const result = await createDimensionVariant(gateway, {
+          spaceId,
+          ...item,
+        });
+        operations.push({
+          operation: "create-dimension-variant",
+          key,
+          status: result.status,
+          reason: result.story.fullSlug,
+        });
+      } catch (error) {
+        throw new BlueprintOperationError(
+          "create-dimension-variant",
+          key,
+          error,
+        );
+      }
+    }
+    for (const item of blueprint.storySyncBlocks) {
+      const key = `${item.source} → ${item.target}/${item.component}`;
+      try {
+        onProgress?.({ stage: "stories", item: key });
+        const result = await syncBlockFields(gateway, {
+          spaceId,
+          ...item,
+          apply: true,
+        });
+        operations.push({
+          operation: "sync-block-fields",
+          key,
+          status: result.status,
+          reason: result.changes.length
+            ? `${result.changes.length} field(s) updated.`
+            : undefined,
+        });
+      } catch (error) {
+        throw new BlueprintOperationError("sync-block-fields", key, error);
+      }
+    }
+    for (const item of blueprint.storyMatchingBlocks) {
+      const key = `${item.story}/${item.component}`;
+      try {
+        onProgress?.({ stage: "stories", item: key });
+        const result = await updateMatchingBlocks(gateway, {
+          spaceId,
+          ...item,
+          apply: true,
+        });
+        operations.push({
+          operation: "update-matching-blocks",
+          key,
+          status: result.status === "no_matches" ? "unchanged" : result.status,
+          reason: `${result.matched} matching block(s).`,
+        });
+      } catch (error) {
+        throw new BlueprintOperationError("update-matching-blocks", key, error);
+      }
+    }
     if (blueprint.aiTranslations.length)
       onProgress?.({ stage: "translate-content" });
     for (const item of blueprint.aiTranslations) {

@@ -133,6 +133,19 @@ export function planBlueprint(value: unknown): BlueprintPlan {
         support: "available",
       },
       create: { operation: "create stories", support: "available" },
+      copy: { operation: "copy stories", support: "available" },
+      sync_blocks: {
+        operation: "synchronize selected block fields",
+        support: "available",
+      },
+      update_matching_blocks: {
+        operation: "update matching story blocks",
+        support: "available",
+      },
+      create_variants: {
+        operation: "create linked Dimensions variants",
+        support: "available",
+      },
     },
     workflow: {
       edit: { operation: "update workflow settings", support: "available" },

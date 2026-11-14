@@ -7,6 +7,7 @@ import type { Command } from "../../cli/command.ts";
 import { publishReleaseCommand } from "./publish.ts";
 import { resourceGetCommand } from "../resource-get.ts";
 import { dispatch } from "../../cli/dispatch.ts";
+import { formatColumns } from "../../cli/columns.ts";
 import { getStoryblokToken } from "../../config/environment.ts";
 import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError } from "../../errors.ts";
@@ -95,9 +96,12 @@ function command(mode: "list" | "create"): Command {
         else if (!releases.length) context.output.info("No releases found.");
         else
           context.output.text(
-            releases
-              .map((release) => `${release.name}  (${release.id})`)
-              .join("\n"),
+            formatColumns(
+              ["NAME", "ID"],
+              releases.map((release) => [release.name, String(release.id)]),
+              context.output.width?.(),
+              { wrapColumn: 0 },
+            ),
           );
       } else {
         const result = await context.output.activity(

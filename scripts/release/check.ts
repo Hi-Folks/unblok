@@ -209,6 +209,11 @@ try {
       throw new Error(`${runtime} blueprint schema failed.`);
     for (const [name, source] of [
       ["campaign-launch", "examples/recipes/campaign-launch.yaml"],
+      ["dimensions-sync-field", "examples/recipes/dimensions-sync-field.yaml"],
+      [
+        "dimensions-country-setup",
+        "examples/features/setup-country-folders.yaml",
+      ],
       [
         "translation-review",
         "examples/features/setup-translation-from-event.yaml",

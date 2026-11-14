@@ -9,6 +9,7 @@ import { assetCommand } from "../commands/asset/index.ts";
 import { releaseCommand } from "../commands/release/index.ts";
 import { pipelineCommand } from "../commands/pipeline/index.ts";
 import { skillCommand } from "../commands/skill/index.ts";
+import { dimensionsCommand } from "../commands/dimensions/index.ts";
 import {
   getStoryblokRequestsPerSecond,
   getStoryblokRegion,
@@ -23,6 +24,7 @@ import {
 import { dispatch } from "./dispatch.ts";
 import { version } from "../version.ts";
 import { toUnblokError } from "../actions/action-error.ts";
+import { errorDiagnostics } from "./diagnostics.ts";
 
 export interface CliOptions {
   createGateway?: StoryblokGatewayFactory;
@@ -42,6 +44,7 @@ const commands = [
   releaseCommand,
   pipelineCommand,
   skillCommand,
+  dimensionsCommand,
 ];
 
 export async function runCli(
@@ -49,7 +52,10 @@ export async function runCli(
   options: CliOptions = {},
 ): Promise<number> {
   const json = args.includes("--json");
-  const commandArgs = args.filter((argument) => argument !== "--json");
+  const verbose = args.includes("--verbose");
+  const commandArgs = args.filter(
+    (argument) => argument !== "--json" && argument !== "--verbose",
+  );
   const output = options.output ?? createOutput({ json });
 
   try {
@@ -85,6 +91,7 @@ export async function runCli(
       code,
       exitCode,
       ...(classified.status === undefined ? {} : { status: classified.status }),
+      ...(verbose ? { diagnostics: errorDiagnostics(error) } : {}),
       ...(error instanceof BlueprintValidationError
         ? { issues: error.issues }
         : {}),

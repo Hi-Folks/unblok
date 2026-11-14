@@ -61,6 +61,8 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
     uploadAsset: async () => {},
     readAsset: async () => new Uint8Array(),
     createStory: async () => ({}) as never,
+    mergeStory: async () => ({}),
+    duplicateStoryToDimension: async () => ({}) as never,
     moveStory: async () => ({}) as never,
     updateTranslatedSlugs: async () => {},
     acceptSpaceDisclaimer: async () => {},
@@ -261,6 +263,29 @@ describe("runCli", () => {
       ),
     ).toBe(2);
   });
+  test("shows labeled version history in human output", async () => {
+    const harness = createHarness({
+      findStoryBySlug: async () => ({ id: 7 }) as never,
+      getStory: async () => ({ id: 7, full_slug: "home" }) as never,
+      listStoryVersions: async () => [
+        {
+          id: 23,
+          storyId: 7,
+          status: "draft",
+          createdAt: "2026-11-13T10:00:00Z",
+        },
+      ],
+    });
+    Object.defineProperty(harness.options.output, "mode", { value: "human" });
+    expect(
+      await runCli(
+        ["story", "versions", "--ref", "home", "--space-id", "42"],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout.at(-1)).toContain("ID  CREATED");
+    expect(harness.stdout.at(-1)).toContain("23  2026-11-13T10:00:00Z  draft");
+  });
   test("compares stored story language values using schema in JSON", async () => {
     const harness = createHarness({
       findStoryBySlug: async () => ({ id: 7 }) as never,
@@ -443,6 +468,324 @@ describe("runCli", () => {
     ).toBe(0);
     expect(harness.stdout).toContain("No matching stories found.");
   });
+  test("compares linked folder variants as JSON", async () => {
+    const harness = createHarness({
+      findStoryBySlug: async () => ({ id: 1 }) as never,
+      findStoryFolderBySlug: async () => ({ id: 10 }),
+      getStory: async (_space, id) =>
+        id === 1
+          ? ({
+              id,
+              full_slug: "global/home",
+              content: { title: "Hi" },
+              alternates: [{ id: 2, full_slug: "italy/home" }],
+            } as never)
+          : ({
+              id,
+              full_slug: "italy/home",
+              content: { title: "Ciao" },
+            } as never),
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "compare-dimensions",
+          "--ref",
+          "global/home",
+          "--folder",
+          "italy",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout.at(-1)).toMatchObject({
+      apiVersion: "unblok/story-dimensions-comparison-v1",
+      folders: [
+        {
+          folder: "italy",
+          status: "compared",
+          changes: [{ path: "/title", before: "Hi", after: "Ciao" }],
+        },
+      ],
+    });
+  });
+  test("plans and applies selected block fields with structured output", async () => {
+    let writes = 0;
+    const stories = [
+      {
+        id: 1,
+        full_slug: "global/home",
+        content: {
+          component: "page",
+          _uid: "p1",
+          body: [
+            { component: "hero", _uid: "h1", image: "new", title: "Hello" },
+          ],
+        },
+      },
+      {
+        id: 2,
+        full_slug: "italy/home",
+        content: {
+          component: "page",
+          _uid: "p2",
+          body: [
+            { component: "hero", _uid: "h2", image: "old", title: "Ciao" },
+          ],
+        },
+      },
+    ];
+    const harness = createHarness({
+      findStoryBySlug: async (_space, slug) =>
+        stories.find((item) => item.full_slug === slug) as never,
+      getStory: async (_space, id) =>
+        structuredClone(stories.find((item) => item.id === id)) as never,
+      listComponents: async () =>
+        [{ name: "hero", schema: { image: { type: "asset" } } }] as never,
+      updateStoryContent: async (_space, id, content) => {
+        writes++;
+        const story = stories.find((item) => item.id === id)!;
+        story.content = content as typeof story.content;
+        return structuredClone(story) as never;
+      },
+    });
+    const args = [
+      "story",
+      "sync-block",
+      "--source",
+      "global/home",
+      "--target",
+      "italy/home",
+      "--component",
+      "hero",
+      "--field",
+      "image",
+      "--space-id",
+      "42",
+      "--json",
+    ];
+    expect(await runCli(args, harness.options)).toBe(2);
+    expect(await runCli([...args, "--plan"], harness.options)).toBe(0);
+    expect(harness.stdout.at(-1)).toMatchObject({
+      status: "planned",
+      changes: [{ field: "image", before: "old", after: "new" }],
+    });
+    expect(writes).toBe(0);
+    expect(await runCli([...args, "--yes"], harness.options)).toBe(0);
+    expect(harness.stdout.at(-1)).toMatchObject({ status: "updated" });
+    expect(writes).toBe(1);
+  });
+  test("previews and updates all matching blocks through the CLI", async () => {
+    const story = {
+      id: 1,
+      full_slug: "home",
+      content: {
+        component: "page",
+        _uid: "p",
+        body: [
+          {
+            component: "hero-section",
+            _uid: "a",
+            eyebrow: "Welcome",
+            headline: "Old",
+          },
+          {
+            component: "hero-section",
+            _uid: "b",
+            eyebrow: "Welcome",
+            headline: "Other",
+          },
+        ],
+      },
+    };
+    let writes = 0;
+    const harness = createHarness({
+      findStoryBySlug: async () => ({ id: 1 }) as never,
+      getStory: async () => structuredClone(story) as never,
+      listComponents: async () =>
+        [
+          {
+            name: "hero-section",
+            schema: { eyebrow: { type: "text" }, headline: { type: "text" } },
+          },
+        ] as never,
+      updateStoryContent: async (_space, _id, content) => {
+        writes++;
+        story.content = content as typeof story.content;
+        return structuredClone(story) as never;
+      },
+    });
+    const args = [
+      "story",
+      "update-matching-blocks",
+      "--ref",
+      "home",
+      "--component",
+      "hero-section",
+      "--where",
+      "eyebrow=Welcome",
+      "--set",
+      "headline=Hello",
+      "--space-id",
+      "42",
+      "--json",
+    ];
+    expect(await runCli([...args, "--plan"], harness.options)).toBe(0);
+    expect(harness.stdout.at(-1)).toMatchObject({
+      status: "planned",
+      matched: 2,
+    });
+    expect(writes).toBe(0);
+    expect(await runCli([...args, "--yes"], harness.options)).toBe(0);
+    expect(harness.stdout.at(-1)).toMatchObject({
+      status: "updated",
+      matched: 2,
+    });
+    expect(writes).toBe(1);
+  });
+  test("lists Dimensions folders and creates a linked variant with confirmation", async () => {
+    let writes = 0;
+    const harness = createHarness({
+      getSpace: async () =>
+        ({
+          id: 42,
+          dimensions_app_folder_ids: [9],
+          dimensions_app_folders: [],
+        }) as never,
+      listStories: async () =>
+        [
+          { id: 9, full_slug: "italy/", is_folder: true, parent_id: 0 },
+        ] as never,
+      findStoryBySlug: async () => ({ id: 1 }) as never,
+      getStory: async () =>
+        ({
+          id: 1,
+          full_slug: "global/home",
+          group_id: "group-1",
+          alternates: [],
+        }) as never,
+      duplicateStoryToDimension: async () => {
+        writes++;
+        return { id: 2, full_slug: "italy/home", group_id: "group-1" } as never;
+      },
+    });
+    expect(
+      await runCli(
+        ["dimensions", "list", "--space-id", "42", "--json"],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout.at(-1)).toMatchObject({
+      apiVersion: "unblok/dimensions-folders-v1",
+      folders: [{ id: 9, path: "italy" }],
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "create-variant",
+          "--ref",
+          "global/home",
+          "--folder",
+          "italy",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(2);
+    expect(writes).toBe(0);
+    expect(
+      await runCli(
+        [
+          "story",
+          "create-variant",
+          "--ref",
+          "global/home",
+          "--folder",
+          "italy",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout.at(-1)).toMatchObject({
+      status: "created",
+      story: { id: 2, fullSlug: "italy/home" },
+    });
+  });
+  test("adds safe diagnostics for a verbose variant creation API failure", async () => {
+    const harness = createHarness({
+      getSpace: async () =>
+        ({ id: 42, dimensions_app_folder_ids: [9] }) as never,
+      listStories: async () =>
+        [{ id: 9, full_slug: "italy", is_folder: true, parent_id: 0 }] as never,
+      findStoryBySlug: async () => ({ id: 1 }) as never,
+      getStory: async () =>
+        ({
+          id: 1,
+          full_slug: "global/home",
+          group_id: "group-1",
+          alternates: [],
+        }) as never,
+      duplicateStoryToDimension: async () => {
+        throw new ClientError("Unprocessable", {
+          status: 422,
+          statusText: "Unprocessable",
+          data: { error: "secret-content", token: "secret-token" },
+        });
+      },
+    });
+    const stdout = new PassThrough(),
+      stderr = new PassThrough();
+    let out = "",
+      err = "";
+    stdout.on("data", (data) => {
+      out += data.toString();
+    });
+    stderr.on("data", (data) => {
+      err += data.toString();
+    });
+    const output = createOutput({ json: true, stdout, stderr });
+    expect(
+      await runCli(
+        [
+          "story",
+          "create-variant",
+          "--ref",
+          "global/home",
+          "--folder",
+          "italy",
+          "--space-id",
+          "42",
+          "--yes",
+          "--json",
+          "--verbose",
+        ],
+        { ...harness.options, output },
+      ),
+    ).toBe(1);
+    expect(out).toBe("");
+    expect(JSON.parse(err).error).toMatchObject({
+      code: "API_ERROR",
+      status: 422,
+      diagnostics: {
+        operation: "duplicate-story-to-dimension",
+        responseType: "object",
+        fields: [{ name: "error", type: "string" }],
+        otherFieldCount: 1,
+      },
+    });
+    expect(err).not.toContain("secret");
+  });
   test("moves a story by path with confirmation and JSON output", async () => {
     const writes: unknown[] = [];
     const harness = createHarness({
@@ -497,6 +840,38 @@ describe("runCli", () => {
       storyId: 7,
       from: "home",
       to: "global/home",
+    });
+  });
+  test("requires confirmation and merges source into target by mixed references", async () => {
+    const calls: unknown[] = [];
+    const harness = createHarness({
+      findStoryBySlug: async () => ({ id: 1 }) as never,
+      getStory: async (_space, id) =>
+        ({ id, full_slug: id === 1 ? "global/home" : "germany/home" }) as never,
+      mergeStory: async (...args) => {
+        calls.push(args);
+        return {};
+      },
+    });
+    const args = [
+      "story",
+      "merge",
+      "--source",
+      "global/home",
+      "--target",
+      "2",
+      "--space-id",
+      "42",
+      "--json",
+    ];
+    expect(await runCli(args, harness.options)).toBe(2);
+    expect(calls).toHaveLength(0);
+    expect(await runCli([...args, "--yes"], harness.options)).toBe(0);
+    expect(calls).toEqual([[42, 2, 1]]);
+    expect(harness.stdout.at(-1)).toMatchObject({
+      status: "submitted",
+      source: { fullSlug: "global/home" },
+      target: { fullSlug: "germany/home" },
     });
   });
   test("installs the version-matched agent skill with JSON output and no Storyblok token", async () => {
@@ -621,10 +996,22 @@ describe("runCli", () => {
     expect(harness.stdout[0]).toEqual([
       expect.objectContaining({ name: "campaign-launch" }),
       expect.objectContaining({ name: "translation-review" }),
+      expect.objectContaining({ name: "dimensions-sync-field" }),
+      expect.objectContaining({ name: "dimensions-country-setup" }),
     ]);
     for (const [name, inputs] of [
       ["campaign-launch", { asset_url: "https://example.com/banner.jpg" }],
       ["translation-review", { story_id: "123", language: "de" }],
+      ["dimensions-country-setup", {}],
+      [
+        "dimensions-sync-field",
+        {
+          source: "global/home",
+          target: "italy/home",
+          component: "hero-section",
+          field: "image",
+        },
+      ],
     ] as const) {
       harness.stdout.length = 0;
       expect(
