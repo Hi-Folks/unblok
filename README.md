@@ -193,6 +193,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `story sync-block` previews or copies selected fields between existing story blocks, preserving other target fields.
 - `story update-matching-blocks` previews or updates all blocks matching a field condition within a story.
 - `dimensions list` lists configured Dimensions folders; `story create-variant` creates a linked variant in one of them.
+- `dimensions coverage` reports linked and missing variants for stories under a selected folder, across configured Dimensions folders. See the [command reference](docs/commands.md#dimensions-coverage).
 - `story move` moves a story by its full slug into an existing folder path; see [story move](docs/commands.md#story-move).
 - `story compare-languages` compares stored field-level translations against default story values.
 - `story versions` lists story history; `story compare-versions` compares two versions or the current draft with previous saved content using `--previous`.

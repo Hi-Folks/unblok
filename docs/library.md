@@ -386,6 +386,22 @@ The gateway follows all pages and returns Management API story objects without f
 
 ## Compare Dimensions stories
 
+For coverage across multiple source stories, call:
+
+```ts
+import { getDimensionsCoverage } from "unblok";
+
+const report = await getDimensionsCoverage(gateway, {
+  spaceId,
+  startsWith: "global/articles/",
+  // folders: ["italy", "germany"], // optional destination selection
+});
+```
+
+The read-only action discovers configured destinations by default and returns linked or missing variants for each source story. A custom gateway supplies `getSpace`, `listStories`, and `getStory`. See [`dimensions coverage`](commands.md#dimensions-coverage) for selection, request count, and result semantics.
+
+Pass an optional third argument, `{ onProgress: ({ current, total, story }) => { ... } }`, to receive each verified story result as it becomes available. The returned promise still resolves to the complete report; an error stops processing and rejects it.
+
 List configured folders and create a linked variant with `listDimensionsFolders(gateway, { spaceId })` and `createDimensionVariant(gateway, { spaceId, story: "global/home", folder: "italy" })`. The latter preserves an existing linked variant and requires the source's group ID. See the [command reference](commands.md#story-create-variant) for behavior and API limitations.
 
 To request a Dimensions merge, call `mergeDimensionStory(gateway, { spaceId, source: "global/home", target: "germany/home" })`. Either reference can be an ID string or exact full slug. It returns `submitted` or `queued`; inspect the target to verify the result. See [`story merge`](commands.md#story-merge) for details.

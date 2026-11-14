@@ -27,7 +27,42 @@ import {
   listStoryVersions,
   compareStoryVersions,
   compareStoryToPreviousVersion,
+  getDimensionsCoverage,
 } from "./library.ts";
+
+test("public library reports selected Dimensions coverage", async () => {
+  const gateway = {
+    getSpace: async () => ({
+      id: 42,
+      dimensions_app_folder_ids: [1, 2],
+      dimensions_app_folders: [],
+    }),
+    listStories: async (_space: number, options?: { ids?: number[] }) =>
+      options?.ids
+        ? [
+            { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+            { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+          ]
+        : [{ id: 3, full_slug: "global/home" }],
+    getStory: async () => ({
+      id: 3,
+      full_slug: "global/home",
+      alternates: [{ id: 4, full_slug: "italy/casa" }],
+    }),
+  };
+  const report = await getDimensionsCoverage(gateway as never, {
+    spaceId: 42,
+    startsWith: "global/",
+    folders: ["italy"],
+  });
+  expect(report.stories[0]?.variants).toEqual([
+    {
+      folder: "italy",
+      status: "linked",
+      story: { id: 4, fullSlug: "italy/casa" },
+    },
+  ]);
+});
 
 test("public library lists and compares story versions", async () => {
   const gateway = {

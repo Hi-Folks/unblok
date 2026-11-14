@@ -98,6 +98,13 @@ export type {
 } from "./storyblok/story-field-filters.ts";
 export { compareStoryLanguages } from "./actions/stories/compare-languages.ts";
 export { compareStoryDimensions } from "./actions/stories/compare-dimensions.ts";
+export { getDimensionsCoverage } from "./actions/apps/dimensions-coverage.ts";
+export type {
+  DimensionsCoverageGateway,
+  DimensionsCoverageInput,
+  DimensionsCoverageReport,
+  DimensionsCoverageProgress,
+} from "./actions/apps/dimensions-coverage.ts";
 export type {
   CompareDimensionsGateway,
   CompareDimensionsInput,

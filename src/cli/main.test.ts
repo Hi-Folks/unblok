@@ -138,6 +138,166 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("reports Dimensions coverage with discovered folders in JSON", async () => {
+    const harness = createHarness({
+      getSpace: async () =>
+        ({
+          id: 42,
+          dimensions_app_folder_ids: [1, 2],
+          dimensions_app_folders: [],
+        }) as never,
+      listStories: async (_space, options) =>
+        options?.ids
+          ? ([
+              { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+              { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+            ] as never)
+          : ([{ id: 3, full_slug: "global/home" }] as never),
+      getStory: async () =>
+        ({ id: 3, full_slug: "global/home", alternates: [] }) as never,
+    });
+    const code = await runCli(
+      [
+        "dimensions",
+        "coverage",
+        "--starts-with",
+        "global/",
+        "--space-id",
+        "42",
+        "--json",
+      ],
+      harness.options,
+    );
+    expect(code).toBe(0);
+    expect(harness.stdout[0]).toMatchObject({
+      apiVersion: "unblok/dimensions-coverage-v1",
+      folders: ["italy"],
+      stories: [
+        {
+          fullSlug: "global/home",
+          variants: [{ folder: "italy", status: "missing" }],
+        },
+      ],
+    });
+    expect(harness.stdout).toHaveLength(1);
+    harness.stdout.length = 0;
+    harness.options.output = { ...harness.options.output, mode: "human" };
+    expect(
+      await runCli(
+        [
+          "dimensions",
+          "coverage",
+          "--starts-with",
+          "global/",
+          "--folder",
+          "italy",
+          "--space-id",
+          "42",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[0]).toContain("global/home");
+    expect(harness.stdout[0]).toContain("missing");
+    expect(harness.stdout[1]).toContain("SOURCE STORY");
+  });
+  test("streams each coverage result before fetching the next story", async () => {
+    let harness: ReturnType<typeof createHarness>;
+    harness = createHarness({
+      getSpace: async () =>
+        ({
+          id: 42,
+          dimensions_app_folder_ids: [1, 2],
+          dimensions_app_folders: [],
+        }) as never,
+      listStories: async (_space, options) =>
+        options?.ids
+          ? ([
+              { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+              { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+            ] as never)
+          : ([
+              { id: 3, full_slug: "global/a" },
+              { id: 4, full_slug: "global/b" },
+            ] as never),
+      getStory: async (_space, id) => {
+        if (id === 4)
+          expect(harness.stdout[0]).toContain(
+            "1/2 · global/a · italy: missing",
+          );
+        return {
+          id,
+          full_slug: id === 3 ? "global/a" : "global/b",
+          alternates: [],
+        } as never;
+      },
+    });
+    harness.options.output = { ...harness.options.output, mode: "human" };
+    expect(
+      await runCli(
+        [
+          "dimensions",
+          "coverage",
+          "--starts-with",
+          "global/",
+          "--space-id",
+          "42",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[1]).toContain("2/2 · global/b");
+  });
+  test("colors coverage statuses in progress and the table", async () => {
+    const harness = createHarness({
+      getSpace: async () =>
+        ({
+          id: 42,
+          dimensions_app_folder_ids: [1, 2, 3],
+          dimensions_app_folders: [],
+        }) as never,
+      listStories: async (_space, options) =>
+        options?.ids
+          ? ([
+              { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+              { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+              { id: 3, is_folder: true, parent_id: 0, full_slug: "germany/" },
+            ] as never)
+          : ([{ id: 4, full_slug: "global/home" }] as never),
+      getStory: async () =>
+        ({
+          id: 4,
+          full_slug: "global/home",
+          alternates: [{ id: 5, full_slug: "italy/casa" }],
+        }) as never,
+    });
+    harness.options.output = {
+      ...harness.options.output,
+      mode: "human",
+      style: (color, text) =>
+        `\x1b[${color === "green" ? 32 : 33}m${text}\x1b[39m`,
+    };
+    expect(
+      await runCli(
+        [
+          "dimensions",
+          "coverage",
+          "--starts-with",
+          "global/",
+          "--space-id",
+          "42",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    for (const output of harness.stdout) {
+      expect(output).toContain("\x1b[32mlinked\x1b[39m");
+      expect(output).toContain("\x1b[33mmissing\x1b[39m");
+    }
+    expect(String(harness.stdout[1]).replace(/\x1b\[[0-9;]*m/g, "")).toContain(
+      "global/home   linked  missing",
+    );
+  });
   test("compares current draft to previous saved version without specifying IDs", async () => {
     const harness = createHarness({
       findStoryBySlug: async () => ({ id: 7 }) as never,

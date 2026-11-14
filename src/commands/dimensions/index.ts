@@ -5,6 +5,7 @@ import { resolveSpaceId } from "../../config/space-id.ts";
 import { CliError } from "../../errors.ts";
 import { listDimensionsFolders } from "../../actions/apps/list-dimensions.ts";
 import { formatDimensionsFolders } from "./presentation.ts";
+import { dimensionsCoverageCommand } from "./coverage.ts";
 
 const list: Command = {
   name: "list",
@@ -58,6 +59,11 @@ export const dimensionsCommand: Command = {
   description: "Inspect Dimensions configuration",
   usage: "unblok dimensions <command>",
   async run(args, context) {
-    await dispatch("unblok dimensions", [list], args, context);
+    await dispatch(
+      "unblok dimensions",
+      [list, dimensionsCoverageCommand],
+      args,
+      context,
+    );
   },
 };

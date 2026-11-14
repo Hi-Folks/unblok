@@ -4,10 +4,14 @@
 
 ### Added
 
+- Report Dimensions variant coverage for stories under a selected folder via the CLI and JavaScript library.
+- Show Dimensions coverage results as each story is checked, with an optional library progress callback.
+- Highlight linked and missing Dimensions variants in terminal output.
+
 ### Changed
 
 - Compare all configured Dimensions folders by default when no explicit folders are selected.
-- 
+
 ## 0.6.0 - 2026-11-14
 
 ### Added

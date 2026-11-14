@@ -130,6 +130,19 @@ unblok dimensions list --space-id YOUR_SPACE_ID --json
 
 Read the configured Dimensions root folders, resolved to paths, IDs and AI translation codes. The JSON object has `apiVersion: "unblok/dimensions-folders-v1"` and a `folders` array. Unresolvable configured IDs fail rather than being omitted.
 
+## `dimensions coverage`
+
+```bash
+unblok dimensions coverage --starts-with global/ --space-id YOUR_SPACE_ID
+unblok dimensions coverage --starts-with global/articles/ --folder italy --folder germany --space-id YOUR_SPACE_ID --json
+```
+
+Report coverage of stories beneath a source folder path. The first path segment must be a configured Dimensions root folder. A trailing slash is optional; the selection includes descendants at all depths. Unblok discovers every other configured Dimensions root folder by default. Repeat `--folder` to select specific configured destination roots. The source folder cannot be a destination. This operation is read-only and fetches each source story to inspect its linked alternates; large selections require one request per story.
+
+`linked` means Storyblok returned a linked alternate in that folder, regardless of its slug; `missing` means no linked alternate was returned, and does not rule out an unrelated story. Missing or invalid alternate data and multiple linked alternates in one folder cause an error rather than an incomplete report. No matching stories produces an empty report. JSON output uses `apiVersion: "unblok/dimensions-coverage-v1"`, with `startsWith`, `sourceFolder`, `folders` and a `stories` array. Each story has `id`, `fullSlug`, and `variants` containing a folder, status, and linked story identity when present. This reports links, not content differences; use `story compare-dimensions` to compare content.
+
+Human output shows each story's result as it is checked, followed by the completed table. JSON output is emitted only after the full report is ready.
+
 ## `story create-variant`
 
 ```bash
