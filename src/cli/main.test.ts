@@ -138,6 +138,55 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("plans and applies missing Dimensions variants using the shared action", async () => {
+    let writes = 0;
+    const harness = createHarness({
+      getSpace: async () =>
+        ({
+          id: 42,
+          dimensions_app_folder_ids: [1, 2],
+          dimensions_app_folders: [],
+        }) as never,
+      listStories: async (_space, options) =>
+        options?.ids
+          ? ([
+              { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+              { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+            ] as never)
+          : ([{ id: 10, full_slug: "global/home" }] as never),
+      findStoryBySlug: async () => ({ id: 10 }) as never,
+      getStory: async () =>
+        ({
+          id: 10,
+          full_slug: "global/home",
+          group_id: "group",
+          alternates: [],
+        }) as never,
+      duplicateStoryToDimension: async () => {
+        writes++;
+        return { id: 20, full_slug: "italy/home", group_id: "group" } as never;
+      },
+    });
+    const args = [
+      "dimensions",
+      "create-missing",
+      "--starts-with",
+      "global/",
+      "--space-id",
+      "42",
+      "--json",
+    ];
+    expect(await runCli([...args, "--plan"], harness.options)).toBe(0);
+    expect(harness.stdout[0]).toMatchObject({
+      operations: [{ status: "planned" }],
+    });
+    expect(writes).toBe(0);
+    expect(await runCli([...args, "--yes"], harness.options)).toBe(0);
+    expect(harness.stdout[1]).toMatchObject({
+      operations: [{ status: "created" }],
+    });
+    expect(writes).toBe(1);
+  });
   test("reports Dimensions coverage with discovered folders in JSON", async () => {
     const harness = createHarness({
       getSpace: async () =>

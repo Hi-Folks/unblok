@@ -194,6 +194,7 @@ For an automated demo space setup with a confirmation after duplication, see [th
 - `story update-matching-blocks` previews or updates all blocks matching a field condition within a story.
 - `dimensions list` lists configured Dimensions folders; `story create-variant` creates a linked variant in one of them.
 - `dimensions coverage` reports linked and missing variants for stories under a selected folder, across configured Dimensions folders. See the [command reference](docs/commands.md#dimensions-coverage).
+- `dimensions create-missing` plans or creates missing linked variants for a folder tree; the operation is also available in YAML and the library.
 - `story move` moves a story by its full slug into an existing folder path; see [story move](docs/commands.md#story-move).
 - `story compare-languages` compares stored field-level translations against default story values.
 - `story versions` lists story history; `story compare-versions` compares two versions or the current draft with previous saved content using `--previous`.

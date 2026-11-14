@@ -6,6 +6,7 @@ import { CliError } from "../../errors.ts";
 import { listDimensionsFolders } from "../../actions/apps/list-dimensions.ts";
 import { formatDimensionsFolders } from "./presentation.ts";
 import { dimensionsCoverageCommand } from "./coverage.ts";
+import { createMissingCommand } from "./create-missing.ts";
 
 const list: Command = {
   name: "list",
@@ -61,7 +62,7 @@ export const dimensionsCommand: Command = {
   async run(args, context) {
     await dispatch(
       "unblok dimensions",
-      [list, dimensionsCoverageCommand],
+      [list, dimensionsCoverageCommand, createMissingCommand],
       args,
       context,
     );

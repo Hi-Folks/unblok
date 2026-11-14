@@ -4,6 +4,8 @@
 
 ### Added
 
+- Plan and create missing Dimensions variants for a source folder through the CLI, YAML and JavaScript library.
+
 - Report Dimensions variant coverage for stories under a selected folder via the CLI and JavaScript library.
 - Show Dimensions coverage results as each story is checked, with an optional library progress callback.
 - Highlight linked and missing Dimensions variants in terminal output.

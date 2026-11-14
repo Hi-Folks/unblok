@@ -143,6 +143,17 @@ Report coverage of stories beneath a source folder path. The first path segment 
 
 Human output shows each story's result as it is checked, followed by the completed table. JSON output is emitted only after the full report is ready.
 
+## `dimensions create-missing`
+
+```bash
+unblok dimensions create-missing --starts-with global/articles/ --folder italy --folder germany --space-id YOUR_SPACE_ID --plan
+unblok dimensions create-missing --starts-with global/articles/ --folder italy --folder germany --space-id YOUR_SPACE_ID --yes --json
+```
+
+Use `--plan` to inspect linked and missing variants without writing. Use `--yes` to create missing links. Repeat `--folder` for configured destination roots, or omit it to select all configured roots except the source. The source path selects descendants, and the source root must be configured in Dimensions. Each source needs a group ID before a missing variant can be created. Existing linked variants remain unchanged; before each creation Unblok rechecks the source using the single-variant action. Storyblok may create intermediate folders. This does not publish or translate stories.
+
+The report has `apiVersion: "unblok/missing-variants-v1"`; operations have `planned`, `created`, `unchanged`, `failed`, or `not_run` statuses. Execution stops on the first failure and includes structured error information. Earlier changes remain; inspect the destination before retrying an unconfirmed write. The YAML equivalent is [`setup-missing-dimension-variants.yaml`](../examples/features/setup-missing-dimension-variants.yaml). YAML plan validates locally and cannot enumerate live stories; apply resolves the selection in the target space.
+
 ## `story create-variant`
 
 ```bash

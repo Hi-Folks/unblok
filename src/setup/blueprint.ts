@@ -146,6 +146,10 @@ export function planBlueprint(value: unknown): BlueprintPlan {
         operation: "create linked Dimensions variants",
         support: "available",
       },
+      create_missing_variants: {
+        operation: "create missing linked Dimensions variants",
+        support: "available",
+      },
     },
     workflow: {
       edit: { operation: "update workflow settings", support: "available" },

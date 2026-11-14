@@ -14,6 +14,7 @@ import {
   type SyncBlockInput,
 } from "../actions/stories/sync-block-fields.ts";
 import { createDimensionVariant } from "../actions/stories/create-dimension-variant.ts";
+import { createMissingVariants } from "../actions/apps/create-missing-variants.ts";
 import { configureDimensions } from "../actions/apps/dimensions.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
 import {
@@ -134,6 +135,7 @@ export interface SupportedBlueprint {
     Omit<UpdateMatchingBlocksInput, "spaceId" | "apply">
   >;
   storyVariants: Array<{ story: string; folder: string }>;
+  missingVariants: Array<{ startsWith: string; folders?: string[] }>;
   organizeRoot?: { destination: string; keep: string[] };
   translations: StoryTranslations[];
   storyUpdates: StoryBlockUpdate[];
@@ -382,6 +384,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
   const storySyncBlocks: SupportedBlueprint["storySyncBlocks"] = [];
   const storyMatchingBlocks: SupportedBlueprint["storyMatchingBlocks"] = [];
   const storyVariants: SupportedBlueprint["storyVariants"] = [];
+  const missingVariants: SupportedBlueprint["missingVariants"] = [];
   let rootOrganization: SupportedBlueprint["organizeRoot"];
   const storyUpdates: StoryBlockUpdate[] = [];
   const translations: StoryTranslations[] = [];
@@ -527,6 +530,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
             "sync_blocks",
             "update_matching_blocks",
             "create_variants",
+            "create_missing_variants",
             "translated_slugs",
             "update_blocks",
             "ensure_folders",
@@ -794,6 +798,48 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
           component: item.component,
           where: { field: item.where.field, equals: item.where.equals },
           fields: item.fields,
+        });
+      }
+    }
+    if (value.stories.create_missing_variants !== undefined) {
+      if (
+        !Array.isArray(value.stories.create_missing_variants) ||
+        !value.stories.create_missing_variants.length
+      )
+        throw new CliError(
+          "stories.create_missing_variants must be a nonempty array.",
+          2,
+        );
+      for (const item of value.stories.create_missing_variants) {
+        if (
+          !isObject(item) ||
+          Object.keys(item).some(
+            (key) => !["starts_with", "folders"].includes(key),
+          ) ||
+          typeof item.starts_with !== "string" ||
+          item.starts_with !== item.starts_with.trim() ||
+          !isValidStoryCreationSlug(item.starts_with.replace(/\/$/, "")) ||
+          (item.folders !== undefined &&
+            (!Array.isArray(item.folders) ||
+              !item.folders.length ||
+              item.folders.some(
+                (folder) =>
+                  typeof folder !== "string" ||
+                  folder !== folder.trim() ||
+                  !isValidStoryCreationSlug(folder) ||
+                  folder.includes("/"),
+              ) ||
+              new Set(item.folders).size !== item.folders.length))
+        )
+          throw new CliError(
+            "Each stories.create_missing_variants entry requires a source path and optional unique root folders.",
+            2,
+          );
+        missingVariants.push({
+          startsWith: item.starts_with,
+          ...(item.folders === undefined
+            ? {}
+            : { folders: item.folders as string[] }),
         });
       }
     }
@@ -1273,6 +1319,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       storySyncBlocks,
       storyMatchingBlocks,
       storyVariants,
+      missingVariants,
       rootOrganization,
       dimensionsFolders,
       translations,
@@ -1317,6 +1364,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     storySyncBlocks,
     storyMatchingBlocks,
     storyVariants,
+    missingVariants,
     ...(rootOrganization ? { organizeRoot: rootOrganization } : {}),
     translations,
     storyUpdates,
@@ -1442,6 +1490,10 @@ export async function applySupportedBlueprint(
       ...blueprint.storyVariants.map((item) => ({
         operation: "create-dimension-variant",
         key: `${item.story}/${item.folder}`,
+      })),
+      ...blueprint.missingVariants.map((item) => ({
+        operation: "create-missing-variants",
+        key: item.startsWith,
       })),
       ...blueprint.storySyncBlocks.map((item) => ({
         operation: "sync-block-fields",
@@ -1756,6 +1808,7 @@ export async function applySupportedBlueprint(
       blueprint.organizeRoot ||
       blueprint.stories.length ||
       blueprint.storyVariants.length ||
+      blueprint.missingVariants.length ||
       blueprint.translations.length
     )
       onProgress?.({ stage: "stories" });
@@ -1868,6 +1921,55 @@ export async function applySupportedBlueprint(
       } catch (error) {
         throw new BlueprintOperationError(
           "create-dimension-variant",
+          key,
+          error,
+        );
+      }
+    }
+    for (const item of blueprint.missingVariants) {
+      const key = item.startsWith;
+      try {
+        onProgress?.({ stage: "stories", item: key });
+        const result = await createMissingVariants(
+          gateway,
+          { spaceId, ...item, apply: true },
+          {
+            onProgress: (entry) =>
+              onProgress?.({
+                stage: "stories",
+                item: `${entry.source} → ${entry.folder} (${entry.status})`,
+              }),
+          },
+        );
+        for (const entry of result.operations)
+          operations.push({
+            operation: "create-dimension-variant",
+            key: `${entry.source}/${entry.folder}`,
+            status: entry.status,
+            ...(entry.story ? { reason: entry.story.fullSlug } : {}),
+            ...(entry.error
+              ? { error: entry.error.message, errorInfo: entry.error }
+              : {}),
+          });
+        const failure = result.operations.find(
+          (entry) => entry.status === "failed",
+        );
+        operations.push({
+          operation: "create-missing-variants",
+          key,
+          status: failure
+            ? "failed"
+            : result.operations.some((entry) => entry.status === "created")
+              ? "completed"
+              : "unchanged",
+          ...(failure?.error
+            ? { error: failure.error.message, errorInfo: failure.error }
+            : {}),
+        });
+        if (failure) return finish(5);
+      } catch (error) {
+        throw new BlueprintOperationError(
+          "create-missing-variants",
           key,
           error,
         );

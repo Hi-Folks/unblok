@@ -408,6 +408,28 @@
             }
           }
         },
+        "create_missing_variants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["starts_with"],
+            "properties": {
+              "starts_with": { "$ref": "#/$defs/nonempty" },
+              "folders": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[^/*,]+$"
+                }
+              }
+            }
+          }
+        },
         "create_variants": {
           "type": "array",
           "minItems": 1,

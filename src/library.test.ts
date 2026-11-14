@@ -28,7 +28,40 @@ import {
   compareStoryVersions,
   compareStoryToPreviousVersion,
   getDimensionsCoverage,
+  createMissingVariants,
 } from "./library.ts";
+
+test("public library plans missing Dimensions variants without writing", async () => {
+  let writes = 0;
+  const gateway = {
+    getSpace: async () => ({
+      id: 42,
+      dimensions_app_folder_ids: [1, 2],
+      dimensions_app_folders: [],
+    }),
+    listStories: async (_space: number, options?: { ids?: number[] }) =>
+      options?.ids
+        ? [
+            { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+            { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+          ]
+        : [{ id: 3, full_slug: "global/home" }],
+    getStory: async () => ({ id: 3, full_slug: "global/home", alternates: [] }),
+    duplicateStoryToDimension: async () => {
+      writes++;
+    },
+    findStoryBySlug: async () => ({ id: 3 }),
+  };
+  const report = await createMissingVariants(gateway as never, {
+    spaceId: 42,
+    startsWith: "global/",
+    apply: false,
+  });
+  expect(report.operations).toMatchObject([
+    { source: "global/home", folder: "italy", status: "planned" },
+  ]);
+  expect(writes).toBe(0);
+});
 
 test("public library reports selected Dimensions coverage", async () => {
   const gateway = {

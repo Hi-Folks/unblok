@@ -99,6 +99,12 @@ export type {
 export { compareStoryLanguages } from "./actions/stories/compare-languages.ts";
 export { compareStoryDimensions } from "./actions/stories/compare-dimensions.ts";
 export { getDimensionsCoverage } from "./actions/apps/dimensions-coverage.ts";
+export { createMissingVariants } from "./actions/apps/create-missing-variants.ts";
+export type {
+  MissingVariantsGateway,
+  MissingVariantsReport,
+  MissingVariantOperation,
+} from "./actions/apps/create-missing-variants.ts";
 export type {
   DimensionsCoverageGateway,
   DimensionsCoverageInput,

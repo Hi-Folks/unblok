@@ -6,6 +6,115 @@ import {
 } from "./blueprint-apply.ts";
 
 describe("story setup", () => {
+  test("reports successful and failed bulk variant operations before stopping", async () => {
+    const folders = ["global", "italy", "germany", "uk"];
+    let writes = 0;
+    const gateway = {
+      getSpace: async () => ({
+        id: 42,
+        dimensions_app_folder_ids: [1, 2, 3, 4],
+        dimensions_app_folders: [],
+      }),
+      listStories: async (_space: number, options?: { ids?: number[] }) =>
+        options?.ids
+          ? folders.map((name, i) => ({
+              id: i + 1,
+              parent_id: 0,
+              is_folder: true,
+              full_slug: `${name}/`,
+            }))
+          : [{ id: 10, full_slug: "global/home" }],
+      findStoryBySlug: async () => ({ id: 10 }),
+      getStory: async () => ({
+        id: 10,
+        full_slug: "global/home",
+        group_id: "group",
+        alternates: [],
+      }),
+      duplicateStoryToDimension: async (
+        _space: number,
+        _id: number,
+        folder: number,
+      ) => {
+        writes++;
+        if (folder === 3) throw new Error("failure");
+        return { id: 20, full_slug: "italy/home", group_id: "group" };
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: { create_missing_variants: [{ starts_with: "global/" }] },
+    });
+    const report = await applySupportedBlueprint(
+      gateway as never,
+      42,
+      blueprint,
+    );
+    expect(report.failed).toBe(true);
+    expect(
+      report.operations
+        .filter((item) => item.operation === "create-dimension-variant")
+        .map((item) => item.status),
+    ).toEqual(["created", "failed", "not_run"]);
+    expect(writes).toBe(2);
+  });
+  test("creates missing Dimensions variants from a source folder and skips them on retry", async () => {
+    let exists = false,
+      writes = 0;
+    const gateway = {
+      getSpace: async () => ({
+        id: 42,
+        dimensions_app_folder_ids: [1, 2],
+        dimensions_app_folders: [],
+      }),
+      listStories: async (_space: number, options?: { ids?: number[] }) =>
+        options?.ids
+          ? [
+              { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+              { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+            ]
+          : [{ id: 10, full_slug: "global/home" }],
+      findStoryBySlug: async () => ({ id: 10 }),
+      getStory: async () => ({
+        id: 10,
+        full_slug: "global/home",
+        group_id: "group",
+        alternates: exists ? [{ id: 20, full_slug: "italy/home" }] : [],
+      }),
+      duplicateStoryToDimension: async () => {
+        exists = true;
+        writes++;
+        return { id: 20, full_slug: "italy/home", group_id: "group" };
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        create_missing_variants: [
+          { starts_with: "global/", folders: ["italy"] },
+        ],
+      },
+    });
+    expect(
+      (await applySupportedBlueprint(gateway as never, 42, blueprint))
+        .operations,
+    ).toContainEqual(
+      expect.objectContaining({
+        operation: "create-dimension-variant",
+        status: "created",
+      }),
+    );
+    expect(
+      (await applySupportedBlueprint(gateway as never, 42, blueprint))
+        .operations,
+    ).toContainEqual(
+      expect.objectContaining({
+        operation: "create-dimension-variant",
+        status: "unchanged",
+      }),
+    );
+    expect(writes).toBe(1);
+  });
   test("creates a story in the selected release", async () => {
     let selected: number | undefined;
     const gateway = {

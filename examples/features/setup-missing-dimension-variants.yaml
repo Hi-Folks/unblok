@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Create missing Dimensions variants
+# Configure these Dimensions folders and create linked-group source stories first.
+stories:
+  create_missing_variants:
+    - starts_with: global/articles/
+      folders:
+        - italy
+        - germany
