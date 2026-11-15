@@ -138,6 +138,119 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("guide runs the selected Dimensions coverage workflow without writes", async () => {
+    let writes = 0;
+    const harness = createHarness({
+      getSpace: async () =>
+        ({
+          id: 42,
+          dimensions_app_folder_ids: [1, 2],
+          dimensions_app_folders: [],
+        }) as never,
+      listStories: async (_space, options) =>
+        options?.ids
+          ? ([
+              { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+              { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+            ] as never)
+          : ([{ id: 3, full_slug: "global/home" }] as never),
+      getStory: async () =>
+        ({ id: 3, full_slug: "global/home", alternates: [] }) as never,
+      duplicateStoryToDimension: async () => {
+        writes++;
+        return {} as never;
+      },
+    });
+    const answers = ["global/", "42"];
+    harness.options.output = {
+      ...harness.options.output,
+      mode: "human",
+      canPrompt: true,
+      select: async () => "dimensions",
+      input: async () => answers.shift() ?? null,
+    };
+    expect(await runCli(["guide"], harness.options)).toBe(0);
+    expect(
+      harness.stdout.some((value) =>
+        String(value).includes(
+          "unblok dimensions coverage --starts-with global/ --space-id 42",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      harness.stdout.some((value) => String(value).includes("missing")),
+    ).toBe(true);
+    expect(writes).toBe(0);
+  });
+  test("guide prepares a translation after listing languages without submitting it", async () => {
+    let requests = 0;
+    const harness = createHarness({
+      listLanguages: async () => [{ code: "de", name: "German" }],
+      aiTranslateStory: async () => {
+        requests++;
+        return {} as never;
+      },
+    });
+    const answers = ["42", "12", "de"];
+    harness.options.output = {
+      ...harness.options.output,
+      mode: "human",
+      canPrompt: true,
+      select: async () => "translation",
+      input: async () => answers.shift() ?? null,
+    };
+    expect(await runCli(["guide"], harness.options)).toBe(0);
+    expect(
+      harness.stdout.some((value) =>
+        String(value).includes(
+          "unblok story ai-translate --id 12 --language de --space-id 42 --yes",
+        ),
+      ),
+    ).toBe(true);
+    expect(requests).toBe(0);
+  });
+  test("guide plans a selected local blueprint and handles cancellation", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "unblok-guide-"));
+    try {
+      const file = join(directory, "setup.yaml");
+      await writeFile(file, "version: 1\napps:\n  install:\n    - import\n");
+      const harness = createHarness();
+      harness.options.environment = {};
+      harness.options.output = {
+        ...harness.options.output,
+        mode: "human",
+        canPrompt: true,
+        select: async () => "demo",
+        input: async () => file,
+      };
+      expect(await runCli(["guide"], harness.options)).toBe(0);
+      expect(
+        harness.stdout.some((value) => String(value).includes("install")),
+      ).toBe(true);
+      harness.stdout.length = 0;
+      harness.options.output = {
+        ...harness.options.output,
+        select: async () => null,
+      };
+      expect(await runCli(["guide"], harness.options)).toBe(0);
+      expect(harness.stdout).toEqual(["Guide cancelled."]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+  test("guide rejects non-interactive and JSON mode before prompting", async () => {
+    const harness = createHarness();
+    expect(await runCli(["guide", "--json"], harness.options)).toBe(2);
+    expect(harness.stderr[0]).toContain("interactive terminal");
+    harness.stderr.length = 0;
+    harness.options.output = {
+      ...harness.options.output,
+      mode: "human",
+      canPrompt: false,
+    };
+    expect(await runCli(["guide"], harness.options)).toBe(2);
+    expect(harness.stderr[0]).toContain("interactive terminal");
+  });
   test("previews a positional story block copy as JSON without writing", async () => {
     let writes = 0;
     const harness = createHarness({

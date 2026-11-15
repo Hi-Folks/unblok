@@ -68,6 +68,8 @@ Run `unblok space setup examples --json` to discover the bundled recipes, then `
 
 Recipes show how to use Unblok for common, real-world Storyblok workflows. Each recipe brings together the steps and API calls needed to achieve an outcome, so you can adapt it to your team and reuse it in a script, a YAML setup or an integration.
 
+Run `unblok guide` in an interactive terminal for guided Dimensions coverage, AI translation preparation, or a local demo setup plan. The guide shows the commands it uses and helps prepare commands for changes; it does not submit translations or apply setups. See the [guide reference](docs/commands.md#guide).
+
 - [AI translation and review](docs/recipes/ai-translation-review.md): request translations for a story and move its language versions into an editorial review workflow.
 - [Campaign launch](docs/recipes/campaign-launch.md): prepare a release with a landing page, campaign image and home-page change for the team to review.
 - [Prepare a Dimensions demo](docs/recipes/dimensions-country-setup.md): install Dimensions, organize global and country folders, and create linked country variants. Inspect coverage and plan additional variants as your demo grows.
@@ -85,7 +87,7 @@ See the [AI improvements to-do list](docs/ai-improvements.md) for planned work o
 
 ### Use Unblok with an AI coding agent
 
-The [Unblok skill](skills/unblok/SKILL.md) helps agents choose between the CLI, YAML blueprints, and the JavaScript library. It includes focused guidance for translation and campaign recipes. You can use `npx` without a global CLI installation. Installing the skill does not grant access to a space; configure a Storyblok token when you want to run space operations.
+The [Unblok skill](skills/unblok/SKILL.md) helps agents choose between the CLI, YAML blueprints, and the JavaScript library. Its goal-oriented workflows cover Dimensions coverage and content synchronization, AI translation, and demo or campaign setup. You can use `npx` without a global CLI installation. Installing the skill does not grant access to a space; configure a Storyblok token when you want to run space operations.
 
 From your project directory, install the skill for the agent you use:
 

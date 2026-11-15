@@ -11,8 +11,8 @@ Check the installed version and relevant command help before choosing flags; cap
 
 - [CLI and library](references/operations.md): discover operations, interpret results, and use the library.
 - [YAML blueprints](references/blueprints.md): compose, plan, apply, and repeat setups.
-- [Recipes](references/recipes.md): translation and review, and campaign preparation.
+- [Goal-oriented workflows](references/recipes.md): Dimensions coverage and synchronization, AI translation, and demo or campaign setup.
 
 Use the user's intended space and region; do not invent IDs, component schemas, language codes, or settings. Obtain missing information from available configuration or read-only commands, or ask the user. Never expose tokens in output or put them in generated files.
 
-Respect the user's instructions and authorization for execution. A plan is local validation and an inventory, not a comparison against the live space. Apply and other write commands change Storyblok; report completed, unchanged, failed, and not-run work based on their actual output. Check operation-specific repeat behavior before retrying. A queued background task is not a completed translation.
+Respect the user's instructions and authorization for execution. YAML setup plans validate locally and do not inspect the live space; individual commands may offer live previews, so check their help. Apply and other write commands change Storyblok; report completed, unchanged, failed, and not-run work based on their actual output. Check operation-specific repeat behavior before retrying. A queued background task is not a completed translation.

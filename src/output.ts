@@ -3,6 +3,7 @@ import {
   confirm as clackConfirm,
   isCancel,
   text as clackText,
+  select as clackSelect,
   log,
   note as clackNote,
   spinner,
@@ -38,6 +39,10 @@ export interface Output {
   input(
     message: string,
     validate: (value: string) => string | undefined,
+  ): Promise<string | null>;
+  select?(
+    message: string,
+    options: Array<{ value: string; label: string; hint?: string }>,
   ): Promise<string | null>;
   error(
     message: string,
@@ -135,6 +140,16 @@ export function createOutput(options: OutputOptions = {}): Output {
       const answer = await clackText({
         message,
         validate: (value) => validate(value ?? ""),
+        output: stdout,
+      });
+      return isCancel(answer) ? null : answer;
+    },
+    async select(message, choices) {
+      if (!interactive || !isTTY(process.stdin))
+        throw new CliError("Selection requires an interactive terminal.", 2);
+      const answer = await clackSelect({
+        message,
+        options: choices,
         output: stdout,
       });
       return isCancel(answer) ? null : answer;

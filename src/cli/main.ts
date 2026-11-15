@@ -10,6 +10,7 @@ import { releaseCommand } from "../commands/release/index.ts";
 import { pipelineCommand } from "../commands/pipeline/index.ts";
 import { skillCommand } from "../commands/skill/index.ts";
 import { dimensionsCommand } from "../commands/dimensions/index.ts";
+import { guideCommand } from "../commands/guide.ts";
 import {
   getStoryblokRequestsPerSecond,
   getStoryblokRegion,
@@ -45,6 +46,7 @@ const commands = [
   pipelineCommand,
   skillCommand,
   dimensionsCommand,
+  guideCommand,
 ];
 
 export async function runCli(

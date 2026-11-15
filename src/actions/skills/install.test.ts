@@ -13,6 +13,35 @@ import { join } from "node:path";
 import { installSkill } from "./install.ts";
 
 describe("installSkill", () => {
+  test("installs the maintained goal-oriented workflow reference for agents", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "unblok-skill-"));
+    try {
+      const result = await installSkill({
+        agent: "codex",
+        version: "0.6.2",
+        directory: dir,
+        fetch: async (url) => {
+          const path = new URL(String(url)).pathname.split(
+            "/skills/unblok/",
+          )[1];
+          if (!path) return new Response(null, { status: 404 });
+          return new Response(
+            await readFile(join("skills/unblok", path), "utf8"),
+          );
+        },
+      });
+      const guidance = await readFile(
+        join(dir, result.path, "references/recipes.md"),
+        "utf8",
+      );
+      expect(guidance).toContain("unblok dimensions coverage");
+      expect(guidance).toContain("unblok story ai-translate");
+      expect(guidance).toContain("unblok space setup plan");
+      expect(guidance).toContain("not a standalone bundled example");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   test("downloads every reference linked by the maintained skill", async () => {
     const dir = await mkdtemp(join(tmpdir(), "unblok-skill-"));
     try {

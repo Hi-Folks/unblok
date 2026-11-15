@@ -4,11 +4,13 @@
 
 ### Added
 
+- Add `unblok guide` for interactive Dimensions coverage, translation preparation and local demo setup planning.
 - Document positional story synchronization with CLI, YAML and JavaScript examples.
 - Preview and copy a story block or field by position using a JSON Pointer through the CLI, YAML and JavaScript library.
 
 ### Changed
 
+- Expand AI skill guidance for Dimensions, translation and demo setup workflows.
 - Show common goals, recipe discovery and AI skill installation in top-level CLI help.
 - Expand the Dimensions recipe with coverage and missing-variant workflows.
 
