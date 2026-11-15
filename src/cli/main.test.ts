@@ -153,27 +153,31 @@ describe("runCli", () => {
               { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
               { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
             ] as never)
-          : ([{ id: 3, full_slug: "global/home" }] as never),
+          : ([{ id: 3, full_slug: "global/banners/home" }] as never),
       getStory: async () =>
-        ({ id: 3, full_slug: "global/home", alternates: [] }) as never,
+        ({ id: 3, full_slug: "global/banners/home", alternates: [] }) as never,
       duplicateStoryToDimension: async () => {
         writes++;
         return {} as never;
       },
     });
-    const answers = ["global/", "42"];
+    const answers = ["/global/banners", "42"];
     harness.options.output = {
       ...harness.options.output,
       mode: "human",
       canPrompt: true,
       select: async () => "dimensions",
-      input: async () => answers.shift() ?? null,
+      input: async (_message, validate) => {
+        const answer = answers.shift() ?? null;
+        if (answer !== null) expect(validate(answer)).toBeUndefined();
+        return answer;
+      },
     };
     expect(await runCli(["guide"], harness.options)).toBe(0);
     expect(
       harness.stdout.some((value) =>
         String(value).includes(
-          "unblok dimensions coverage --starts-with global/ --space-id 42",
+          "Command (Running):\n  unblok dimensions coverage --starts-with global/banners --space-id 42",
         ),
       ),
     ).toBe(true);
@@ -203,7 +207,21 @@ describe("runCli", () => {
     expect(
       harness.stdout.some((value) =>
         String(value).includes(
+          "Command (Running):\n  unblok language list --space-id 42",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      harness.stdout.some((value) =>
+        String(value).includes(
           "unblok story ai-translate --id 12 --language de --space-id 42 --yes",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      harness.stdout.some((value) =>
+        String(value).includes(
+          "Command (Review):\n  unblok story ai-translate",
         ),
       ),
     ).toBe(true);
@@ -224,6 +242,13 @@ describe("runCli", () => {
         input: async () => file,
       };
       expect(await runCli(["guide"], harness.options)).toBe(0);
+      expect(
+        harness.stdout.some((value) =>
+          String(value).includes(
+            `Command (Running):\n  unblok space setup plan --config ${file}`,
+          ),
+        ),
+      ).toBe(true);
       expect(
         harness.stdout.some((value) => String(value).includes("install")),
       ).toBe(true);

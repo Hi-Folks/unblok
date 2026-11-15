@@ -130,7 +130,7 @@ unblok guide
 
 Choose a workflow in an interactive terminal. Dimensions coverage asks for a source folder and space ID, then runs the existing read-only coverage command. AI translation preparation lists configured languages, asks for a story ID and language code, and prints a translation command for you to review and run separately. Demo setup asks for an existing local YAML file and runs the existing local setup plan. It also points to bundled examples via `unblok space setup examples`.
 
-The guide does not submit translations or apply setups. Coverage and language listing require a Storyblok token and access to the selected space; the local setup plan does not. Cancel a prompt to exit. `guide` requires an interactive terminal and does not support `--json`; use the underlying commands for automation. The printed command for a local file path uses POSIX shell quoting.
+The guide labels commands it runs as `Command (Running)` and commands it prepares as `Command (Review)`. It does not submit translations or apply setups. Coverage and language listing require a Storyblok token and access to the selected space; the local setup plan does not. Cancel a prompt to exit. `guide` requires an interactive terminal and does not support `--json`; use the underlying commands for automation. Printed arguments with special characters use POSIX shell quoting.
 
 ## `dimensions list`
 

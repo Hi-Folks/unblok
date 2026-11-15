@@ -55,30 +55,42 @@ export const guideCommand: Command = {
       },
     ]);
     const cancel = () => context.output.info("Guide cancelled.");
+    const showCommand = (purpose: "Running" | "Review", args: string[]) =>
+      context.output.text(
+        `Command (${purpose}):\n  ${args.map(quote).join(" ")}`,
+      );
     if (choice === null) {
       cancel();
       return;
     }
     if (choice === "dimensions") {
-      const path = await context.output.input(
+      const enteredPath = await context.output.input(
         "Source folder path, e.g. global/articles/",
         (value) =>
-          isValidStoryCreationSlug(value.replace(/\/$/, ""))
+          value === value.trim() &&
+          isValidStoryCreationSlug(value.replace(/^\//, "").replace(/\/$/, ""))
             ? undefined
-            : "Enter a folder path without wildcards.",
+            : "Enter a path like global/articles/ without surrounding spaces, empty segments, or wildcards.",
       );
-      if (path === null) {
+      if (enteredPath === null) {
         cancel();
         return;
       }
+      const path = enteredPath.replace(/^\//, "");
       const spaceId = await context.output.input("Space ID", positiveId);
       if (spaceId === null) {
         cancel();
         return;
       }
-      context.output.text(
-        `Running: unblok dimensions coverage --starts-with ${quote(path)} --space-id ${quote(spaceId)}`,
-      );
+      showCommand("Running", [
+        "unblok",
+        "dimensions",
+        "coverage",
+        "--starts-with",
+        path,
+        "--space-id",
+        spaceId,
+      ]);
       await dimensionsCoverageCommand.run(
         ["--starts-with", path, "--space-id", spaceId],
         context,
@@ -92,9 +104,13 @@ export const guideCommand: Command = {
         cancel();
         return;
       }
-      context.output.text(
-        `Running: unblok language list --space-id ${quote(spaceId)}`,
-      );
+      showCommand("Running", [
+        "unblok",
+        "language",
+        "list",
+        "--space-id",
+        spaceId,
+      ]);
       await listLanguagesCommand.run(["--space-id", spaceId], context);
       const storyId = await context.output.input("Story ID", positiveId);
       if (storyId === null) {
@@ -112,8 +128,20 @@ export const guideCommand: Command = {
         cancel();
         return;
       }
+      showCommand("Review", [
+        "unblok",
+        "story",
+        "ai-translate",
+        "--id",
+        storyId,
+        "--language",
+        language,
+        "--space-id",
+        spaceId,
+        "--yes",
+      ]);
       context.output.text(
-        `Review and run this command to request a translation:\n\n  unblok story ai-translate --id ${quote(storyId)} --language ${quote(language)} --space-id ${quote(spaceId)} --yes\n\nTranslation may run in the background. Use 'unblok story ai-translate --help' for review-stage options.`,
+        "Run the command above to request a translation. Translation may run in the background. Use 'unblok story ai-translate --help' for review-stage options.",
       );
     } else if (choice === "demo") {
       context.output.text(
@@ -130,9 +158,14 @@ export const guideCommand: Command = {
         cancel();
         return;
       }
-      context.output.text(
-        `Running (POSIX shell): unblok space setup plan --config ${quote(config)}`,
-      );
+      showCommand("Running", [
+        "unblok",
+        "space",
+        "setup",
+        "plan",
+        "--config",
+        config,
+      ]);
       await spaceSetupCommand.run(["plan", "--config", config], context);
       context.output.text(
         `After reviewing the plan, see 'unblok space setup apply --help' for applying it.`,

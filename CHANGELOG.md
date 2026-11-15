@@ -10,6 +10,8 @@
 
 ### Changed
 
+- Use consistent command previews across interactive guide workflows.
+
 - Expand AI skill guidance for Dimensions, translation and demo setup workflows.
 - Show common goals, recipe discovery and AI skill installation in top-level CLI help.
 - Expand the Dimensions recipe with coverage and missing-variant workflows.
@@ -31,6 +33,8 @@
 - Show live progress while discovering and creating missing Dimensions variants.
 
 ### Fixed
+
+- Accept a leading slash in the guide's Dimensions source path and clarify invalid-path guidance.
 
 - Create missing Dimensions variants for start pages whose full slugs end in a slash.
 

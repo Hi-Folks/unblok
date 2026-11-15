@@ -13,6 +13,8 @@ Keep reusable, terminal-independent business logic in `src/actions/<resource>/` 
 
 For bulk operations and other potentially slow sequences of API calls, show meaningful human-readable progress as results become available, including the current item and outcome when known. Use callbacks or events in shared actions so CLI and YAML can present progress without coupling actions to terminal I/O. Keep JSON output a single clean machine-readable result; preserve partial results and report failures accurately.
 
+For interactive guide workflows, display the equivalent command with the selected options using the existing guide format, and distinguish commands being run from commands prepared for review.
+
 Bun is required for development, tests, quality checks, and builds. Published CLI and shared runtime logic must support Node.js and Bun without Bun-only APIs. Release one npm package containing the CLI and library; test the packed artifact under Node.js and Bun rather than creating platform-specific binaries.
 
 Make differences in intent explicit. For example, an imperative command may replace a resource while YAML reconciliation preserves existing state. Document such differences and keep public library contracts clear about selections, side effects, idempotency, errors, and partial failures.
