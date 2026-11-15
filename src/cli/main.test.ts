@@ -138,6 +138,75 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("streams variant discovery and creation before later API calls", async () => {
+    let harness: ReturnType<typeof createHarness>;
+    let reads = 0;
+    let writes = 0;
+    harness = createHarness({
+      getSpace: async () =>
+        ({
+          id: 42,
+          dimensions_app_folder_ids: [1, 2],
+          dimensions_app_folders: [],
+        }) as never,
+      listStories: async (_space, options) =>
+        options?.ids
+          ? ([
+              { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+              { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+            ] as never)
+          : ([
+              { id: 10, full_slug: "global/a" },
+              { id: 11, full_slug: "global/b" },
+            ] as never),
+      getStory: async (_space, id) => {
+        reads++;
+        if (reads === 2)
+          expect(harness.stdout[0]).toContain("Checking 1/2 · global/a");
+        if (reads === 4)
+          expect(
+            harness.stdout.some((line) =>
+              String(line).includes("global/a → italy · created"),
+            ),
+          ).toBe(true);
+        return {
+          id,
+          full_slug: id === 10 ? "global/a" : "global/b",
+          group_id: "group",
+          alternates: [],
+        } as never;
+      },
+      duplicateStoryToDimension: async (_space, id) => {
+        writes++;
+        return {
+          id: id + 100,
+          full_slug: id === 10 ? "italy/a" : "italy/b",
+          group_id: "group",
+        } as never;
+      },
+    });
+    harness.options.output = { ...harness.options.output, mode: "human" };
+    expect(
+      await runCli(
+        [
+          "dimensions",
+          "create-missing",
+          "--starts-with",
+          "global/",
+          "--space-id",
+          "42",
+          "--yes",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(writes).toBe(2);
+    expect(
+      harness.stdout.some((line) =>
+        String(line).includes("global/b → italy · created"),
+      ),
+    ).toBe(true);
+  });
   test("plans and applies missing Dimensions variants using the shared action", async () => {
     let writes = 0;
     const harness = createHarness({

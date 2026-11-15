@@ -1,6 +1,7 @@
 import {
   getDimensionsCoverage,
   type DimensionsCoverageInput,
+  type DimensionsCoverageProgress,
 } from "./dimensions-coverage.ts";
 import {
   createDimensionVariant,
@@ -27,13 +28,21 @@ export interface MissingVariantsReport {
 export async function createMissingVariants(
   gateway: MissingVariantsGateway,
   input: DimensionsCoverageInput & { apply: boolean },
-  options?: { onProgress?: (operation: MissingVariantOperation) => void },
+  options?: {
+    onProgress?: (operation: MissingVariantOperation) => void;
+    onDiscoveryProgress?: (progress: DimensionsCoverageProgress) => void;
+  },
 ): Promise<MissingVariantsReport> {
   if (typeof input?.apply !== "boolean")
     throw toUnblokError(
       new CliError("Provide a boolean apply option.", 2, "INVALID_INPUT"),
     );
-  const coverage = await getDimensionsCoverage(gateway, input);
+  const coverage = await getDimensionsCoverage(gateway, input, {
+    onProgress: options?.onDiscoveryProgress,
+  });
+  const sourceIds = new Map(
+    coverage.stories.map((story) => [story.fullSlug, story.id]),
+  );
   const operations: MissingVariantOperation[] = coverage.stories.flatMap(
     (story) =>
       story.variants.map((variant) => ({
@@ -53,9 +62,17 @@ export async function createMissingVariants(
         if (stopped) operation.status = "not_run";
         else
           try {
+            const sourceId = sourceIds.get(operation.source);
+            if (sourceId === undefined)
+              throw new CliError(
+                "The source story ID could not be verified.",
+                1,
+                "CONFLICT",
+              );
             const result = await createDimensionVariant(gateway, {
               spaceId: input.spaceId,
-              story: operation.source,
+              story: String(sourceId),
+              expectedFullSlug: operation.source,
               folder: operation.folder,
             });
             operation.status = result.status;

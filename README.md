@@ -70,7 +70,7 @@ Recipes show how to use Unblok for common, real-world Storyblok workflows. Each 
 
 - [AI translation and review](docs/recipes/ai-translation-review.md): request translations for a story and move its language versions into an editorial review workflow.
 - [Campaign launch](docs/recipes/campaign-launch.md): prepare a release with a landing page, campaign image and home-page change for the team to review.
-- [Organize a space into Dimensions folders](docs/recipes/dimensions-country-setup.md): prepare global and country folders and configure the Dimensions app.
+- [Organize a space into Dimensions folders](docs/recipes/dimensions-country-setup.md): prepare global and country folders, configure the Dimensions app, and create linked country variants for a demo.
 - [Compare and synchronize country content](docs/recipes/dimensions-compare-and-sync.md): inspect linked Dimensions variants and cherry-pick selected block fields while preserving local content.
 
 ## Built for people and AI assistants

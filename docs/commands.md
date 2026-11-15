@@ -154,6 +154,8 @@ Use `--plan` to inspect linked and missing variants without writing. Use `--yes`
 
 The report has `apiVersion: "unblok/missing-variants-v1"`; operations have `planned`, `created`, `unchanged`, `failed`, or `not_run` statuses. Execution stops on the first failure and includes structured error information. Earlier changes remain; inspect the destination before retrying an unconfirmed write. The YAML equivalent is [`setup-missing-dimension-variants.yaml`](../examples/features/setup-missing-dimension-variants.yaml). YAML plan validates locally and cannot enumerate live stories; apply resolves the selection in the target space.
 
+Human output shows discovery and creation progress as each result arrives, followed by the report. JSON output remains a single report.
+
 ## `story create-variant`
 
 ```bash

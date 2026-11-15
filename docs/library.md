@@ -402,6 +402,8 @@ The read-only action discovers configured destinations by default and returns li
 
 To plan or create missing links, call `createMissingVariants(gateway, { spaceId, startsWith: "global/articles/", folders: ["italy"], apply: false })`. Set `apply: true` to create variants. Omitting `folders` selects all configured destinations except the source. The report lists each operation, including failures and operations not run after a failure. Custom gateways also provide `findStoryBySlug` and `duplicateStoryToDimension`. See [`dimensions create-missing`](commands.md#dimensions-create-missing) for retry and source requirements.
 
+Its optional third argument provides `onDiscoveryProgress` for each checked source story and `onProgress` for each creation outcome during apply.
+
 Pass an optional third argument, `{ onProgress: ({ current, total, story }) => { ... } }`, to receive each verified story result as it becomes available. The returned promise still resolves to the complete report; an error stops processing and rejects it.
 
 List configured folders and create a linked variant with `listDimensionsFolders(gateway, { spaceId })` and `createDimensionVariant(gateway, { spaceId, story: "global/home", folder: "italy" })`. The latter preserves an existing linked variant and requires the source's group ID. See the [command reference](commands.md#story-create-variant) for behavior and API limitations.

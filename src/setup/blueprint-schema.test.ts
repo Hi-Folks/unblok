@@ -7,6 +7,23 @@ import Ajv2020 from "ajv/dist/2020.js";
 import { loadBlueprint } from "./blueprint-loader.ts";
 
 describe("blueprint editor schema", () => {
+  test("describes Dimensions and bulk story operations for editors", () => {
+    expect(schema.properties.apps.properties.dimensions.description).toContain(
+      "root folders",
+    );
+    expect(
+      schema.properties.apps.properties.dimensions.properties.folders
+        .description,
+    ).toContain("replaces");
+    expect(
+      schema.properties.stories.properties.create_missing_variants.items
+        .properties.starts_with.description,
+    ).toContain("descendants");
+    expect(
+      schema.properties.stories.properties.create_missing_variants.items
+        .properties.folders.description,
+    ).toContain("except the source");
+  });
   test("rejects the removed story overwrite operation", () => {
     expect(() =>
       resolveBlueprint({
@@ -39,6 +56,14 @@ describe("blueprint editor schema", () => {
     ]);
   });
   test("country folder example validates and compiles", async () => {
+    const raw = await loadDocument(
+      "examples/features/setup-country-folders.yaml",
+      "Setup",
+    );
+    const validate = new Ajv2020({ allErrors: true, strict: false }).compile(
+      schema,
+    );
+    expect(validate(raw)).toBe(true);
     const blueprint = await loadBlueprint(
       "examples/features/setup-country-folders.yaml",
     );
@@ -55,6 +80,29 @@ describe("blueprint editor schema", () => {
       destination: "global",
       keep: ["uk", "germany", "italy"],
     });
+  });
+  test("Dimensions demo combines country setup with article variant creation", async () => {
+    const blueprint = await loadBlueprint(
+      "examples/features/setup-dimensions-demo.yaml",
+    );
+    const compiled = compileSupportedBlueprint(resolveBlueprint(blueprint));
+    expect(compiled.apps).toEqual([{ id: "24" }]);
+    expect(compiled.dimensionsFolders).toEqual([
+      "global",
+      "uk",
+      "germany",
+      "italy",
+    ]);
+    expect(compiled.organizeRoot).toEqual({
+      destination: "global",
+      keep: ["uk", "germany", "italy"],
+    });
+    expect(compiled.storyCopies).toEqual([
+      { source: "global/site-config", target: "site-config" },
+    ]);
+    expect(compiled.missingVariants).toEqual([
+      { startsWith: "global/articles/", folders: ["italy", "germany"] },
+    ]);
   });
   test("reports useful locations, typo suggestions, missing fields, and conflicting fields", () => {
     try {

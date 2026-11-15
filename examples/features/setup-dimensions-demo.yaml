@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+extends:
+  - setup-country-folders.yaml
+  - setup-missing-dimension-variants.yaml
+template:
+  name: Prepare a Dimensions demo
+  description: Organize global content and create linked article variants for Italy and Germany.

@@ -1934,6 +1934,13 @@ export async function applySupportedBlueprint(
           gateway,
           { spaceId, ...item, apply: true },
           {
+            onDiscoveryProgress: ({ current, total, story }) =>
+              onProgress?.({
+                stage: "stories",
+                current,
+                total,
+                item: `Checking ${story.fullSlug}`,
+              }),
             onProgress: (entry) =>
               onProgress?.({
                 stage: "stories",

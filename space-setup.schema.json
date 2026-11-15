@@ -17,6 +17,7 @@
     },
     "template": {
       "type": "object",
+      "description": "Metadata describing this setup recipe.",
       "additionalProperties": false,
       "properties": {
         "name": { "type": "string" },
@@ -28,6 +29,7 @@
     },
     "execution": {
       "type": "object",
+      "description": "Choose how setup is applied; reconcile preserves matching resources where supported.",
       "additionalProperties": false,
       "properties": { "mode": { "const": "reconcile" } }
     },
@@ -45,13 +47,20 @@
     },
     "space": {
       "type": "object",
+      "description": "Create or duplicate a space and configure its languages.",
       "additionalProperties": false,
       "properties": {
         "name": { "$ref": "#/$defs/nonempty" },
-        "duplicate_from": { "$ref": "#/$defs/id" },
+        "duplicate_from": {
+          "$ref": "#/$defs/id",
+          "description": "ID of the source space to duplicate."
+        },
         "in_org": { "type": "boolean" },
         "demo": { "type": "boolean" },
-        "languages": { "$ref": "#/$defs/nonemptyStrings" },
+        "languages": {
+          "$ref": "#/$defs/nonemptyStrings",
+          "description": "Language codes to ensure in the space."
+        },
         "readiness": {
           "type": "object",
           "additionalProperties": false,
@@ -96,6 +105,7 @@
     },
     "demo_mode": {
       "type": "object",
+      "description": "Control demo mode for the target space.",
       "additionalProperties": false,
       "properties": { "remove": { "type": "boolean" } }
     },
@@ -118,6 +128,7 @@
     },
     "experiments": {
       "type": "object",
+      "description": "Install and configure Experiments, including variants and results.",
       "additionalProperties": false,
       "required": ["disclaimer_id", "create"],
       "properties": {
@@ -131,11 +142,13 @@
     },
     "releases": {
       "type": "object",
+      "description": "Create or publish Storyblok releases.",
       "additionalProperties": false,
       "anyOf": [{ "required": ["create"] }, { "required": ["publish"] }],
       "properties": {
         "publish": {
           "type": "array",
+          "description": "Publish selected releases after earlier setup operations succeed.",
           "minItems": 1,
           "items": {
             "type": "object",
@@ -146,6 +159,7 @@
         },
         "create": {
           "type": "array",
+          "description": "Ensure releases exist by name; an existing release keeps its schedule.",
           "minItems": 1,
           "items": {
             "type": "object",
@@ -155,10 +169,12 @@
               "name": { "$ref": "#/$defs/nonempty" },
               "release_at": {
                 "type": "string",
+                "description": "Scheduled release date and time in YYYY-MM-DD HH:mm format.",
                 "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}$"
               },
               "release_in_days": {
                 "type": "integer",
+                "description": "Schedule relative to creation, in whole days; cannot be combined with release_at.",
                 "minimum": 1,
                 "maximum": 36500
               }
@@ -170,6 +186,7 @@
     },
     "pipelines": {
       "type": "object",
+      "description": "Ensure content pipeline stages exist.",
       "additionalProperties": false,
       "required": ["create"],
       "properties": {
@@ -190,16 +207,19 @@
     },
     "apps": {
       "type": "object",
+      "description": "Install apps and configure supported app settings.",
       "additionalProperties": false,
       "properties": {
         "continue_on_error": { "type": "boolean" },
         "dimensions": {
           "type": "object",
+          "description": "Configure which root folders the Dimensions app can use.",
           "additionalProperties": false,
           "required": ["folders"],
           "properties": {
             "folders": {
               "type": "array",
+              "description": "Root folder paths to select; replaces the existing Dimensions selection.",
               "minItems": 1,
               "uniqueItems": true,
               "items": {
@@ -212,6 +232,7 @@
         },
         "install": {
           "type": "array",
+          "description": "Apps to install by regional slug or explicit ID; already-installed apps are preserved.",
           "items": {
             "oneOf": [
               { "$ref": "#/$defs/nonempty" },
@@ -228,6 +249,7 @@
     },
     "components": {
       "type": "object",
+      "description": "Ensure supported fields exist in component schemas.",
       "additionalProperties": false,
       "required": ["fields"],
       "properties": {
@@ -239,10 +261,12 @@
     },
     "assets": {
       "type": "object",
+      "description": "Upload local or remote assets into the space.",
       "additionalProperties": false,
       "properties": {
         "upload_directory": {
           "type": "array",
+          "description": "Upload selected files from a local directory into an asset folder.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -256,6 +280,7 @@
         },
         "upload_url": {
           "type": "array",
+          "description": "Upload assets from URLs into an asset folder.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -272,10 +297,12 @@
     },
     "stories": {
       "type": "object",
+      "description": "Create, organize, update, translate, or link story content.",
       "additionalProperties": false,
       "properties": {
         "ai_translate": {
           "type": "array",
+          "description": "Request AI translation for selected stories and languages.",
           "minItems": 1,
           "items": {
             "type": "object",
@@ -332,6 +359,7 @@
         },
         "organize_root": {
           "type": "object",
+          "description": "Move root stories and folders into a destination, excluding the paths in keep.",
           "additionalProperties": false,
           "required": ["destination", "keep"],
           "properties": {
@@ -342,6 +370,7 @@
             },
             "keep": {
               "type": "array",
+              "description": "Root folder or story paths to leave in place on each run.",
               "items": {
                 "type": "string",
                 "minLength": 1,
@@ -352,6 +381,7 @@
         },
         "update_matching_blocks": {
           "type": "array",
+          "description": "Update fields on every matching component block in a story.",
           "minItems": 1,
           "items": {
             "type": "object",
@@ -375,6 +405,7 @@
         },
         "sync_blocks": {
           "type": "array",
+          "description": "Copy selected block fields from a source story to a target story.",
           "minItems": 1,
           "items": {
             "type": "object",
@@ -397,6 +428,7 @@
         },
         "copy": {
           "type": "array",
+          "description": "Create independent draft story copies at exact target slugs; existing targets are preserved.",
           "minItems": 1,
           "items": {
             "type": "object",
@@ -410,15 +442,20 @@
         },
         "create_missing_variants": {
           "type": "array",
+          "description": "Create missing linked Dimensions variants for stories under a source path.",
           "minItems": 1,
           "items": {
             "type": "object",
             "additionalProperties": false,
             "required": ["starts_with"],
             "properties": {
-              "starts_with": { "$ref": "#/$defs/nonempty" },
+              "starts_with": {
+                "$ref": "#/$defs/nonempty",
+                "description": "Source folder path, such as global/articles/; descendants are included."
+              },
               "folders": {
                 "type": "array",
+                "description": "Destination Dimensions root folders; omit to select all configured roots except the source.",
                 "minItems": 1,
                 "uniqueItems": true,
                 "items": {
@@ -432,6 +469,7 @@
         },
         "create_variants": {
           "type": "array",
+          "description": "Create linked Dimensions variants for individual stories and destination folders.",
           "minItems": 1,
           "items": {
             "type": "object",
@@ -449,6 +487,7 @@
         },
         "ensure_folders": {
           "type": "array",
+          "description": "Ensure story folders exist; nested paths create missing parents.",
           "minItems": 1,
           "items": {
             "type": "string",
@@ -458,6 +497,7 @@
         },
         "create": {
           "type": "array",
+          "description": "Create draft stories at exact slugs; existing stories are preserved.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -483,6 +523,7 @@
         },
         "update_blocks": {
           "type": "array",
+          "description": "Update fields on a uniquely matched component block in a story.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -499,6 +540,7 @@
         },
         "translated_slugs": {
           "type": "array",
+          "description": "Ensure translated slugs for selected stories and language codes.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -525,10 +567,12 @@
     },
     "workflow": {
       "type": "object",
+      "description": "Edit workflow settings and assign stories to stages.",
       "additionalProperties": false,
       "properties": {
         "edit": {
           "type": "array",
+          "description": "Update named or ID-selected workflows; renaming requires the workflow ID.",
           "minItems": 1,
           "items": {
             "type": "object",
@@ -549,7 +593,10 @@
                 "uniqueItems": true,
                 "items": { "$ref": "#/$defs/nonempty" }
               },
-              "per_language_stages": { "type": "boolean" }
+              "per_language_stages": {
+                "type": "boolean",
+                "description": "Enable or disable language-specific workflow stages."
+              }
             }
           }
         },
@@ -557,6 +604,7 @@
         "stage_id": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] },
         "assign": {
           "type": "array",
+          "description": "Assign selected stories to named workflow stages.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -572,6 +620,7 @@
     },
     "tags": {
       "type": "array",
+      "description": "Add tags to selected stories, preserving existing tags.",
       "items": {
         "type": "object",
         "additionalProperties": false,

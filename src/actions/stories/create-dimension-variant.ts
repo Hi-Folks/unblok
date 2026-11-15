@@ -16,6 +16,8 @@ export interface CreateDimensionVariantInput {
   spaceId: number;
   story: string;
   folder: string;
+  /** Require the source to retain this full slug when it is read. */
+  expectedFullSlug?: string;
 }
 export async function createDimensionVariant(
   gateway: CreateDimensionVariantGateway,
@@ -61,7 +63,9 @@ export async function createDimensionVariant(
       source.id !== sourceId ||
       source.is_folder ||
       !source.full_slug ||
-      (!numeric && source.full_slug !== input.story)
+      (!numeric && source.full_slug !== input.story) ||
+      (input.expectedFullSlug !== undefined &&
+        source.full_slug !== input.expectedFullSlug)
     )
       throw new CliError(
         "Source story identity could not be verified.",

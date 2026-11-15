@@ -112,3 +112,92 @@ test("stops after a failed write and reports completed and not-run operations", 
   });
   expect(f.calls).toEqual(["italy", "germany"]);
 });
+
+test("creates variants for a start page with a trailing slash and continues to other stories", async () => {
+  const linked = new Set<number>();
+  const writes: number[] = [];
+  const gateway = {
+    getSpace: async () => ({
+      id: 42,
+      dimensions_app_folder_ids: [1, 2],
+      dimensions_app_folders: [],
+    }),
+    listStories: async (_space: number, options?: { ids?: number[] }) =>
+      options?.ids
+        ? [
+            { id: 1, is_folder: true, parent_id: 0, full_slug: "global/" },
+            { id: 2, is_folder: true, parent_id: 0, full_slug: "italy/" },
+          ]
+        : [
+            { id: 10, full_slug: "global/articles/" },
+            { id: 11, full_slug: "global/articles/first" },
+          ],
+    findStoryBySlug: async () => {
+      throw new Error("ID lookup should not resolve a slug");
+    },
+    getStory: async (_space: number, id: number) => ({
+      id,
+      full_slug: id === 10 ? "global/articles/" : "global/articles/first",
+      group_id: `group-${id}`,
+      alternates: linked.has(id)
+        ? [
+            {
+              id: id + 100,
+              full_slug: id === 10 ? "italy/articles/" : "italy/articles/first",
+            },
+          ]
+        : [],
+    }),
+    duplicateStoryToDimension: async (_space: number, id: number) => {
+      writes.push(id);
+      linked.add(id);
+      return {
+        id: id + 100,
+        full_slug: id === 10 ? "italy/articles/" : "italy/articles/first",
+        group_id: `group-${id}`,
+      };
+    },
+  };
+  const input = {
+    spaceId: 42,
+    startsWith: "global/articles/",
+    folders: ["italy"],
+    apply: true,
+  };
+  const first = await createMissingVariants(gateway as never, input);
+  expect(first.operations.map((item) => [item.source, item.status])).toEqual([
+    ["global/articles/", "created"],
+    ["global/articles/first", "created"],
+  ]);
+  const second = await createMissingVariants(gateway as never, input);
+  expect(second.operations.map((item) => item.status)).toEqual([
+    "unchanged",
+    "unchanged",
+  ]);
+  expect(writes).toEqual([10, 11]);
+});
+
+test("does not create a variant if a story moved after coverage was collected", async () => {
+  const f = fixture();
+  const gateway =
+    f.gateway as import("./create-missing-variants.ts").MissingVariantsGateway;
+  let reads = 0;
+  gateway.getStory = async () =>
+    ({
+      id: 10,
+      full_slug: ++reads === 1 ? "global/home" : "global/moved",
+      group_id: "group",
+      alternates: [],
+    }) as never;
+  const result = await createMissingVariants(gateway, {
+    spaceId: 42,
+    startsWith: "global/",
+    folders: ["italy"],
+    apply: true,
+  });
+  expect(result.operations[0]).toMatchObject({
+    status: "failed",
+    error: { code: "CONFLICT" },
+  });
+  expect(f.calls).toEqual([]);
+});

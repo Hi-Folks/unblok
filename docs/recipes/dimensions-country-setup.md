@@ -57,6 +57,15 @@ On a repeat run, `global` and the folders in `organize_root.keep` stay at the ro
 
 List the configured folders with `unblok dimensions list --space-id YOUR_SPACE_ID`. You can create linked variants using `story create-variant` or the [variant YAML example](../../examples/features/setup-dimension-variants.yaml).
 
+For a demo that also creates the missing linked variants under `global/articles/` in Italy and Germany, use [setup-dimensions-demo.yaml](../../examples/features/setup-dimensions-demo.yaml) from the checkout. It includes both [the country-folder setup](../../examples/features/setup-country-folders.yaml) and [the bulk variant setup](../../examples/features/setup-missing-dimension-variants.yaml):
+
+```bash
+bun run start space setup plan --config examples/features/setup-dimensions-demo.yaml
+bun run start space setup apply --config examples/features/setup-dimensions-demo.yaml --space-id YOUR_SPACE_ID --yes
+```
+
+Review both included files before applying. The example uses EU Dimensions app ID `24`; replace it with a verified regional slug or ID as needed. It expects `site-config` and selects all stories under `global/articles/`; each source needs a group ID before its missing variant can be created. The local plan cannot enumerate the live content. On repeat runs, existing linked variants are preserved, while newly added root content and source stories can be included. If any operation fails, earlier changes remain; inspect the report and any unconfirmed destination before retrying. Because the combined file uses relative `extends`, keep its two included files alongside it if copying it elsewhere.
+
 When teams begin editing country versions, the [comparison and synchronization recipe](dimensions-compare-and-sync.md) shows how to inspect differences and share selected block fields while preserving other local content.
 
 Dimensions folder installation and configuration have been exercised in a test space. The root-copy behavior has mock test coverage; inspect the resulting stories and nested folders in your test space before using the recipe elsewhere.

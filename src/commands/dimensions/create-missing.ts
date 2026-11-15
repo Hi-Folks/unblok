@@ -70,17 +70,57 @@ export const createMissingCommand: Command = {
     const gateway = context.createGateway(
       getStoryblokToken(context.environment),
     );
-    const report = await context.output.activity(
-      plan ? "Planning variants" : "Creating missing variants",
-      "Variants checked",
-      () =>
-        createMissingVariants(gateway, {
+    const progress =
+      context.output.mode === "human" && context.output.canPrompt
+        ? context.output.task(
+            plan ? "Planning variants" : "Creating missing variants",
+          )
+        : undefined;
+    const show = (message: string) => {
+      if (progress) progress.message(message);
+      else context.output.text(message);
+    };
+    const statusLabel = (status: string) => {
+      const color =
+        status === "created" || status === "linked"
+          ? "green"
+          : status === "missing" || status === "not_run"
+            ? "yellow"
+            : status === "failed"
+              ? "red"
+              : "gray";
+      return context.output.style?.(color, status) ?? status;
+    };
+    let report: Awaited<ReturnType<typeof createMissingVariants>>;
+    try {
+      report = await createMissingVariants(
+        gateway,
+        {
           spaceId,
-          startsWith: startsWith!,
+          startsWith,
           ...(folders.length ? { folders } : {}),
           apply: yes,
-        }),
-    );
+        },
+        context.output.mode === "human"
+          ? {
+              onDiscoveryProgress: ({ current, total, story }) =>
+                show(
+                  `Checking ${current}/${total} · ${story.fullSlug} · ${story.variants.map((item) => `${item.folder}: ${statusLabel(item.status)}`).join(" · ")}`,
+                ),
+              onProgress: (item) =>
+                show(
+                  `${item.source} → ${item.folder} · ${statusLabel(item.status)}${item.error ? ` · ${item.error.message}` : ""}`,
+                ),
+            }
+          : undefined,
+      );
+      if (report.operations.some((item) => item.status === "failed"))
+        progress?.error("Variant creation stopped after a failure");
+      else progress?.success("Variants checked");
+    } catch (error) {
+      progress?.error("Variant check failed");
+      throw error;
+    }
     if (context.output.mode === "json") context.output.data(report);
     else if (!report.operations.length)
       context.output.info("No stories matched the source path.");
@@ -91,7 +131,7 @@ export const createMissingCommand: Command = {
           report.operations.map((item) => [
             item.source,
             item.folder,
-            item.status,
+            statusLabel(item.status),
             item.error?.message ?? item.story?.fullSlug ?? "—",
           ]),
           context.output.width?.(),

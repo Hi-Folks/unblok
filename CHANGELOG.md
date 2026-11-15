@@ -1,18 +1,24 @@
 # Changelog
 
-## 0.6.1 - WIP
+## 0.6.1 - 2026-11-15
 
 ### Added
 
+- Combine country-folder setup and missing article variants in a modular Dimensions demo YAML example.
 - Plan and create missing Dimensions variants for a source folder through the CLI, YAML and JavaScript library.
-
 - Report Dimensions variant coverage for stories under a selected folder via the CLI and JavaScript library.
 - Show Dimensions coverage results as each story is checked, with an optional library progress callback.
 - Highlight linked and missing Dimensions variants in terminal output.
 
 ### Changed
 
+- Add editor descriptions to setup schema sections and common operations.
 - Compare all configured Dimensions folders by default when no explicit folders are selected.
+- Show live progress while discovering and creating missing Dimensions variants.
+
+### Fixed
+
+- Create missing Dimensions variants for start pages whose full slugs end in a slash.
 
 ## 0.6.0 - 2026-11-14
 
