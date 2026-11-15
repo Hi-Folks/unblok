@@ -8,6 +8,7 @@ import { storyCreateCommand } from "./create.ts";
 import { storyFolderCommand } from "./folder.ts";
 import { storyMoveCommand } from "./move.ts";
 import { storyCreateVariantCommand } from "./create-variant.ts";
+import { storySyncPathCommand } from "./sync-path.ts";
 import { storyMergeCommand } from "./merge.ts";
 import { storySyncBlockCommand } from "./sync-block.ts";
 import { storyUpdateMatchingCommand } from "./update-matching-blocks.ts";
@@ -38,6 +39,7 @@ export const storyCommand: Command = {
         storyCreateVariantCommand,
         storyMergeCommand,
         storySyncBlockCommand,
+        storySyncPathCommand,
         storyUpdateMatchingCommand,
         storyAiTranslateCommand,
         storyFolderCommand,

@@ -6,6 +6,74 @@ import {
 } from "./blueprint-apply.ts";
 
 describe("story setup", () => {
+  test("copies a positional story field through YAML and skips the repeat", async () => {
+    const source = {
+      id: 1,
+      full_slug: "global/home",
+      content: {
+        component: "page",
+        _uid: "p1",
+        body: [{ component: "hero", _uid: "h1", title: "Hello" }],
+      },
+    };
+    const target = {
+      id: 2,
+      full_slug: "italy/home",
+      content: {
+        component: "page",
+        _uid: "p2",
+        body: [{ component: "hero", _uid: "h2", title: "Ciao" }],
+      },
+    };
+    let writes = 0;
+    const gateway = {
+      findStoryBySlug: async (_space: number, slug: string) => ({
+        id: slug === source.full_slug ? 1 : 2,
+      }),
+      getStory: async (_space: number, id: number) =>
+        structuredClone(id === 1 ? source : target),
+      updateStoryContent: async (
+        _space: number,
+        _id: number,
+        content: unknown,
+      ) => {
+        writes++;
+        target.content = structuredClone(content) as typeof target.content;
+        return structuredClone(target);
+      },
+    };
+    const blueprint = compileSupportedBlueprint({
+      version: 1,
+      stories: {
+        sync_paths: [
+          {
+            source: "global/home",
+            target: "italy/home",
+            path: "/body/0/title",
+          },
+        ],
+      },
+    });
+    expect(
+      (await applySupportedBlueprint(gateway as never, 42, blueprint))
+        .operations,
+    ).toContainEqual(
+      expect.objectContaining({
+        operation: "sync-story-path",
+        status: "updated",
+      }),
+    );
+    expect(
+      (await applySupportedBlueprint(gateway as never, 42, blueprint))
+        .operations,
+    ).toContainEqual(
+      expect.objectContaining({
+        operation: "sync-story-path",
+        status: "unchanged",
+      }),
+    );
+    expect(writes).toBe(1);
+  });
   test("reports successful and failed bulk variant operations before stopping", async () => {
     const folders = ["global", "italy", "germany", "uk"];
     let writes = 0;

@@ -14,6 +14,11 @@ import {
   type SyncBlockInput,
 } from "../actions/stories/sync-block-fields.ts";
 import { createDimensionVariant } from "../actions/stories/create-dimension-variant.ts";
+import {
+  syncStoryPath,
+  parseStorySyncPath,
+  type SyncPathInput,
+} from "../actions/stories/sync-path.ts";
 import { createMissingVariants } from "../actions/apps/create-missing-variants.ts";
 import { configureDimensions } from "../actions/apps/dimensions.ts";
 import { publishStoryIfNeeded } from "../actions/stories/publish-story.ts";
@@ -131,6 +136,7 @@ export interface SupportedBlueprint {
   storyFolders: string[];
   storyCopies: Array<{ source: string; target: string }>;
   storySyncBlocks: Array<Omit<SyncBlockInput, "spaceId" | "apply">>;
+  storySyncPaths: Array<Omit<SyncPathInput, "spaceId" | "apply">>;
   storyMatchingBlocks: Array<
     Omit<UpdateMatchingBlocksInput, "spaceId" | "apply">
   >;
@@ -382,6 +388,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
   const storyFolders: string[] = [];
   const storyCopies: SupportedBlueprint["storyCopies"] = [];
   const storySyncBlocks: SupportedBlueprint["storySyncBlocks"] = [];
+  const storySyncPaths: SupportedBlueprint["storySyncPaths"] = [];
   const storyMatchingBlocks: SupportedBlueprint["storyMatchingBlocks"] = [];
   const storyVariants: SupportedBlueprint["storyVariants"] = [];
   const missingVariants: SupportedBlueprint["missingVariants"] = [];
@@ -528,6 +535,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
             "create",
             "copy",
             "sync_blocks",
+            "sync_paths",
             "update_matching_blocks",
             "create_variants",
             "create_missing_variants",
@@ -663,6 +671,45 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
             2,
           );
         storyCopies.push({ source: item.source, target: item.target });
+      }
+    }
+    if (value.stories.sync_paths !== undefined) {
+      if (
+        !Array.isArray(value.stories.sync_paths) ||
+        !value.stories.sync_paths.length
+      )
+        throw new CliError("stories.sync_paths must be a nonempty array.", 2);
+      for (const item of value.stories.sync_paths) {
+        if (
+          !isObject(item) ||
+          Object.keys(item).some(
+            (key) => !["source", "target", "path"].includes(key),
+          ) ||
+          typeof item.source !== "string" ||
+          item.source !== item.source.trim() ||
+          !isValidStoryCreationSlug(item.source) ||
+          typeof item.target !== "string" ||
+          item.target !== item.target.trim() ||
+          !isValidStoryCreationSlug(item.target) ||
+          typeof item.path !== "string" ||
+          !item.path.startsWith("/") ||
+          item.path === "/"
+        )
+          throw new CliError(
+            "Each stories.sync_paths entry requires source, target and a non-root JSON Pointer path.",
+            2,
+          );
+        if (item.source === item.target)
+          throw new CliError(
+            "stories.sync_paths requires different source and target stories.",
+            2,
+          );
+        parseStorySyncPath(item.path);
+        storySyncPaths.push({
+          source: item.source,
+          target: item.target,
+          path: item.path,
+        });
       }
     }
     if (value.stories.sync_blocks !== undefined) {
@@ -1317,6 +1364,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
       storyFolders,
       storyCopies,
       storySyncBlocks,
+      storySyncPaths,
       storyMatchingBlocks,
       storyVariants,
       missingVariants,
@@ -1362,6 +1410,7 @@ export function compileSupportedBlueprint(value: unknown): SupportedBlueprint {
     storyFolders,
     storyCopies,
     storySyncBlocks,
+    storySyncPaths,
     storyMatchingBlocks,
     storyVariants,
     missingVariants,
@@ -1498,6 +1547,10 @@ export async function applySupportedBlueprint(
       ...blueprint.storySyncBlocks.map((item) => ({
         operation: "sync-block-fields",
         key: `${item.source} → ${item.target}/${item.component}`,
+      })),
+      ...blueprint.storySyncPaths.map((item) => ({
+        operation: "sync-story-path",
+        key: `${item.source} → ${item.target}${item.path}`,
       })),
       ...blueprint.storyMatchingBlocks.map((item) => ({
         operation: "update-matching-blocks",
@@ -1803,6 +1856,7 @@ export async function applySupportedBlueprint(
       blueprint.storyFolders.length ||
       blueprint.storyCopies.length ||
       blueprint.storySyncBlocks.length ||
+      blueprint.storySyncPaths.length ||
       blueprint.storyMatchingBlocks.length ||
       blueprint.dimensionsFolders ||
       blueprint.organizeRoot ||
@@ -2001,6 +2055,24 @@ export async function applySupportedBlueprint(
         });
       } catch (error) {
         throw new BlueprintOperationError("sync-block-fields", key, error);
+      }
+    }
+    for (const item of blueprint.storySyncPaths) {
+      const key = `${item.source} → ${item.target}${item.path}`;
+      try {
+        onProgress?.({ stage: "stories", item: key });
+        const result = await syncStoryPath(gateway, {
+          spaceId,
+          ...item,
+          apply: true,
+        });
+        operations.push({
+          operation: "sync-story-path",
+          key,
+          status: result.status,
+        });
+      } catch (error) {
+        throw new BlueprintOperationError("sync-story-path", key, error);
       }
     }
     for (const item of blueprint.storyMatchingBlocks) {

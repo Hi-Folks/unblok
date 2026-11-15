@@ -8,7 +8,11 @@ export function commandHelp(program: string, commands: Command[]): string {
 
   const versionOption =
     program === "unblok" ? "  --version    Show the installed version\n" : "";
-  return `Usage: ${program} <command> [options]\n\nCommands:\n${commandLines}\n\nOptions:\n  --json       Emit machine-readable JSON\n  --verbose    Show safe error diagnostics\n${versionOption}  -h, --help   Show command help\n\nRun '${program} <command> --help' for command details.`;
+  const discover =
+    program === "unblok"
+      ? `\n\nI want to...\n  List my spaces              unblok space list\n  Find stories in a folder    unblok story list --starts-with articles/\n  Check country variants      unblok dimensions coverage --starts-with global/\n  Explore setup recipes       unblok space setup examples\n  Install the AI agent skill  unblok skill install --agent codex\n                              unblok skill install --agent claude\n\nSpace commands require a token; use --space-id or set STORYBLOK_SPACE_ID where needed.`
+      : "";
+  return `Usage: ${program} <command> [options]\n\nCommands:\n${commandLines}\n\nOptions:\n  --json       Emit machine-readable JSON\n  --verbose    Show safe error diagnostics\n${versionOption}  -h, --help   Show command help.${discover}\n\nRun '${program} <command> --help' for command details.`;
 }
 
 export async function dispatch(

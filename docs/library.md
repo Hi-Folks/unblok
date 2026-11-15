@@ -386,6 +386,8 @@ The gateway follows all pages and returns Management API story objects without f
 
 ## Compare Dimensions stories
 
+Use `syncStoryPath(gateway, { spaceId, source: "global/home", target: "italy/home", path: "/body/0/headline/0", apply: false })` to preview a positional block or field copy; set `apply: true` to save the target draft. It uses the same JSON Pointer in both stories and preserves copied block UIDs. See the [path synchronization guide](story-sync-path.md) for examples, validation and concurrency behavior.
+
 For coverage across multiple source stories, call:
 
 ```ts

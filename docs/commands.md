@@ -209,6 +209,20 @@ Send a Dimensions merge request from the source story into the target. Each refe
 
 The result contains the resolved source and target. `submitted` means Storyblok accepted the request; it does not assert the resulting content. If a background task ID is returned, the result is `queued`. Inspect the target before retrying or proceeding with dependent changes. Merge is an explicit action and is not currently available in YAML.
 
+## `story sync-path`
+
+```bash
+unblok story sync-path --source global/home --target italy/home --path /body/0/headline/0 --space-id YOUR_SPACE_ID --plan
+```
+
+Copy a component block or a complete field on a component from one draft story to another at the **same JSON Pointer path**. Array indices select positions in both stories, even if blocks have been reordered. A block path replaces the target block with the complete source block, including its nested blocks and UIDs. A field path replaces that complete field. Inspect the before and after values in `--plan`; replace it with `--yes` to apply. Use `--json` for the versioned report. This does not publish.
+
+Both paths must exist. Field paths require matching parent component types; blocks are copied by position, not matched by UID. Reserved metadata cannot be selected directly, and duplicate or missing block UIDs in the resulting story stop the operation before writing. Unblok re-reads both drafts before saving and verifies the selected value afterward. If the write cannot be confirmed, inspect the target before retrying. The apply command computes its own plan; it does not lock the earlier preview.
+
+YAML uses `stories.sync_paths` as in [setup-sync-story-path.yaml](../examples/features/setup-sync-story-path.yaml). YAML plan validates locally; it cannot preview live values. Use the CLI `--plan` first.
+
+For examples of block, field and blocks-field selection, JSON output, and library use, see the [path synchronization guide](story-sync-path.md).
+
 ## `story compare-dimensions`
 
 ```bash

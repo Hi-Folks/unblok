@@ -46,6 +46,12 @@ export type {
 } from "./actions/releases/releases.ts";
 export { ensureStoryCreated } from "./actions/stories/create-story.ts";
 export { syncBlockFields } from "./actions/stories/sync-block-fields.ts";
+export { syncStoryPath } from "./actions/stories/sync-path.ts";
+export type {
+  SyncPathGateway,
+  SyncPathInput,
+  SyncPathReport,
+} from "./actions/stories/sync-path.ts";
 export { updateMatchingBlocks } from "./actions/stories/update-matching-blocks.ts";
 export type {
   UpdateMatchingBlocksGateway,

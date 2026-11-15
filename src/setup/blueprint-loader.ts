@@ -14,6 +14,7 @@ const operationLists = new Set([
   "stories.create",
   "stories.copy",
   "stories.sync_blocks",
+  "stories.sync_paths",
   "stories.update_matching_blocks",
   "stories.create_variants",
   "stories.create_missing_variants",

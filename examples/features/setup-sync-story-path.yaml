@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../../space-setup.schema.json
+version: 1
+template:
+  name: Copy a selected story block by path
+stories:
+  sync_paths:
+    - source: global/home
+      target: italy/home
+      path: /body/0/headline/0

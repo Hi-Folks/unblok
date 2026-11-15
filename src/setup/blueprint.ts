@@ -138,6 +138,10 @@ export function planBlueprint(value: unknown): BlueprintPlan {
         operation: "synchronize selected block fields",
         support: "available",
       },
+      sync_paths: {
+        operation: "copy story content by JSON Pointer",
+        support: "available",
+      },
       update_matching_blocks: {
         operation: "update matching story blocks",
         support: "available",

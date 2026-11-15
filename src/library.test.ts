@@ -29,7 +29,42 @@ import {
   compareStoryToPreviousVersion,
   getDimensionsCoverage,
   createMissingVariants,
+  syncStoryPath,
 } from "./library.ts";
+
+test("public library previews a positional field copy", async () => {
+  const gateway = {
+    findStoryBySlug: async (_space: number, slug: string) => ({
+      id: slug === "global/home" ? 1 : 2,
+    }),
+    getStory: async (_space: number, id: number) => ({
+      id,
+      full_slug: id === 1 ? "global/home" : "italy/home",
+      content: {
+        component: "page",
+        _uid: `p${id}`,
+        body: [
+          {
+            component: "hero",
+            _uid: `h${id}`,
+            title: id === 1 ? "Hello" : "Ciao",
+          },
+        ],
+      },
+    }),
+    updateStoryContent: async () => {
+      throw new Error("Preview must not write");
+    },
+  };
+  expect(
+    await syncStoryPath(gateway as never, {
+      spaceId: 42,
+      source: "global/home",
+      target: "italy/home",
+      path: "/body/0/title",
+    }),
+  ).toMatchObject({ status: "planned", before: "Ciao", after: "Hello" });
+});
 
 test("public library plans missing Dimensions variants without writing", async () => {
   let writes = 0;

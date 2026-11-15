@@ -64,6 +64,8 @@ germany — germany/home
 
 The example URLs are placeholders. With no `--folder` options, Unblok checks every configured Dimensions folder except the one containing the source. To focus on specific folders, add `--folder germany --folder italy`. Unblok identifies variants from Storyblok's linked alternates, so their slugs may differ. `not linked` means no linked alternate was returned for that folder; it does not prove that no similarly named story exists. Use `--json` for the versioned report and JSON Pointer paths. This is a read-only comparison of raw draft content, including block IDs; arrays are compared by position, and differences do not assess translation quality.
 
+You can also use a comparison path with [`story sync-path`](../story-sync-path.md) to preview copying a field, an entire block, or a blocks field at the same position in another story. For example, `/body/0/headline/0` replaces one nested block; `/body/0/headline/0/text` copies its text field. The path selects positions in both stories, so inspect the before and after values carefully if their blocks have been reordered.
+
 ## Cherry-pick the global image
 
 First preview the selected field without changing either story:

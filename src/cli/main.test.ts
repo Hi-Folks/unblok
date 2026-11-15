@@ -138,6 +138,58 @@ function createHarness(gateway?: Partial<StoryblokGateway>) {
 }
 
 describe("runCli", () => {
+  test("previews a positional story block copy as JSON without writing", async () => {
+    let writes = 0;
+    const harness = createHarness({
+      findStoryBySlug: async (_space, slug) =>
+        ({ id: slug === "global/home" ? 1 : 2 }) as never,
+      getStory: async (_space, id) =>
+        ({
+          id,
+          full_slug: id === 1 ? "global/home" : "italy/home",
+          content: {
+            component: "page",
+            _uid: `p${id}`,
+            body: [
+              {
+                component: "hero",
+                _uid: `h${id}`,
+                title: id === 1 ? "Hello" : "Ciao",
+              },
+            ],
+          },
+        }) as never,
+      updateStoryContent: async () => {
+        writes++;
+        return {} as never;
+      },
+    });
+    expect(
+      await runCli(
+        [
+          "story",
+          "sync-path",
+          "--source",
+          "global/home",
+          "--target",
+          "italy/home",
+          "--path",
+          "/body/0",
+          "--plan",
+          "--space-id",
+          "42",
+          "--json",
+        ],
+        harness.options,
+      ),
+    ).toBe(0);
+    expect(harness.stdout[0]).toMatchObject({
+      status: "planned",
+      before: { title: "Ciao" },
+      after: { title: "Hello" },
+    });
+    expect(writes).toBe(0);
+  });
   test("streams variant discovery and creation before later API calls", async () => {
     let harness: ReturnType<typeof createHarness>;
     let reads = 0;
@@ -3021,6 +3073,20 @@ describe("runCli", () => {
 
     expect(await runCli([], harness.options)).toBe(0);
     expect(harness.stdout[0]).toContain("unblok <command>");
+    expect(harness.stdout[0]).toContain(
+      "unblok story list --starts-with articles/",
+    );
+    expect(harness.stdout[0]).toContain(
+      "unblok dimensions coverage --starts-with global/",
+    );
+    expect(harness.stdout[0]).toContain("unblok space setup examples");
+    expect(harness.stdout[0]).toContain("unblok skill install --agent codex");
+    expect(harness.stdout[0]).toContain("unblok skill install --agent claude");
+    expect(harness.stdout[0]).toContain("STORYBLOK_SPACE_ID");
+    harness.stdout.length = 0;
+    expect(await runCli(["--help", "--json"], harness.options)).toBe(0);
+    expect(harness.stdout[0]).toContain("I want to...");
+    expect(harness.stdout).toHaveLength(1);
   });
 
   test("lists spaces", async () => {
