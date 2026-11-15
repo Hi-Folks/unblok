@@ -2,7 +2,7 @@
 
 A space may begin with all its stories and folders at the root. As a team grows into new markets, it can use Storyblok's Dimensions app to work with independent country versions of those stories.
 
-This recipe prepares a starting structure with a shared `global` folder and separate country folders. It installs and configures Dimensions, moves existing root content into `global`, and restores a root `site-config` copy for a site that expects one there. Once the structure is ready, teams can create and manage linked country variants.
+This recipe prepares a starting structure with a shared `global` folder and separate country folders. It installs and configures Dimensions, moves existing root content into `global`, and restores a root `site-config` copy for a site that expects one there. The combined demo example also creates linked article variants in Italy and Germany, ready for teams to adapt and compare.
 
 ```text
 Before                     After
@@ -53,9 +53,7 @@ Unblok ensures the folders, selects them for Dimensions, and moves other root-le
 
 On a repeat run, `global` and the folders in `organize_root.keep` stay at the root. Once both `global/site-config` and the root copy exist, the copy also stays at the root. Other newly added root entries are selected for movement on later runs. If a step fails, earlier changes remain; inspect the report and space before retrying.
 
-## Continue with country stories
-
-List the configured folders with `unblok dimensions list --space-id YOUR_SPACE_ID`. You can create linked variants using `story create-variant` or the [variant YAML example](../../examples/features/setup-dimension-variants.yaml).
+## Create linked variants for a demo
 
 For a demo that also creates the missing linked variants under `global/articles/` in Italy and Germany, use [setup-dimensions-demo.yaml](../../examples/features/setup-dimensions-demo.yaml) from the checkout. It includes both [the country-folder setup](../../examples/features/setup-country-folders.yaml) and [the bulk variant setup](../../examples/features/setup-missing-dimension-variants.yaml):
 
@@ -65,6 +63,29 @@ bun run start space setup apply --config examples/features/setup-dimensions-demo
 ```
 
 Review both included files before applying. The example uses EU Dimensions app ID `24`; replace it with a verified regional slug or ID as needed. It expects `site-config` and selects all stories under `global/articles/`; each source needs a group ID before its missing variant can be created. The local plan cannot enumerate the live content. On repeat runs, existing linked variants are preserved, while newly added root content and source stories can be included. If any operation fails, earlier changes remain; inspect the report and any unconfirmed destination before retrying. Because the combined file uses relative `extends`, keep its two included files alongside it if copying it elsewhere.
+
+## Check coverage and fill gaps
+
+After setup, see which source stories have linked variants in each configured country:
+
+```bash
+unblok dimensions coverage \
+  --starts-with global/articles/ \
+  --space-id YOUR_SPACE_ID
+```
+
+To preview variants that could be created for specific countries, run:
+
+```bash
+unblok dimensions create-missing \
+  --starts-with global/articles/ \
+  --folder italy \
+  --folder germany \
+  --space-id YOUR_SPACE_ID \
+  --plan
+```
+
+Review the live plan, then replace `--plan` with `--yes` to create the missing links. Omit `--folder` to select all other configured Dimensions folders. These commands show progress as stories are checked; add `--json` for a single machine-readable report. Coverage uses Storyblok's linked alternates, so a similarly named but unlinked story is reported as missing. You can also create a single linked variant with `story create-variant` or use the [single-variant YAML example](../../examples/features/setup-dimension-variants.yaml).
 
 When teams begin editing country versions, the [comparison and synchronization recipe](dimensions-compare-and-sync.md) shows how to inspect differences and share selected block fields while preserving other local content.
 

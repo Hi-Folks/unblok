@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2 - WIP
+
+### Added
+
+### Changed
+
+- Expand the Dimensions recipe with coverage and missing-variant workflows.
+
 ## 0.6.1 - 2026-11-15
 
 ### Added
